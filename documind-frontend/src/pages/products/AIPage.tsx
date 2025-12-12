@@ -1,6 +1,13 @@
 import PageLayout from "@/components/layout/PageLayout";
 import { ArrowRight } from "lucide-react";
 
+// CheckIcon component matching LandingPage style
+const CheckIcon = () => (
+  <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-5 h-5">
+    <path d="M13 4L6 11l-3-3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
 // Custom Icon Components - Sophisticated, minimal designs
 const RAGIcon = () => (
   <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
@@ -87,14 +94,13 @@ const StatBadge = ({ stat }: { stat: string }) => (
   </div>
 );
 
-// Custom List Item Component
+// Custom List Item Component - matching LandingPage style
 const CapabilityItem = ({ text }: { text: string }) => (
-  <div className="flex items-start gap-3 group/item">
-    <div className="relative mt-2 flex-shrink-0">
-      <div className="w-2 h-2 border border-white/30 rounded-sm rotate-45 group-hover/item:border-white/50 transition-colors"></div>
-      <div className="absolute inset-0 w-2 h-2 border-t border-l border-white/20 rounded-sm"></div>
+  <div className="flex items-start gap-3 group">
+    <div className="mt-0.5 flex-shrink-0 w-5 h-5 rounded-md bg-white/5 border border-white/10 flex items-center justify-center group-hover:bg-white/10 transition-colors">
+      <CheckIcon />
     </div>
-    <span className="text-white/70 group-hover/item:text-white/90 transition-colors">{text}</span>
+    <span className="text-white/80">{text}</span>
   </div>
 );
 
