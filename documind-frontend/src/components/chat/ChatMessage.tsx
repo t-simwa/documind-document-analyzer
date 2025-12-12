@@ -48,7 +48,7 @@ const ResponseCard = ({ content, citations }: { content: string; citations?: Cit
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-foreground truncate">{citation.text}</p>
                   {(citation.page || citation.section) && (
-                    <p className="text-[10px] text-muted-foreground">
+                    <p className="text-[10px] text-muted-foreground font-serif citation">
                       {citation.page && `Page ${citation.page}`}
                       {citation.page && citation.section && " · "}
                       {citation.section}

@@ -14,8 +14,13 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Geist', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
-        mono: ['Geist Mono', 'Menlo', 'Monaco', 'monospace'],
+        sans: ['IBM Plex Sans', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        mono: ['IBM Plex Mono', 'Menlo', 'Monaco', 'Courier New', 'monospace'],
+        serif: ['IBM Plex Serif', 'Georgia', 'Times New Roman', 'serif'],
+      },
+      letterSpacing: {
+        'tight-heading': '-0.02em', // Tighter letter spacing for headings
+        'tight-subheading': '-0.01em', // Slightly tighter for subheadings
       },
       fontSize: {
         'xxs': ['0.625rem', { lineHeight: '0.875rem' }],

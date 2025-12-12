@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
-import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import Navigation from "@/components/layout/Navigation";
 import { 
   Shield, 
   Zap, 
@@ -8,141 +8,15 @@ import {
   FileText, 
   Search, 
   Brain, 
-  CheckCircle2, 
-  ArrowRight,
-  Star,
-  Sparkles,
-  Menu,
-  X
+  CheckCircle2
 } from "lucide-react";
-import { useState } from "react";
 
 const LandingPage = () => {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  useEffect(() => {
-    // Smooth scroll for anchor links
-    const handleAnchorClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      const link = target.closest('a[href^="#"]');
-      if (link) {
-        const href = link.getAttribute('href');
-        if (href && href !== '#') {
-          e.preventDefault();
-          const element = document.querySelector(href);
-          if (element) {
-            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            setMobileMenuOpen(false);
-          }
-        }
-      }
-    };
-
-    document.addEventListener('click', handleAnchorClick);
-    return () => document.removeEventListener('click', handleAnchorClick);
-  }, []);
-
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* Navigation - Linear.app style */}
-      <nav className="fixed top-0 w-full bg-black/80 backdrop-blur-xl border-b border-white/10 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo */}
-            <Link to="/" className="flex items-center gap-2.5">
-              <div className="relative w-6 h-6">
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
-                  <path 
-                    d="M12 2L2 19.5h20L12 2z" 
-                    fill="currentColor"
-                    className="text-white"
-                  />
-                </svg>
-              </div>
-              <span className="text-lg font-semibold text-white tracking-tight">
-                DocuMind AI
-              </span>
-            </Link>
+      <Navigation />
 
-            {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center gap-8">
-              <Link to="/products" className="text-sm font-medium text-white hover:text-white transition-colors">
-                Products
-              </Link>
-              <Link to="#features" className="text-sm font-medium text-white/60 hover:text-white transition-colors">
-                Features
-              </Link>
-              <Link to="#security" className="text-sm font-medium text-white/60 hover:text-white transition-colors">
-                Security
-              </Link>
-              <Link to="#pricing" className="text-sm font-medium text-white/60 hover:text-white transition-colors">
-                Pricing
-              </Link>
-              <Link to="#resources" className="text-sm font-medium text-white/60 hover:text-white transition-colors">
-                Resources
-              </Link>
-            </div>
-
-            {/* Desktop Actions */}
-            <div className="hidden md:flex items-center gap-3">
-              <Button 
-                variant="ghost" 
-                className="text-white/60 hover:text-white hover:bg-white/5"
-                asChild
-              >
-                <Link to="/app">Log in</Link>
-              </Button>
-              <Button 
-                className="bg-white text-black hover:bg-white/90 font-medium"
-                asChild
-              >
-                <Link to="/app">Start building</Link>
-              </Button>
-            </div>
-
-            {/* Mobile Menu Button */}
-            <button
-              className="md:hidden text-white/60 hover:text-white"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
-          </div>
-        </div>
-
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden border-t border-white/10 bg-black">
-            <div className="px-4 py-4 space-y-3">
-              <Link to="/products" className="block text-sm font-medium text-white hover:text-white">
-                Products
-              </Link>
-              <Link to="#features" className="block text-sm font-medium text-white/60 hover:text-white">
-                Features
-              </Link>
-              <Link to="#security" className="block text-sm font-medium text-white/60 hover:text-white">
-                Security
-              </Link>
-              <Link to="#pricing" className="block text-sm font-medium text-white/60 hover:text-white">
-                Pricing
-              </Link>
-              <Link to="#resources" className="block text-sm font-medium text-white/60 hover:text-white">
-                Resources
-              </Link>
-              <div className="pt-4 space-y-2">
-                <Button variant="ghost" className="w-full text-white/60 hover:text-white hover:bg-white/5" asChild>
-                  <Link to="/app">Log in</Link>
-                </Button>
-                <Button className="w-full bg-white text-black hover:bg-white/90 font-medium" asChild>
-                  <Link to="/app">Start building</Link>
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-      </nav>
-
-      {/* Hero Section - Linear.app style */}
+      {/* Hero Section */}
       <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6 text-white leading-tight">
@@ -176,7 +50,7 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Trust Indicators - Linear.app style */}
+      {/* Trust Indicators */}
       <section className="py-16 px-4 sm:px-6 lg:px-8 border-y border-white/10">
         <div className="max-w-7xl mx-auto">
           <p className="text-center text-sm text-white/40 mb-8">
@@ -192,7 +66,7 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Features Section - Linear.app style */}
+      {/* Features Section */}
       <section id="features" className="py-24 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-20">
@@ -250,7 +124,7 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Security Section - Linear.app style */}
+      {/* Security Section */}
       <section id="security" className="py-24 px-4 sm:px-6 lg:px-8 border-y border-white/10">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-20">
@@ -304,63 +178,7 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Testimonials Section - Linear.app style */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-20">
-            <h2 className="text-4xl sm:text-5xl font-bold mb-4 text-white">
-              Loved by teams worldwide
-            </h2>
-            <p className="text-xl text-white/60">
-              See what our customers are saying
-            </p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                name: "Sarah Chen",
-                role: "Legal Director",
-                company: "TechCorp Legal",
-                content: "DocuMind AI has transformed how we analyze legal documents. The AI understands complex legal language and provides accurate citations. It's like having a legal research assistant available 24/7.",
-                rating: 5
-              },
-              {
-                name: "Michael Rodriguez",
-                role: "Research Lead",
-                company: "Innovation Labs",
-                content: "The semantic search capabilities are incredible. We can now find relevant information across thousands of research papers in seconds. This has accelerated our research process significantly.",
-                rating: 5
-              },
-              {
-                name: "Emily Watson",
-                role: "Compliance Officer",
-                company: "HealthFirst",
-                content: "The security and compliance features give us confidence to use AI for sensitive healthcare documents. The HIPAA compliance and audit trails are exactly what we needed.",
-                rating: 5
-              }
-            ].map((testimonial, index) => (
-              <div key={index} className="p-6 rounded-lg border border-white/10 bg-white/5">
-                <div className="flex items-center gap-1 mb-4">
-                  {[...Array(testimonial.rating)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 fill-white/20 text-white/20" />
-                  ))}
-                </div>
-                <p className="text-white/80 mb-6 leading-relaxed">
-                  "{testimonial.content}"
-                </p>
-                <div>
-                  <div className="font-semibold text-white">{testimonial.name}</div>
-                  <div className="text-sm text-white/60">
-                    {testimonial.role}, {testimonial.company}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing Section - Linear.app style */}
+      {/* Pricing Section */}
       <section id="pricing" className="py-24 px-4 sm:px-6 lg:px-8 border-y border-white/10">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-20">
@@ -472,38 +290,7 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Final CTA Section - Linear.app style */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-4xl sm:text-5xl font-bold mb-6 text-white">
-            Plan the present. Build the future.
-          </h2>
-          <p className="text-xl text-white/60 mb-10">
-            Join thousands of teams using DocuMind AI to unlock insights from their documents
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button 
-              size="lg" 
-              className="bg-white text-black hover:bg-white/90 font-medium text-base px-8 h-12"
-              asChild
-            >
-              <Link to="/app">
-                Start building
-              </Link>
-            </Button>
-            <Button 
-              size="lg" 
-              variant="outline" 
-              className="border-white/20 text-white hover:bg-white/5 font-medium text-base px-8 h-12"
-              asChild
-            >
-              <Link to="#demo">Contact sales</Link>
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer - Linear.app style */}
+      {/* Footer */}
       <footer className="border-t border-white/10 py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-4 gap-12 mb-12">

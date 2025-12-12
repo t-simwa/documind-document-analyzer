@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap');
+/* IBM Plex Fonts - DocuMind Type Scale */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Serif:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -110,10 +111,20 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     font-feature-settings: 'rlig' 1, 'calt' 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* IBM Plex Mono for extracted data, numbers, JSON, contract clauses, confidence scores */
+  code, pre, .font-mono, [data-font="mono"] {
+    font-family: 'IBM Plex Mono', Menlo, Monaco, 'Courier New', monospace;
+  }
+
+  /* IBM Plex Serif for high-level headers and citations (use sparingly) */
+  .font-serif, [data-font="serif"] {
+    font-family: 'IBM Plex Serif', Georgia, 'Times New Roman', serif;
   }
 
   /* Vercel-style scrollbar */
@@ -211,5 +222,24 @@
 
   .scrollbar-hide::-webkit-scrollbar {
     display: none;  /* Chrome, Safari and Opera */
+  }
+
+  /* DocuMind Type Scale - Heading styles with tight letter spacing */
+  h1, h2, h3, h4, h5, h6 {
+    letter-spacing: -0.02em; /* Tighten letter spacing for headings */
+  }
+
+  h2 {
+    letter-spacing: -0.01em; /* Slightly less tight for subheadings */
+  }
+
+  /* Use Mono for financial data, security codes, extracted data */
+  .data-mono, .financial-data, .security-code, .confidence-score, .extracted-data {
+    font-family: 'IBM Plex Mono', Menlo, Monaco, 'Courier New', monospace;
+  }
+
+  /* Use Serif sparingly for citations and high-level headers */
+  .citation, .executive-summary, .legal-header {
+    font-family: 'IBM Plex Serif', Georgia, 'Times New Roman', serif;
   }
 }
