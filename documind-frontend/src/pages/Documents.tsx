@@ -5,16 +5,21 @@ import { UploadZone } from "@/components/upload/UploadZone";
 import { ChatInterface } from "@/components/chat/ChatInterface";
 import { ProcessingStatus } from "@/components/processing/ProcessingStatus";
 import { EmptyState } from "@/components/empty/EmptyState";
+import { DocumentListView } from "@/components/documents/DocumentListView";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { documentsApi } from "@/services/api";
+import type { Document } from "@/types/api";
 
-interface Document {
-  id: string;
-  name: string;
-  status: "processing" | "ready" | "error";
-  uploadedAt: Date;
-  size: string;
-  type: string;
-}
+type ViewState = "empty" | "upload" | "processing" | "chat" | "list";
+
+const processingSteps = [
+  { id: "upload", label: "Secure Upload", description: "Uploading to encrypted storage", status: "pending" as const },
+  { id: "extract", label: "Text Extraction", description: "Parsing document content", status: "pending" as const },
+  { id: "chunk", label: "Smart Chunking", description: "Splitting into semantic sections", status: "pending" as const },
+  { id: "embed", label: "Vector Embeddings", description: "Creating searchable representations", status: "pending" as const },
+  { id: "index", label: "Indexing", description: "Building retrieval index", status: "pending" as const },
+];
 
 interface Message {
   id: string;
@@ -28,26 +33,12 @@ interface Message {
   timestamp: Date;
 }
 
-type ViewState = "empty" | "upload" | "processing" | "chat";
-
-const processingSteps = [
-  { id: "upload", label: "Secure Upload", description: "Uploading to encrypted storage", status: "pending" as const },
-  { id: "extract", label: "Text Extraction", description: "Parsing document content", status: "pending" as const },
-  { id: "chunk", label: "Smart Chunking", description: "Splitting into semantic sections", status: "pending" as const },
-  { id: "embed", label: "Vector Embeddings", description: "Creating searchable representations", status: "pending" as const },
-  { id: "index", label: "Indexing", description: "Building retrieval index", status: "pending" as const },
-];
-
-const getFileType = (filename: string) => {
-  const ext = filename.split('.').pop()?.toLowerCase() || '';
-  return ext;
-};
-
 const Documents = () => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [viewState, setViewState] = useState<ViewState>("empty");
+  const [viewState, setViewState] = useState<ViewState>("list");
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -72,20 +63,24 @@ const Documents = () => {
       await new Promise((resolve) => setTimeout(resolve, 1200));
     }
 
-    setDocuments((prev) =>
-      prev.map((d) => (d.id === docId ? { ...d, status: "ready" as const } : d))
-    );
+    // Update document status
+    try {
+      await documentsApi.update(docId, {});
+      // Reload documents
+      const response = await documentsApi.list({ projectId: selectedProjectId });
+      setDocuments(response.documents);
+    } catch (error) {
+      console.error("Failed to update document:", error);
+    }
 
-    setViewState("chat");
-    setSelectedDocId(docId);
-
+    setViewState("list");
     toast({
       title: "Document Ready",
       description: `${docName} has been processed successfully.`,
     });
-  }, [toast]);
+  }, [selectedProjectId, toast]);
 
-  const handleUpload = useCallback(async (files: File[]) => {
+  const handleUpload = useCallback(async (files: File[], projectId?: string | null) => {
     setIsLoading(true);
     setUploadProgress(0);
 
@@ -93,25 +88,29 @@ const Documents = () => {
       setUploadProgress((prev) => Math.min(prev + 15, 95));
     }, 150);
 
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    clearInterval(progressInterval);
-    setUploadProgress(100);
+    try {
+      const file = files[0];
+      const newDoc = await documentsApi.upload(file, projectId);
+      
+      clearInterval(progressInterval);
+      setUploadProgress(100);
 
-    const file = files[0];
-    const newDoc: Document = {
-      id: Date.now().toString(),
-      name: file.name,
-      status: "processing",
-      uploadedAt: new Date(),
-      size: `${(file.size / 1024).toFixed(1)} KB`,
-      type: getFileType(file.name),
-    };
+      // Reload documents
+      const response = await documentsApi.list({ projectId: selectedProjectId });
+      setDocuments(response.documents);
 
-    setDocuments((prev) => [newDoc, ...prev]);
-    setIsLoading(false);
-
-    simulateProcessing(file.name, newDoc.id);
-  }, [simulateProcessing]);
+      setIsLoading(false);
+      simulateProcessing(file.name, newDoc.id);
+    } catch (error) {
+      clearInterval(progressInterval);
+      setIsLoading(false);
+      toast({
+        title: "Upload Failed",
+        description: "Failed to upload document. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [selectedProjectId, simulateProcessing, toast]);
 
   const handleSelectDocument = (id: string) => {
     const doc = documents.find((d) => d.id === id);
@@ -124,16 +123,26 @@ const Documents = () => {
     }
   };
 
-  const handleDeleteDocument = (id: string) => {
-    setDocuments((prev) => prev.filter((d) => d.id !== id));
-    if (selectedDocId === id) {
-      setSelectedDocId(null);
-      setViewState(documents.length <= 1 ? "empty" : "upload");
+  const handleDeleteDocument = async (id: string) => {
+    try {
+      await documentsApi.delete(id);
+      const response = await documentsApi.list({ projectId: selectedProjectId });
+      setDocuments(response.documents);
+      if (selectedDocId === id) {
+        setSelectedDocId(null);
+        setViewState("list");
+      }
+      toast({
+        title: "Document Deleted",
+        description: "The document has been removed.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete document",
+        variant: "destructive",
+      });
     }
-    toast({
-      title: "Document Deleted",
-      description: "The document has been removed.",
-    });
   };
 
   const handleSendMessage = async (message: string) => {
@@ -171,6 +180,16 @@ const Documents = () => {
       title: "Chat Cleared",
       description: "Conversation history has been cleared.",
     });
+  };
+
+  const handleProjectSelect = async (projectId: string | null) => {
+    setSelectedProjectId(projectId);
+    try {
+      const response = await documentsApi.list({ projectId });
+      setDocuments(response.documents);
+    } catch (error) {
+      console.error("Failed to load documents:", error);
+    }
   };
 
   const renderContent = () => {
@@ -214,18 +233,29 @@ const Documents = () => {
           />
         );
 
+      case "list":
+        return (
+          <DocumentListView
+            projectId={selectedProjectId}
+            onDocumentSelect={(doc) => {
+              setSelectedDocId(doc.id);
+              if (doc.status === "ready") {
+                setViewState("chat");
+              }
+            }}
+          />
+        );
+
       default:
         return null;
     }
   };
 
   const handleGlobalSearch = (query: string) => {
-    // Handle global search - could filter documents or navigate to search results
     toast({
       title: "Search",
       description: `Searching for "${query}" across documents and projects...`,
     });
-    // TODO: Implement actual search functionality when backend is ready
   };
 
   return (
@@ -236,19 +266,58 @@ const Documents = () => {
         onSelectDocument={handleSelectDocument}
         onNewUpload={handleNewUpload}
         onDeleteDocument={handleDeleteDocument}
+        selectedProjectId={selectedProjectId}
+        onSelectProject={handleProjectSelect}
         collapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <GlobalNavBar onSearch={handleGlobalSearch} />
-      <main className="flex-1 overflow-hidden">
-        {renderContent()}
-      </main>
+        
+        {/* Main Content */}
+        <main className="flex-1 overflow-hidden bg-background">
+            <Tabs value={viewState} onValueChange={(v) => setViewState(v as ViewState)} className="h-full flex flex-col">
+              {viewState === "list" || (viewState === "chat" && selectedDocument) ? (
+                <div className="border-b border-border px-6 pt-3 pb-0">
+                  <TabsList className="bg-transparent">
+                    <TabsTrigger value="list" className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-foreground data-[state=active]:rounded-none">
+                      Documents
+                    </TabsTrigger>
+                    {selectedDocument && (
+                      <TabsTrigger 
+                        value="chat" 
+                        disabled={selectedDocument.status !== "ready"}
+                        className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-foreground data-[state=active]:rounded-none"
+                      >
+                        Chat
+                      </TabsTrigger>
+                    )}
+                  </TabsList>
+                </div>
+              ) : null}
+              <div className="flex-1 overflow-hidden">
+                <TabsContent value="list" className="h-full m-0">
+                  {renderContent()}
+                </TabsContent>
+                <TabsContent value="chat" className="h-full m-0">
+                  {renderContent()}
+                </TabsContent>
+                <TabsContent value="upload" className="h-full m-0">
+                  {renderContent()}
+                </TabsContent>
+                <TabsContent value="processing" className="h-full m-0">
+                  {renderContent()}
+                </TabsContent>
+                <TabsContent value="empty" className="h-full m-0">
+                  {renderContent()}
+                </TabsContent>
+              </div>
+            </Tabs>
+        </main>
       </div>
     </div>
   );
 };
 
 export default Documents;
-

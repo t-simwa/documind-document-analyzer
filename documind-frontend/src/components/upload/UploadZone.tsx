@@ -1,10 +1,12 @@
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { Upload, FileText, X, ArrowRight, Loader2, File, AlertCircle } from "lucide-react";
+import { ProjectSelector } from "@/components/projects/ProjectSelector";
 
 interface UploadZoneProps {
-  onUpload: (files: File[]) => void;
+  onUpload: (files: File[], projectId?: string | null) => void;
   isUploading?: boolean;
   uploadProgress?: number;
 }
@@ -36,6 +38,7 @@ export const UploadZone = ({ onUpload, isUploading, uploadProgress }: UploadZone
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [projectId, setProjectId] = useState<string | null>(null);
 
   const validateFiles = (files: File[]) => {
     const validTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain', 'text/markdown'];
@@ -91,7 +94,7 @@ export const UploadZone = ({ onUpload, isUploading, uploadProgress }: UploadZone
 
   const handleUpload = () => {
     if (selectedFiles.length > 0) {
-      onUpload(selectedFiles);
+      onUpload(selectedFiles, projectId);
     }
   };
 
@@ -142,6 +145,20 @@ export const UploadZone = ({ onUpload, isUploading, uploadProgress }: UploadZone
         <div className="mt-3 p-2 rounded-md bg-destructive/10 border border-destructive/20 flex items-center gap-2 animate-in">
           <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0" />
           <p className="text-xs text-destructive">{error}</p>
+        </div>
+      )}
+
+      {/* Project Selection */}
+      {selectedFiles.length > 0 && (
+        <div className="mt-4 space-y-2 animate-in">
+          <div className="space-y-2">
+            <Label>Project (Optional)</Label>
+            <ProjectSelector
+              value={projectId}
+              onChange={setProjectId}
+              placeholder="Select a project (optional)"
+            />
+          </div>
         </div>
       )}
 
