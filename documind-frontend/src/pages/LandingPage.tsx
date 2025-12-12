@@ -66,6 +66,9 @@ const LandingPage = () => {
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-8">
+              <Link to="/products" className="text-sm font-medium text-white hover:text-white transition-colors">
+                Products
+              </Link>
               <Link to="#features" className="text-sm font-medium text-white/60 hover:text-white transition-colors">
                 Features
               </Link>
@@ -111,6 +114,9 @@ const LandingPage = () => {
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-white/10 bg-black">
             <div className="px-4 py-4 space-y-3">
+              <Link to="/products" className="block text-sm font-medium text-white hover:text-white">
+                Products
+              </Link>
               <Link to="#features" className="block text-sm font-medium text-white/60 hover:text-white">
                 Features
               </Link>
