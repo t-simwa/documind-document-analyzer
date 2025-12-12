@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { GlobalNavBar } from "@/components/layout/GlobalNavBar";
 import { UploadZone } from "@/components/upload/UploadZone";
 import { ChatInterface } from "@/components/chat/ChatInterface";
 import { ProcessingStatus } from "@/components/processing/ProcessingStatus";
@@ -218,8 +219,17 @@ const Index = () => {
     }
   };
 
+  const handleGlobalSearch = (query: string) => {
+    // Handle global search - could filter documents or navigate to search results
+    toast({
+      title: "Search",
+      description: `Searching for "${query}" across documents and projects...`,
+    });
+    // TODO: Implement actual search functionality when backend is ready
+  };
+
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-background overflow-hidden">
       <Sidebar
         documents={documents}
         selectedDocId={selectedDocId}
@@ -230,9 +240,12 @@ const Index = () => {
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
 
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <GlobalNavBar onSearch={handleGlobalSearch} />
       <main className="flex-1 overflow-hidden">
         {renderContent()}
       </main>
+      </div>
     </div>
   );
 };

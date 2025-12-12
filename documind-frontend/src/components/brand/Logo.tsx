@@ -18,7 +18,7 @@ export const Logo = ({ className, showText = true }: LogoProps) => {
         </svg>
       </div>
       {showText && (
-        <span className="text-sm font-semibold text-foreground tracking-tight">DocAnalyzer</span>
+        <span className="text-sm font-semibold text-foreground tracking-tight">DocuMind AI</span>
       )}
     </div>
   );
