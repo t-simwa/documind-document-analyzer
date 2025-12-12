@@ -99,6 +99,7 @@ export const DocumentViewer = ({
             <Viewer
               fileUrl={docUrl}
               plugins={[defaultLayoutPluginInstance]}
+              defaultScale={0.7}
               onDocumentLoad={(e) => {
                 setError(null);
                 if (onPageChange) {
