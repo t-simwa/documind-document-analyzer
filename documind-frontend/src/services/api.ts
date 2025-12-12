@@ -30,6 +30,8 @@ let mockProjects: Project[] = [
 ];
 
 let mockDocuments: Document[] = [];
+// Store file blobs/URLs for mock documents
+const documentFileMap = new Map<string, string>(); // documentId -> blob URL
 let mockTags: DocumentTag[] = [
   { id: "1", name: "Important", color: "#ef4444", createdAt: new Date() },
   { id: "2", name: "Review", color: "#f59e0b", createdAt: new Date() },
@@ -235,19 +237,33 @@ export const documentsApi = {
     projectId?: string | null
   ): Promise<Document> {
     await delay(500);
+    const docId = Date.now().toString();
+    
+    // Create blob URL for the uploaded file
+    const blobUrl = URL.createObjectURL(file);
+    documentFileMap.set(docId, blobUrl);
+    
     const newDoc: Document = {
-      id: Date.now().toString(),
+      id: docId,
       name: file.name,
-      status: "processing",
+      status: "ready", // Set to ready by default for testing
       uploadedAt: new Date(),
       uploadedBy: "user1",
       size: file.size,
       type: file.name.split(".").pop()?.toLowerCase() || "",
       projectId: projectId || null,
       tags: [],
+      metadata: {
+        pageCount: file.type === "application/pdf" ? 10 : undefined, // Mock page count for PDFs
+      },
     };
     mockDocuments.push(newDoc);
     return newDoc;
+  },
+  
+  async getFileUrl(id: string): Promise<string | null> {
+    // In a real app, this would be: `/api/v1/documents/${id}/download`
+    return documentFileMap.get(id) || null;
   },
 
   async update(
@@ -263,6 +279,12 @@ export const documentsApi = {
 
   async delete(id: string): Promise<void> {
     await delay(300);
+    // Clean up blob URL
+    const blobUrl = documentFileMap.get(id);
+    if (blobUrl) {
+      URL.revokeObjectURL(blobUrl);
+      documentFileMap.delete(id);
+    }
     mockDocuments = mockDocuments.filter((d) => d.id !== id);
   },
 

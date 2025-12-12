@@ -4,15 +4,15 @@ import { cn } from "@/lib/utils";
 import { Send } from "lucide-react";
 
 interface ChatInputProps {
-  onSend: (message: string) => void;
-  disabled?: boolean;
+  onSendMessage: (message: string) => void;
+  isLoading?: boolean;
   placeholder?: string;
 }
 
 export const ChatInput = ({
-  onSend,
-  disabled,
-  placeholder = "Ask a question...",
+  onSendMessage,
+  isLoading = false,
+  placeholder = "Ask a question about this document...",
 }: ChatInputProps) => {
   const [message, setMessage] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -26,8 +26,8 @@ export const ChatInput = ({
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (message.trim() && !disabled) {
-      onSend(message.trim());
+    if (message.trim() && !isLoading) {
+      onSendMessage(message.trim());
       setMessage("");
     }
   };
@@ -39,31 +39,13 @@ export const ChatInput = ({
     }
   };
 
-  const suggestions = ["Summarize", "Key points", "Find clauses"];
-
   return (
-    <div className="space-y-2">
-      {/* Suggestions */}
-      {!message && (
-        <div className="flex gap-2">
-          {suggestions.map((s, i) => (
-            <button
-              key={i}
-              onClick={() => setMessage(s)}
-              className="px-2.5 py-1 rounded border border-border text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Input */}
+    <div className="px-6 py-4">
       <form
         onSubmit={handleSubmit}
         className={cn(
-          "flex items-end gap-2 p-2 rounded-md border border-border bg-card transition-colors",
-          "focus-within:border-muted-foreground"
+          "flex items-end gap-2 p-3 rounded-lg border border-border/50 bg-card transition-all",
+          "focus-within:border-border focus-within:shadow-sm"
         )}
       >
         <textarea
@@ -72,27 +54,26 @@ export const ChatInput = ({
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          disabled={disabled}
+          disabled={isLoading}
           rows={1}
           className={cn(
-            "flex-1 min-h-[32px] max-h-[120px] px-2 py-1.5 bg-transparent text-sm text-foreground placeholder:text-muted-foreground resize-none focus:outline-none",
-            disabled && "opacity-50 cursor-not-allowed"
+            "flex-1 min-h-[36px] max-h-[120px] px-2 py-2 bg-transparent text-sm text-foreground placeholder:text-muted-foreground resize-none focus:outline-none font-sans",
+            isLoading && "opacity-50 cursor-not-allowed"
           )}
         />
 
         <Button
           type="submit"
-          size="icon-sm"
-          disabled={!message.trim() || disabled}
-          className={cn("flex-shrink-0", !message.trim() && "opacity-50")}
+          size="sm"
+          disabled={!message.trim() || isLoading}
+          className={cn(
+            "flex-shrink-0 h-8 w-8 p-0",
+            !message.trim() && "opacity-50"
+          )}
         >
-          <Send className="h-4 w-4" />
+          <Send className="h-3.5 w-3.5" />
         </Button>
       </form>
-
-      <p className="text-[10px] text-center text-muted-foreground">
-        Enter to send · Shift+Enter for new line
-      </p>
     </div>
   );
 };

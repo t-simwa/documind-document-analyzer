@@ -31,6 +31,7 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Document, DocumentTag, User } from "@/types/api";
@@ -44,6 +45,7 @@ interface DocumentListTableProps {
   onTag: (id: string) => void;
   onMove: (id: string) => void;
   onDownload?: (id: string) => void;
+  onAnalyze?: (document: Document) => void;
   tags: DocumentTag[];
   users: User[];
   sortField?: string;
@@ -167,6 +169,7 @@ export const DocumentListTable = ({
   onTag,
   onMove,
   onDownload,
+  onAnalyze,
   tags,
   users,
   sortField,
@@ -271,7 +274,17 @@ export const DocumentListTable = ({
                 <TableCell>
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="flex-shrink-0">{getFileIcon(doc.type)}</div>
-                    <span className="font-medium text-sm truncate">{doc.name}</span>
+                    {doc.status === "ready" && onAnalyze ? (
+                      <button
+                        onClick={() => onAnalyze(doc)}
+                        className="font-medium text-sm truncate text-left hover:text-primary transition-colors cursor-pointer"
+                        title="Click to analyze document"
+                      >
+                        {doc.name}
+                      </button>
+                    ) : (
+                      <span className="font-medium text-sm truncate">{doc.name}</span>
+                    )}
                   </div>
                 </TableCell>
                 <TableCell>
@@ -335,6 +348,15 @@ export const DocumentListTable = ({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-48">
+                      {doc.status === "ready" && onAnalyze && (
+                        <>
+                          <DropdownMenuItem onClick={() => onAnalyze(doc)}>
+                            <MessageSquare className="h-4 w-4 mr-2" />
+                            Analyze
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                        </>
+                      )}
                       {onDownload && (
                         <>
                           <DropdownMenuItem onClick={() => onDownload(doc.id)}>

@@ -22,6 +22,7 @@ interface ChatInterfaceProps {
   onClearHistory: () => void;
   isLoading?: boolean;
   documentName?: string;
+  onCitationClick?: (citation: { text: string; page?: number; section?: string }) => void;
 }
 
 export const ChatInterface = ({
@@ -30,6 +31,7 @@ export const ChatInterface = ({
   onClearHistory,
   isLoading,
   documentName,
+  onCitationClick,
 }: ChatInterfaceProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -38,43 +40,48 @@ export const ChatInterface = ({
   }, [messages]);
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between h-12 px-4 border-b border-border">
-        <div className="flex items-center gap-2">
-          <FileText className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm text-foreground font-medium truncate max-w-[200px]">
-            {documentName || "Document"}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" className="text-muted-foreground text-xs">
-            <Download className="h-3.5 w-3.5 mr-1" />
-            Export
-          </Button>
-          <Button variant="ghost" size="sm" onClick={onClearHistory} className="text-muted-foreground text-xs">
-            <RotateCcw className="h-3.5 w-3.5 mr-1" />
-            Clear
-          </Button>
-        </div>
-      </div>
-
+    <div className="flex flex-col h-full bg-background">
       {/* Messages */}
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-2xl mx-auto px-4 py-6">
+        <div className="max-w-3xl mx-auto px-6 py-8">
           {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 animate-in">
-              <div className="w-10 h-10 rounded-md bg-secondary flex items-center justify-center mb-3">
-                <FileText className="h-5 w-5 text-muted-foreground" />
+            <div className="flex flex-col items-center justify-center py-20">
+              <div className="w-14 h-14 rounded-xl bg-muted/50 flex items-center justify-center mb-4">
+                <FileText className="h-6 w-6 text-muted-foreground" />
               </div>
-              <p className="text-sm text-foreground mb-1">Ready to analyze</p>
-              <p className="text-xs text-muted-foreground text-center max-w-xs">
-                Ask questions about your document
+              <h3 className="text-sm font-medium text-foreground mb-1.5">Start analyzing</h3>
+              <p className="text-xs text-muted-foreground text-center max-w-xs mb-6">
+                Ask questions about your document to extract insights and information
               </p>
+              <div className="flex flex-wrap gap-2 justify-center max-w-md">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onSendMessage("What are the main points in this document?")}
+                  className="text-xs h-7"
+                >
+                  Main points
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onSendMessage("Summarize this document")}
+                  className="text-xs h-7"
+                >
+                  Summarize
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onSendMessage("What are the key findings?")}
+                  className="text-xs h-7"
+                >
+                  Key findings
+                </Button>
+              </div>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-6">
               {messages.map((message) => (
                 <ChatMessage
                   key={message.id}
@@ -82,6 +89,7 @@ export const ChatInterface = ({
                   content={message.content}
                   citations={message.citations}
                   timestamp={message.timestamp}
+                  onCitationClick={onCitationClick}
                 />
               ))}
 
@@ -95,11 +103,34 @@ export const ChatInterface = ({
         </div>
       </div>
 
-      {/* Input */}
-      <div className="border-t border-border">
-        <div className="max-w-2xl mx-auto px-4 py-3">
-          <ChatInput onSend={onSendMessage} disabled={isLoading} />
+      {/* Footer Actions */}
+      {messages.length > 0 && (
+        <div className="flex items-center justify-between px-6 py-2.5 border-t border-border/50 bg-card/30 backdrop-blur-sm">
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClearHistory}
+              className="h-7 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <RotateCcw className="h-3 w-3 mr-1.5" />
+              Clear history
+            </Button>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs text-muted-foreground hover:text-foreground"
+          >
+            <Download className="h-3 w-3 mr-1.5" />
+            Export conversation
+          </Button>
         </div>
+      )}
+
+      {/* Input */}
+      <div className="border-t border-border/50 bg-card/30 backdrop-blur-sm">
+        <ChatInput onSendMessage={onSendMessage} isLoading={isLoading} />
       </div>
     </div>
   );

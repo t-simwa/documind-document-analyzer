@@ -1,8 +1,9 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { GlobalNavBar } from "@/components/layout/GlobalNavBar";
 import { UploadZone } from "@/components/upload/UploadZone";
 import { ChatInterface } from "@/components/chat/ChatInterface";
+import { SplitScreenAnalysis } from "@/components/analysis/SplitScreenAnalysis";
 import { ProcessingStatus } from "@/components/processing/ProcessingStatus";
 import { EmptyState } from "@/components/empty/EmptyState";
 import { DocumentListView } from "@/components/documents/DocumentListView";
@@ -44,40 +45,102 @@ const Documents = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [processingDocName, setProcessingDocName] = useState("");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [documentUrl, setDocumentUrl] = useState<string | null>(null);
   const { toast } = useToast();
 
   const selectedDocument = documents.find((d) => d.id === selectedDocId);
+
+  // Fetch document URL when document is selected
+  useEffect(() => {
+    const fetchDocumentUrl = async () => {
+      if (selectedDocId) {
+        try {
+          const url = await documentsApi.getFileUrl(selectedDocId);
+          setDocumentUrl(url);
+        } catch (error) {
+          console.error("Failed to get document URL:", error);
+          setDocumentUrl(null);
+        }
+      } else {
+        setDocumentUrl(null);
+      }
+    };
+    fetchDocumentUrl();
+  }, [selectedDocId]);
 
   const handleNewUpload = () => {
     setViewState("upload");
     setSelectedDocId(null);
   };
 
-  const simulateProcessing = useCallback(async (docName: string, docId: string) => {
+  const simulateProcessing = useCallback(async (docName: string, docId: string, docProjectId?: string | null) => {
     setProcessingDocName(docName);
     setViewState("processing");
     setCurrentStep(0);
 
+    // Show processing animation (document is already ready, but we show the simulation)
     for (let i = 0; i < processingSteps.length; i++) {
       setCurrentStep(i);
-      await new Promise((resolve) => setTimeout(resolve, 1200));
+      await new Promise((resolve) => setTimeout(resolve, 800)); // Slightly faster for better UX
     }
 
-    // Update document status
+    // Document is already ready, just reload to ensure UI is updated
     try {
-      await documentsApi.update(docId, {});
-      // Reload documents
+      // Get the document directly by ID, or reload documents for the document's project
+      // This ensures we find the document regardless of the currently selected project
+      let updatedDoc: Document | undefined;
+      
+      // First, try to get the document directly
+      try {
+        updatedDoc = await documentsApi.get(docId);
+      } catch (e) {
+        // If direct get fails, reload documents for the document's project
+        const response = await documentsApi.list({ projectId: docProjectId });
+        updatedDoc = response.documents.find((d) => d.id === docId);
+      }
+      
+      // If still not found, reload all documents (no filter)
+      if (!updatedDoc) {
+        const response = await documentsApi.list();
+        updatedDoc = response.documents.find((d) => d.id === docId);
+      }
+      
+      if (updatedDoc && updatedDoc.status === "ready") {
+        // Reload documents for the current view (selected project or all)
+        const response = await documentsApi.list({ projectId: selectedProjectId });
+        setDocuments(response.documents);
+        
+        // Set the selected document and open split viewer
+        setSelectedDocId(docId);
+        // Use setTimeout to ensure state updates are processed before changing view
+        setTimeout(() => {
+          setViewState("chat");
+        }, 50);
+        toast({
+          title: "Document Ready",
+          description: `${docName} has been processed successfully. You can now analyze it.`,
+        });
+      } else {
+        // Reload documents for the current view
+        const response = await documentsApi.list({ projectId: selectedProjectId });
+        setDocuments(response.documents);
+        setViewState("list");
+        toast({
+          title: "Document Ready",
+          description: `${docName} has been processed successfully.`,
+        });
+      }
+    } catch (error) {
+      console.error("Failed to reload documents:", error);
+      // Reload documents for the current view
       const response = await documentsApi.list({ projectId: selectedProjectId });
       setDocuments(response.documents);
-    } catch (error) {
-      console.error("Failed to update document:", error);
+      setViewState("list");
+      toast({
+        title: "Document Ready",
+        description: `${docName} has been processed successfully.`,
+      });
     }
-
-    setViewState("list");
-    toast({
-      title: "Document Ready",
-      description: `${docName} has been processed successfully.`,
-    });
   }, [selectedProjectId, toast]);
 
   const handleUpload = useCallback(async (files: File[], projectId?: string | null) => {
@@ -95,12 +158,13 @@ const Documents = () => {
       clearInterval(progressInterval);
       setUploadProgress(100);
 
-      // Reload documents
+      // Reload documents for the current view
       const response = await documentsApi.list({ projectId: selectedProjectId });
       setDocuments(response.documents);
 
       setIsLoading(false);
-      simulateProcessing(file.name, newDoc.id);
+      // Pass the projectId that was used for upload to simulateProcessing
+      simulateProcessing(file.name, newDoc.id, newDoc.projectId);
     } catch (error) {
       clearInterval(progressInterval);
       setIsLoading(false);
@@ -223,13 +287,26 @@ const Documents = () => {
         );
 
       case "chat":
+        if (!selectedDocument) {
+          // If no document selected, go back to list
+          setViewState("list");
+          return null;
+        }
         return (
-          <ChatInterface
+          <SplitScreenAnalysis
+            document={selectedDocument}
+            documentUrl={documentUrl || undefined}
             messages={messages}
             onSendMessage={handleSendMessage}
             onClearHistory={handleClearHistory}
             isLoading={isLoading}
-            documentName={selectedDocument?.name}
+            onCitationClick={(citation) => {
+              // Handle citation click - scroll to page in document viewer
+              toast({
+                title: "Citation",
+                description: `Navigating to ${citation.page ? `page ${citation.page}` : citation.section || "citation"}`,
+              });
+            }}
           />
         );
 
@@ -238,9 +315,15 @@ const Documents = () => {
           <DocumentListView
             projectId={selectedProjectId}
             onDocumentSelect={(doc) => {
-              setSelectedDocId(doc.id);
               if (doc.status === "ready") {
+              setSelectedDocId(doc.id);
                 setViewState("chat");
+              } else {
+                toast({
+                  title: "Document Not Ready",
+                  description: "Please wait for the document to finish processing.",
+                  variant: "destructive",
+                });
               }
             }}
           />

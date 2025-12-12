@@ -15,9 +15,10 @@ interface ChatMessageProps {
   citations?: Citation[];
   isLoading?: boolean;
   timestamp?: Date;
+  onCitationClick?: (citation: Citation) => void;
 }
 
-const ResponseCard = ({ content, citations }: { content: string; citations?: Citation[] }) => {
+const ResponseCard = ({ content, citations, onCitationClick }: { content: string; citations?: Citation[]; onCitationClick?: (citation: Citation) => void }) => {
   const [copied, setCopied] = useState(false);
   const [feedback, setFeedback] = useState<'up' | 'down' | null>(null);
 
@@ -28,34 +29,37 @@ const ResponseCard = ({ content, citations }: { content: string; citations?: Cit
   };
 
   return (
-    <div className="space-y-3">
-      <div className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+    <div className="space-y-4">
+      <div className="text-sm text-foreground leading-relaxed whitespace-pre-wrap font-sans">
         {content}
       </div>
 
       {citations && citations.length > 0 && (
-        <div className="pt-3 border-t border-border">
-          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-2">
+        <div className="pt-3 border-t border-border/50">
+          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-2.5 font-sans">
             Sources
           </p>
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             {citations.map((citation, index) => (
               <button
                 key={index}
-                className="w-full flex items-center gap-2 p-2 rounded border border-border hover:bg-secondary transition-colors text-left group"
+                onClick={() => onCitationClick?.(citation)}
+                className="w-full flex items-center gap-2.5 p-2.5 rounded-md border border-border/50 hover:bg-muted/50 hover:border-border transition-all text-left group cursor-pointer"
               >
-                <FileText className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                <div className="flex-shrink-0 w-5 h-5 rounded bg-muted/50 flex items-center justify-center">
+                  <FileText className="h-2.5 w-2.5 text-muted-foreground" />
+                </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs text-foreground truncate">{citation.text}</p>
+                  <p className="text-xs text-foreground truncate font-sans">{citation.text}</p>
                   {(citation.page || citation.section) && (
-                    <p className="text-[10px] text-muted-foreground font-serif citation">
+                    <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
                       {citation.page && `Page ${citation.page}`}
                       {citation.page && citation.section && " · "}
                       {citation.section}
                     </p>
                   )}
                 </div>
-                <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
               </button>
             ))}
           </div>
@@ -65,25 +69,35 @@ const ResponseCard = ({ content, citations }: { content: string; citations?: Cit
       <div className="flex items-center gap-0.5 pt-1">
         <Button
           variant="ghost"
-          size="icon-sm"
+          size="sm"
           onClick={handleCopy}
-          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+          className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted/50"
         >
           {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
         </Button>
         <Button
           variant="ghost"
-          size="icon-sm"
+          size="sm"
           onClick={() => setFeedback('up')}
-          className={cn("h-7 w-7", feedback === 'up' ? "text-foreground" : "text-muted-foreground")}
+          className={cn(
+            "h-7 w-7 p-0",
+            feedback === 'up' 
+              ? "text-foreground bg-muted/50" 
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+          )}
         >
           <ThumbsUp className="h-3.5 w-3.5" />
         </Button>
         <Button
           variant="ghost"
-          size="icon-sm"
+          size="sm"
           onClick={() => setFeedback('down')}
-          className={cn("h-7 w-7", feedback === 'down' ? "text-foreground" : "text-muted-foreground")}
+          className={cn(
+            "h-7 w-7 p-0",
+            feedback === 'down' 
+              ? "text-foreground bg-muted/50" 
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+          )}
         >
           <ThumbsDown className="h-3.5 w-3.5" />
         </Button>
@@ -93,10 +107,10 @@ const ResponseCard = ({ content, citations }: { content: string; citations?: Cit
 };
 
 const TypingIndicator = () => (
-  <div className="flex items-center gap-1 py-2">
-    <div className="typing-dot" />
-    <div className="typing-dot" />
-    <div className="typing-dot" />
+  <div className="flex items-center gap-1.5 py-1">
+    <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 animate-pulse" style={{ animationDelay: '0ms' }} />
+    <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 animate-pulse" style={{ animationDelay: '150ms' }} />
+    <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 animate-pulse" style={{ animationDelay: '300ms' }} />
   </div>
 );
 
@@ -106,38 +120,41 @@ export const ChatMessage = ({
   citations,
   isLoading,
   timestamp,
+  onCitationClick,
 }: ChatMessageProps) => {
   const isUser = role === "user";
 
   return (
-    <div className={cn("flex gap-3 animate-in", isUser ? "flex-row-reverse" : "flex-row")}>
+    <div className={cn("flex gap-3", isUser ? "flex-row-reverse" : "flex-row")}>
       {/* Avatar */}
       <div className={cn(
-        "flex-shrink-0 w-7 h-7 rounded flex items-center justify-center text-xs font-medium",
-        isUser ? "bg-foreground text-background" : "bg-secondary text-foreground"
+        "flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-xs font-medium",
+        isUser 
+          ? "bg-foreground text-background" 
+          : "bg-muted/50 text-foreground border border-border/50"
       )}>
-        {isUser ? <User className="h-4 w-4" /> : "AI"}
+        {isUser ? <User className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
       </div>
 
       {/* Content */}
-      <div className={cn("flex-1 max-w-[80%]", isUser && "flex flex-col items-end")}>
+      <div className={cn("flex-1 min-w-0", isUser && "flex flex-col items-end")}>
         <div className={cn(
-          "rounded-md px-3 py-2",
+          "rounded-lg px-4 py-3 max-w-[85%]",
           isUser
             ? "bg-foreground text-background"
-            : "bg-card border border-border"
+            : "bg-card border border-border/50"
         )}>
           {isLoading ? (
             <TypingIndicator />
           ) : isUser ? (
-            <p className="text-sm">{content}</p>
+            <p className="text-sm font-sans">{content}</p>
           ) : (
-            <ResponseCard content={content} citations={citations} />
+            <ResponseCard content={content} citations={citations} onCitationClick={onCitationClick} />
           )}
         </div>
 
         {timestamp && !isLoading && (
-          <p className="mt-1 text-[10px] text-muted-foreground">
+          <p className="mt-1.5 text-[10px] text-muted-foreground font-mono">
             {timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           </p>
         )}

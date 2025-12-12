@@ -242,4 +242,290 @@
   .citation, .executive-summary, .legal-header {
     font-family: 'IBM Plex Serif', Georgia, 'Times New Roman', serif;
   }
+
+  /* React-PDF styles */
+  .react-pdf__Page {
+    display: flex;
+    justify-content: center;
+  }
+
+  .react-pdf__Page__canvas {
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .react-pdf__Page__textContent {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+    opacity: 0.2;
+    line-height: 1;
+  }
+
+  .react-pdf__Page__textContent span {
+    color: transparent;
+    position: absolute;
+    white-space: pre;
+    cursor: text;
+    transform-origin: 0% 0%;
+  }
+
+  .react-pdf__Page__textContent .highlight {
+    margin: -1px;
+    padding: 1px;
+    background-color: rgba(180, 0, 170, 0.2);
+    border-radius: 4px;
+  }
+
+  .react-pdf__Page__textContent .highlight.selected {
+    background-color: rgba(0, 100, 0, 0.2);
+  }
+
+  .react-pdf__Page__textContent ::selection {
+    background: rgba(0, 0, 255, 0.3);
+  }
+
+  .react-pdf__Page__textContent ::-moz-selection {
+    background: rgba(0, 0, 255, 0.3);
+  }
+
+  .react-pdf__Page__annotations {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+  }
+
+  .react-pdf__Page__annotation {
+    position: absolute;
+  }
+
+  .react-pdf__Page__annotation--link {
+    cursor: pointer;
+  }
+}
+
+/* React PDF Viewer Custom Styling */
+.rpv-core__viewer {
+  background-color: hsl(var(--muted) / 0.2);
+}
+
+.rpv-core__inner-pages {
+  padding: 1.5rem;
+}
+
+.rpv-core__page-layer {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border-radius: 0.375rem;
+  margin-bottom: 1rem;
+}
+
+.rpv-default-layout__toolbar {
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+  background-color: hsl(var(--card) / 0.3);
+  backdrop-filter: blur(8px);
+  padding: 0.375rem 0.75rem;
+  min-height: 2rem;
+}
+
+/* Light theme - keep original colors */
+:not(.dark) .rpv-default-layout__toolbar,
+:not(html.dark) .rpv-default-layout__toolbar {
+  background-color: hsl(var(--card) / 0.3) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+.dark .rpv-default-layout__toolbar,
+html.dark .rpv-default-layout__toolbar,
+[data-theme="dark"] .rpv-default-layout__toolbar,
+html .dark .rpv-default-layout__toolbar,
+.dark [class*="rpv-default-layout__toolbar"],
+html.dark [class*="rpv-default-layout__toolbar"] {
+  background-color: #000000 !important;
+  background: #000000 !important;
+  background-image: none !important;
+  border-bottom-color: hsl(var(--border)) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  opacity: 1 !important;
+}
+
+/* Force dark background on toolbar container */
+.dark .rpv-default-layout__container .rpv-default-layout__toolbar,
+html.dark .rpv-default-layout__container .rpv-default-layout__toolbar {
+  background-color: #000000 !important;
+  background: #000000 !important;
+}
+
+.dark .rpv-default-layout__toolbar .rpv-core__display--block,
+html.dark .rpv-default-layout__toolbar .rpv-core__display--block,
+html .dark .rpv-default-layout__toolbar .rpv-core__display--block {
+  background-color: transparent !important;
+  background: transparent !important;
+  background-image: none !important;
+}
+
+.dark .rpv-default-layout__toolbar input,
+.dark .rpv-default-layout__toolbar select,
+html.dark .rpv-default-layout__toolbar input,
+html.dark .rpv-default-layout__toolbar select,
+html .dark .rpv-default-layout__toolbar input,
+html .dark .rpv-default-layout__toolbar select {
+  background-color: hsl(var(--muted)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+.rpv-default-layout__sidebar {
+  border-right: 1px solid hsl(var(--border) / 0.5);
+  background-color: hsl(var(--muted) / 0.2);
+}
+
+.rpv-default-layout__sidebar-tabs {
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+}
+
+.rpv-default-layout__sidebar-content {
+  background-color: transparent;
+}
+
+.rpv-core__text-layer {
+  opacity: 1;
+}
+
+.rpv-core__annotation-layer {
+  opacity: 1;
+}
+
+.rpv-core__inner-page {
+  background-color: white;
+}
+
+.rpv-core__page-layer--single {
+  background-color: white;
+}
+
+/* Toolbar buttons */
+.rpv-core__display--block {
+  color: hsl(var(--foreground));
+  height: 1.75rem;
+  min-width: 1.75rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+.rpv-core__display--block:hover {
+  background-color: hsl(var(--muted) / 0.5);
+}
+
+.rpv-core__display--block[aria-pressed="true"] {
+  background-color: hsl(var(--muted));
+  color: hsl(var(--foreground));
+}
+
+/* Toolbar button icons */
+.rpv-core__display--block svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+/* Toolbar dropdowns and selects */
+.rpv-core__display--block select,
+.rpv-core__display--block input {
+  height: 1.75rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+}
+
+/* Toolbar menu items */
+.rpv-core__menu-item {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  min-height: 1.75rem;
+}
+
+.rpv-core__menu-item svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+/* Search popover */
+.rpv-search__popover {
+  background-color: hsl(var(--card));
+  border: 1px solid hsl(var(--border) / 0.5);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.rpv-search__input {
+  background-color: hsl(var(--background));
+  border: 1px solid hsl(var(--border) / 0.5);
+  color: hsl(var(--foreground));
+}
+
+.rpv-search__input:focus {
+  border-color: hsl(var(--ring));
+  outline: none;
+}
+
+/* Thumbnail list */
+.rpv-thumbnail__list {
+  padding: 0.5rem;
+}
+
+.rpv-thumbnail__item {
+  margin-bottom: 0.5rem;
+  border: 1px solid hsl(var(--border) / 0.5);
+  border-radius: 0.375rem;
+  overflow: hidden;
+}
+
+.rpv-thumbnail__item--selected {
+  border-color: hsl(var(--ring));
+  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
+}
+
+.rpv-thumbnail__item:hover {
+  border-color: hsl(var(--border));
+}
+
+/* Force dark toolbar - highest specificity override */
+html.dark div[class*="rpv-default-layout__toolbar"],
+html.dark .rpv-default-layout__toolbar {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  background-image: none !important;
+}
+
+/* Additional toolbar control sizing */
+.rpv-default-layout__toolbar .rpv-core__display--block {
+  height: 1.75rem;
+  min-width: 1.75rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.rpv-default-layout__toolbar .rpv-core__display--block button {
+  height: 1.75rem;
+  min-width: 1.75rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+.rpv-default-layout__toolbar input[type="text"],
+.rpv-default-layout__toolbar input[type="number"],
+.rpv-default-layout__toolbar select {
+  height: 1.75rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+}
+
+/* Toolbar divider */
+.rpv-core__divider {
+  height: 1.75rem;
+  margin: 0 0.25rem;
 }

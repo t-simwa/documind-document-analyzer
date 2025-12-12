@@ -300,6 +300,7 @@ export const DocumentListView = ({ projectId, onDocumentSelect }: DocumentListVi
             onDelete={handleDelete}
             onTag={handleTag}
             onMove={handleMove}
+            onAnalyze={onDocumentSelect}
             tags={tags}
             users={users}
             sortField={sortField}

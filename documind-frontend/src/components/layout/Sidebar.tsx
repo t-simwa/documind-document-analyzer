@@ -365,13 +365,13 @@ export const Sidebar = ({
         
         <div className="px-1.5 pb-2 space-y-0.5">
           {documents.map((doc) => (
-            <button
+            <div
               key={doc.id}
               onClick={() => onSelectDocument(doc.id)}
               onMouseEnter={() => setHoveredDoc(doc.id)}
               onMouseLeave={() => setHoveredDoc(null)}
               className={cn(
-                "group w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm transition-colors text-left",
+                "group w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm transition-colors text-left cursor-pointer",
                 selectedDocId === doc.id
                   ? "bg-accent text-accent-foreground font-medium"
                   : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
@@ -393,20 +393,19 @@ export const Sidebar = ({
                   </div>
 
                   {/* Delete */}
-                    <Button
-                      variant="ghost"
-                    size="icon"
+                    <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         onDeleteDocument(doc.id);
                       }}
-                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive flex-shrink-0"
+                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive flex-shrink-0 flex items-center justify-center rounded hover:bg-destructive/10"
                     >
                     <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                    </button>
                 </>
               )}
-            </button>
+            </div>
           ))}
         </div>
 
