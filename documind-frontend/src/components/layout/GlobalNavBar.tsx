@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -19,6 +19,7 @@ import {
   Folder,
   Command,
 } from "lucide-react";
+import { Logo } from "@/components/brand/Logo";
 
 // Custom unique icons for world-class SaaS platform
 const SearchIcon = () => (
@@ -115,7 +116,11 @@ export const GlobalNavBar = ({ onSearch }: GlobalNavBarProps) => {
   ]);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+  
+  // Check if we're on the dashboard page
+  const isDashboard = location.pathname === "/app" || location.pathname === "/app/";
 
   // Mock user data - replace with actual auth context when available
   const user = {
@@ -168,10 +173,22 @@ export const GlobalNavBar = ({ onSearch }: GlobalNavBarProps) => {
   };
 
   return (
-    <nav className="h-[60px] border-b border-border/50 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/50 sticky top-0 z-50">
+    <nav className="h-[64px] border-b border-[#e5e5e5] dark:border-[#262626] bg-white/80 dark:bg-[#171717]/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/50 dark:supports-[backdrop-filter]:bg-[#171717]/50 sticky top-0 z-50">
       <div className="flex h-full items-center justify-between px-6">
+        {/* Left Section: Logo (Dashboard only) */}
+        {isDashboard && (
+          <div className="flex-shrink-0 mr-6">
+            <Link to="/app" className="flex items-center">
+              <Logo showText={true} />
+            </Link>
+          </div>
+        )}
+        
         {/* Center Section: Global Search Bar */}
-        <div className="flex-1 flex justify-center px-8 min-w-0">
+        <div className={cn(
+          "flex-1 flex justify-center min-w-0",
+          isDashboard ? "px-4" : "px-8"
+        )}>
           <form onSubmit={handleSearch} className="relative hidden md:block w-full max-w-[600px]">
             <div className="relative group">
               <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-foreground/5 via-foreground/3 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none" />

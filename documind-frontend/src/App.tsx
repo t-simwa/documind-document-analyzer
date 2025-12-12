@@ -4,7 +4,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import LandingPage from "./pages/LandingPage";
-import AppDashboard from "./pages/Index";
+import Dashboard from "./pages/Dashboard";
+import Documents from "./pages/Documents";
 import ProductsPage from "./pages/ProductsPage";
 import PricingPage from "./pages/PricingPage";
 import FeaturesPage from "./pages/products/FeaturesPage";
@@ -35,7 +36,8 @@ const App = () => (
           <Route path="/products/analytics" element={<AnalyticsPage />} />
           <Route path="/products/mobile" element={<MobilePage />} />
           <Route path="/resources" element={<ResourcesPage />} />
-          <Route path="/app" element={<AppDashboard />} />
+          <Route path="/app" element={<Dashboard />} />
+          <Route path="/app/documents" element={<Documents />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
