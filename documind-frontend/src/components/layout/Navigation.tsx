@@ -58,7 +58,7 @@ const Navigation = () => {
             <Link to="/#security" className="text-sm font-medium text-white/60 hover:text-white transition-colors">
               Security
             </Link>
-            <Link to="/#pricing" className="text-sm font-medium text-white/60 hover:text-white transition-colors">
+            <Link to="/pricing" className="text-sm font-medium text-white/60 hover:text-white transition-colors">
               Pricing
             </Link>
             <Link to="/#resources" className="text-sm font-medium text-white/60 hover:text-white transition-colors">
@@ -106,7 +106,7 @@ const Navigation = () => {
             <Link to="/#security" className="block text-sm font-medium text-white/60 hover:text-white">
               Security
             </Link>
-            <Link to="/#pricing" className="block text-sm font-medium text-white/60 hover:text-white">
+            <Link to="/pricing" className="block text-sm font-medium text-white/60 hover:text-white">
               Pricing
             </Link>
             <Link to="/#resources" className="block text-sm font-medium text-white/60 hover:text-white">

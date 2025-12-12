@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import LandingPage from "./pages/LandingPage";
 import AppDashboard from "./pages/Index";
 import ProductsPage from "./pages/ProductsPage";
+import PricingPage from "./pages/PricingPage";
 import FeaturesPage from "./pages/products/FeaturesPage";
 import AIPage from "./pages/products/AIPage";
 import SecurityPage from "./pages/products/SecurityPage";
@@ -25,6 +26,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/products" element={<ProductsPage />} />
+          <Route path="/pricing" element={<PricingPage />} />
           <Route path="/products/features" element={<FeaturesPage />} />
           <Route path="/products/ai" element={<AIPage />} />
           <Route path="/products/security" element={<SecurityPage />} />
