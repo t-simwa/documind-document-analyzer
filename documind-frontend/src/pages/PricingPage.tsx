@@ -468,22 +468,22 @@ const PricingPage = () => {
               <h3 className="font-semibold mb-4 text-white">Resources</h3>
               <ul className="space-y-3 text-sm">
                 <li>
-                  <Link to="#resources" className="text-white/60 hover:text-white transition-colors">
+                  <Link to="/resources" className="text-white/60 hover:text-white transition-colors">
                     Documentation
                   </Link>
                 </li>
                 <li>
-                  <Link to="#resources" className="text-white/60 hover:text-white transition-colors">
+                  <Link to="/resources" className="text-white/60 hover:text-white transition-colors">
                     Blog
                   </Link>
                 </li>
                 <li>
-                  <Link to="#resources" className="text-white/60 hover:text-white transition-colors">
+                  <Link to="/resources" className="text-white/60 hover:text-white transition-colors">
                     Case studies
                   </Link>
                 </li>
                 <li>
-                  <Link to="#resources" className="text-white/60 hover:text-white transition-colors">
+                  <Link to="/resources" className="text-white/60 hover:text-white transition-colors">
                     Support
                   </Link>
                 </li>

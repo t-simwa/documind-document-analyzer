@@ -13,6 +13,7 @@ import SecurityPage from "./pages/products/SecurityPage";
 import IntegrationsPage from "./pages/products/IntegrationsPage";
 import AnalyticsPage from "./pages/products/AnalyticsPage";
 import MobilePage from "./pages/products/MobilePage";
+import ResourcesPage from "./pages/ResourcesPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ const App = () => (
           <Route path="/products/integrations" element={<IntegrationsPage />} />
           <Route path="/products/analytics" element={<AnalyticsPage />} />
           <Route path="/products/mobile" element={<MobilePage />} />
+          <Route path="/resources" element={<ResourcesPage />} />
           <Route path="/app" element={<AppDashboard />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

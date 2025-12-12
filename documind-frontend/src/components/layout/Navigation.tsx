@@ -61,7 +61,7 @@ const Navigation = () => {
             <Link to="/pricing" className="text-sm font-medium text-white/60 hover:text-white transition-colors">
               Pricing
             </Link>
-            <Link to="/#resources" className="text-sm font-medium text-white/60 hover:text-white transition-colors">
+            <Link to="/resources" className="text-sm font-medium text-white/60 hover:text-white transition-colors">
               Resources
             </Link>
           </div>
@@ -109,7 +109,7 @@ const Navigation = () => {
             <Link to="/pricing" className="block text-sm font-medium text-white/60 hover:text-white">
               Pricing
             </Link>
-            <Link to="/#resources" className="block text-sm font-medium text-white/60 hover:text-white">
+            <Link to="/resources" className="block text-sm font-medium text-white/60 hover:text-white">
               Resources
             </Link>
             <div className="pt-4 space-y-2">
