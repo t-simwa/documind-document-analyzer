@@ -1,7 +1,9 @@
 import { Link } from "react-router-dom";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import Navigation from "@/components/layout/Navigation";
 import { ArrowRight } from "lucide-react";
+import ContactDemoDialog from "@/components/contact/ContactDemoDialog";
 
 // Custom Icon Components - Unique, abstract designs
 const DocumentIntelligenceIcon = () => (
@@ -72,6 +74,8 @@ const SecurityBadgeIcon = () => (
 );
 
 const LandingPage = () => {
+  const [isDemoDialogOpen, setIsDemoDialogOpen] = useState(false);
+
   const features = [
     {
       icon: DocumentIntelligenceIcon,
@@ -197,9 +201,9 @@ const LandingPage = () => {
                 size="lg" 
                 variant="outline" 
                 className="border-white/20 text-white hover:bg-white/5 hover:border-white/30 font-medium text-base px-8 h-12 rounded-md backdrop-blur-sm transition-all"
-                asChild
+                onClick={() => setIsDemoDialogOpen(true)}
               >
-                <Link to="/#demo">Request demo</Link>
+                Request demo
               </Button>
             </div>
           </div>
@@ -474,13 +478,19 @@ const LandingPage = () => {
               size="lg" 
               variant="outline" 
               className="border-white/20 text-white hover:bg-white/5 font-medium text-base px-8 h-12 rounded-md"
-              asChild
+              onClick={() => setIsDemoDialogOpen(true)}
             >
-              <Link to="/#demo">Schedule a demo</Link>
+              Schedule a demo
             </Button>
           </div>
         </div>
       </section>
+
+      {/* Contact Demo Dialog */}
+      <ContactDemoDialog 
+        open={isDemoDialogOpen} 
+        onOpenChange={setIsDemoDialogOpen} 
+      />
 
       {/* Footer */}
       <footer className="border-t border-white/10 py-16 px-4 sm:px-6 lg:px-8">

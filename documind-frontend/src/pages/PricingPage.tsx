@@ -9,9 +9,11 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Check, X } from "lucide-react";
+import ContactDemoDialog from "@/components/contact/ContactDemoDialog";
 
 const PricingPage = () => {
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "annual">("monthly");
+  const [isDemoDialogOpen, setIsDemoDialogOpen] = useState(false);
 
   const plans = [
     {
@@ -290,19 +292,31 @@ const PricingPage = () => {
                     )}
                   </div>
 
-                  <Button
-                    className={`w-full mb-10 font-medium transition-all duration-200 ${
-                      plan.popular
-                        ? "bg-white text-black hover:bg-white/90 h-12 text-base"
-                        : "border-white/20 text-white hover:bg-white/5 hover:border-white/30 h-12 text-base"
-                    }`}
-                    variant={plan.popular ? "default" : "outline"}
-                    asChild
-                  >
-                    <Link to={plan.id === "enterprise" ? "#contact" : "/app"}>
+                  {plan.id === "enterprise" ? (
+                    <Button
+                      className={`w-full mb-10 font-medium transition-all duration-200 ${
+                        plan.popular
+                          ? "bg-white text-black hover:bg-white/90 h-12 text-base"
+                          : "border-white/20 text-white hover:bg-white/5 hover:border-white/30 h-12 text-base"
+                      }`}
+                      variant={plan.popular ? "default" : "outline"}
+                      onClick={() => setIsDemoDialogOpen(true)}
+                    >
                       {plan.cta}
-                    </Link>
-                  </Button>
+                    </Button>
+                  ) : (
+                    <Button
+                      className={`w-full mb-10 font-medium transition-all duration-200 ${
+                        plan.popular
+                          ? "bg-white text-black hover:bg-white/90 h-12 text-base"
+                          : "border-white/20 text-white hover:bg-white/5 hover:border-white/30 h-12 text-base"
+                      }`}
+                      variant={plan.popular ? "default" : "outline"}
+                      asChild
+                    >
+                      <Link to="/app">{plan.cta}</Link>
+                    </Button>
+                  )}
 
                   <ul className="space-y-4">
                     {Object.entries(plan.features)
@@ -426,9 +440,9 @@ const PricingPage = () => {
               <Button
                 size="lg"
                 className="bg-white text-black hover:bg-white/90 font-medium text-base px-8 h-12"
-                asChild
+                onClick={() => setIsDemoDialogOpen(true)}
               >
-                <Link to="#contact">Contact sales</Link>
+                Contact sales
               </Button>
               <Button
                 size="lg"
@@ -495,13 +509,19 @@ const PricingPage = () => {
               size="lg"
               variant="outline"
               className="border-white/20 text-white hover:bg-white/5 font-medium text-base px-8 h-12"
-              asChild
+              onClick={() => setIsDemoDialogOpen(true)}
             >
-              <Link to="#contact">Contact sales</Link>
+              Contact sales
             </Button>
           </div>
         </div>
       </section>
+
+      {/* Contact Demo Dialog */}
+      <ContactDemoDialog 
+        open={isDemoDialogOpen} 
+        onOpenChange={setIsDemoDialogOpen} 
+      />
 
       {/* Footer */}
       <footer className="border-t border-white/10 py-16 px-4 sm:px-6 lg:px-8">

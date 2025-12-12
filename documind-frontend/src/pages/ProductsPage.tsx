@@ -1,7 +1,9 @@
 import { Link } from "react-router-dom";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import Navigation from "@/components/layout/Navigation";
 import { ArrowRight } from "lucide-react";
+import ContactDemoDialog from "@/components/contact/ContactDemoDialog";
 
 // Custom Icon Components - Sophisticated, minimal designs
 const FeaturesIcon = () => (
@@ -67,6 +69,8 @@ const MobileIcon = () => (
 );
 
 const ProductsPage = () => {
+  const [isDemoDialogOpen, setIsDemoDialogOpen] = useState(false);
+
   const productCategories = [
     { 
       id: "features", 
@@ -343,9 +347,9 @@ const ProductsPage = () => {
                     size="lg" 
                     variant="outline" 
                     className="border-white/20 text-white hover:bg-white/5 font-medium text-base px-8 h-12"
-                    asChild
+                    onClick={() => setIsDemoDialogOpen(true)}
                   >
-                    <Link to="/#demo">Request demo</Link>
+                    Request demo
                   </Button>
                 </div>
               </div>
@@ -353,6 +357,12 @@ const ProductsPage = () => {
           </section>
         </div>
       </div>
+
+      {/* Contact Demo Dialog */}
+      <ContactDemoDialog 
+        open={isDemoDialogOpen} 
+        onOpenChange={setIsDemoDialogOpen} 
+      />
 
       {/* Footer */}
       <footer className="border-t border-white/10 py-16 px-4 sm:px-6 lg:px-8">
