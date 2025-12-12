@@ -52,9 +52,6 @@ const Navigation = () => {
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8">
             <ProductsDropdown />
-            <Link to="/#features" className="text-sm font-medium text-white/60 hover:text-white transition-colors">
-              Features
-            </Link>
             <Link to="/products/security" className="text-sm font-medium text-white/60 hover:text-white transition-colors">
               Security
             </Link>
@@ -99,9 +96,6 @@ const Navigation = () => {
           <div className="px-4 py-4 space-y-3">
             <Link to="/products" className="block text-sm font-medium text-white hover:text-white">
               Products
-            </Link>
-            <Link to="/#features" className="block text-sm font-medium text-white/60 hover:text-white">
-              Features
             </Link>
             <Link to="/products/security" className="block text-sm font-medium text-white/60 hover:text-white">
               Security
