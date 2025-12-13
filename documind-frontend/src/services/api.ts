@@ -16,6 +16,17 @@ import type {
   CrossDocumentQueryRequest,
   CrossDocumentQueryResponse,
   DocumentComparison,
+  ShareLink,
+  CreateShareLinkRequest,
+  UpdateShareLinkRequest,
+  Comment,
+  CreateCommentRequest,
+  UpdateCommentRequest,
+  Annotation,
+  CreateAnnotationRequest,
+  ExportRequest,
+  ExportFormat,
+  AnalysisShareLink,
 } from "@/types/api";
 
 // Mock data storage (in a real app, this would be API calls)
@@ -574,6 +585,290 @@ export const crossDocumentApi = {
     };
 
     return mockComparison;
+  },
+};
+
+// Sharing API
+let mockShareLinks: ShareLink[] = [];
+let mockComments: Comment[] = [];
+let mockAnnotations: Annotation[] = [];
+let mockAnalysisShareLinks: AnalysisShareLink[] = [];
+
+export const sharingApi = {
+  async createShareLink(request: CreateShareLinkRequest): Promise<ShareLink> {
+    await delay(400);
+    const shareToken = `share_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const shareUrl = `${window.location.origin}/shared/${shareToken}`;
+    
+    const shareLink: ShareLink = {
+      id: Date.now().toString(),
+      documentId: request.documentId,
+      shareToken,
+      shareUrl,
+      permission: request.permission,
+      access: request.access,
+      allowedUsers: request.allowedUsers,
+      expiresAt: request.expiresAt,
+      createdAt: new Date(),
+      createdBy: "user1",
+      isActive: true,
+    };
+    
+    mockShareLinks.push(shareLink);
+    return shareLink;
+  },
+
+  async getShareLinks(documentId: string): Promise<ShareLink[]> {
+    await delay(200);
+    return mockShareLinks.filter((link) => link.documentId === documentId && link.isActive);
+  },
+
+  async updateShareLink(id: string, request: UpdateShareLinkRequest): Promise<ShareLink> {
+    await delay(300);
+    const link = mockShareLinks.find((l) => l.id === id);
+    if (!link) throw new Error("Share link not found");
+    
+    Object.assign(link, { ...request, updatedAt: new Date() });
+    return link;
+  },
+
+  async revokeShareLink(id: string): Promise<void> {
+    await delay(200);
+    const link = mockShareLinks.find((l) => l.id === id);
+    if (link) {
+      link.isActive = false;
+    }
+  },
+
+  async getSharedDocument(shareToken: string): Promise<{ document: Document; shareLink: ShareLink }> {
+    await delay(300);
+    const shareLink = mockShareLinks.find((l) => l.shareToken === shareToken && l.isActive);
+    if (!shareLink) throw new Error("Share link not found or expired");
+    
+    if (shareLink.expiresAt && shareLink.expiresAt < new Date()) {
+      throw new Error("Share link has expired");
+    }
+    
+    const document = mockDocuments.find((d) => d.id === shareLink.documentId);
+    if (!document) throw new Error("Document not found");
+    
+    return { document, shareLink };
+  },
+};
+
+// Comments API
+export const commentsApi = {
+  async getComments(documentId: string, page?: number): Promise<Comment[]> {
+    await delay(200);
+    let filtered = mockComments.filter((c) => c.documentId === documentId);
+    
+    if (page !== undefined) {
+      filtered = filtered.filter((c) => c.page === page);
+    }
+    
+    // Attach user info
+    return filtered.map((comment) => ({
+      ...comment,
+      createdByUser: mockUsers.find((u) => u.id === comment.createdBy),
+      replies: mockComments
+        .filter((c) => c.parentId === comment.id)
+        .map((reply) => ({
+          ...reply,
+          createdByUser: mockUsers.find((u) => u.id === reply.createdBy),
+        })),
+    }));
+  },
+
+  async createComment(request: CreateCommentRequest): Promise<Comment> {
+    await delay(300);
+    const comment: Comment = {
+      id: Date.now().toString(),
+      documentId: request.documentId,
+      content: request.content,
+      page: request.page,
+      x: request.x,
+      y: request.y,
+      parentId: request.parentId,
+      createdBy: "user1",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      resolved: false,
+      createdByUser: mockUsers.find((u) => u.id === "user1"),
+    };
+    
+    mockComments.push(comment);
+    return comment;
+  },
+
+  async updateComment(id: string, request: UpdateCommentRequest): Promise<Comment> {
+    await delay(300);
+    const comment = mockComments.find((c) => c.id === id);
+    if (!comment) throw new Error("Comment not found");
+    
+    Object.assign(comment, { ...request, updatedAt: new Date() });
+    comment.createdByUser = mockUsers.find((u) => u.id === comment.createdBy);
+    return comment;
+  },
+
+  async deleteComment(id: string): Promise<void> {
+    await delay(200);
+    // Also delete replies
+    mockComments = mockComments.filter((c) => c.id !== id && c.parentId !== id);
+  },
+};
+
+// Annotations API
+export const annotationsApi = {
+  async getAnnotations(documentId: string, page?: number): Promise<Annotation[]> {
+    await delay(200);
+    let filtered = mockAnnotations.filter((a) => a.documentId === documentId);
+    
+    if (page !== undefined) {
+      filtered = filtered.filter((a) => a.page === page);
+    }
+    
+    return filtered;
+  },
+
+  async createAnnotation(request: CreateAnnotationRequest): Promise<Annotation> {
+    await delay(300);
+    const annotation: Annotation = {
+      id: Date.now().toString(),
+      documentId: request.documentId,
+      type: request.type,
+      page: request.page,
+      x: request.x,
+      y: request.y,
+      width: request.width,
+      height: request.height,
+      color: request.color || "#fbbf24",
+      content: request.content,
+      createdBy: "user1",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    
+    mockAnnotations.push(annotation);
+    return annotation;
+  },
+
+  async updateAnnotation(id: string, data: Partial<Annotation>): Promise<Annotation> {
+    await delay(300);
+    const annotation = mockAnnotations.find((a) => a.id === id);
+    if (!annotation) throw new Error("Annotation not found");
+    
+    Object.assign(annotation, { ...data, updatedAt: new Date() });
+    return annotation;
+  },
+
+  async deleteAnnotation(id: string): Promise<void> {
+    await delay(200);
+    mockAnnotations = mockAnnotations.filter((a) => a.id !== id);
+  },
+};
+
+// Export API
+export const exportApi = {
+  async exportChatHistory(documentId: string, messages: Array<{ role: "user" | "assistant"; content: string; timestamp: Date }>, format: ExportFormat = "txt"): Promise<Blob> {
+    await delay(500);
+    
+    let content = "";
+    if (format === "txt" || format === "json") {
+      if (format === "json") {
+        content = JSON.stringify(messages, null, 2);
+      } else {
+        content = messages.map((msg) => {
+          const timestamp = new Date(msg.timestamp).toLocaleString();
+          return `[${timestamp}] ${msg.role.toUpperCase()}: ${msg.content}`;
+        }).join("\n\n");
+      }
+    }
+    
+    const blob = new Blob([content], { type: format === "json" ? "application/json" : "text/plain" });
+    return blob;
+  },
+
+  async exportSummary(documentId: string, summary: DocumentInsights["summary"], format: ExportFormat = "txt"): Promise<Blob> {
+    await delay(500);
+    
+    let content = "";
+    if (format === "txt" || format === "json") {
+      if (format === "json") {
+        content = JSON.stringify(summary, null, 2);
+      } else {
+        content = `EXECUTIVE SUMMARY\n${"=".repeat(50)}\n\n${summary.executiveSummary}\n\n\nKEY POINTS\n${"=".repeat(50)}\n\n${summary.keyPoints.map((point, idx) => `${idx + 1}. ${point}`).join("\n")}\n\n\nGenerated at: ${new Date(summary.generatedAt).toLocaleString()}`;
+      }
+    }
+    
+    const blob = new Blob([content], { type: format === "json" ? "application/json" : "text/plain" });
+    return blob;
+  },
+
+  async exportToPDF(documentId: string, content: string): Promise<Blob> {
+    await delay(800);
+    // In a real implementation, this would use a PDF generation library
+    // For now, we'll create a simple text blob that can be converted to PDF
+    const blob = new Blob([content], { type: "application/pdf" });
+    return blob;
+  },
+
+  async exportToWord(documentId: string, content: string): Promise<Blob> {
+    await delay(800);
+    // In a real implementation, this would use a DOCX generation library
+    const blob = new Blob([content], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+    return blob;
+  },
+
+  async exportToExcel(documentId: string, data: any[][]): Promise<Blob> {
+    await delay(800);
+    // In a real implementation, this would use an XLSX generation library
+    const blob = new Blob([JSON.stringify(data)], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    return blob;
+  },
+};
+
+// Analysis Share Link API
+export const analysisShareApi = {
+  async createAnalysisShareLink(documentId: string, includesChatHistory: boolean, includesSummary: boolean, expiresAt?: Date): Promise<AnalysisShareLink> {
+    await delay(400);
+    const shareToken = `analysis_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const shareUrl = `${window.location.origin}/analysis/${shareToken}`;
+    
+    const shareLink: AnalysisShareLink = {
+      id: Date.now().toString(),
+      documentId,
+      shareToken,
+      shareUrl,
+      includesChatHistory,
+      includesSummary,
+      expiresAt,
+      createdAt: new Date(),
+      createdBy: "user1",
+      isActive: true,
+    };
+    
+    mockAnalysisShareLinks.push(shareLink);
+    return shareLink;
+  },
+
+  async getAnalysisShareLink(shareToken: string): Promise<AnalysisShareLink> {
+    await delay(200);
+    const shareLink = mockAnalysisShareLinks.find((l) => l.shareToken === shareToken && l.isActive);
+    if (!shareLink) throw new Error("Analysis share link not found");
+    
+    if (shareLink.expiresAt && shareLink.expiresAt < new Date()) {
+      throw new Error("Analysis share link has expired");
+    }
+    
+    return shareLink;
+  },
+
+  async revokeAnalysisShareLink(id: string): Promise<void> {
+    await delay(200);
+    const link = mockAnalysisShareLinks.find((l) => l.id === id);
+    if (link) {
+      link.isActive = false;
+    }
   },
 };
 

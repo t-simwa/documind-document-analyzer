@@ -88,11 +88,11 @@ export const ProjectDialog = ({ open, onOpenChange, onSave, project, projects = 
             <DialogTitle className="text-lg font-semibold tracking-tight">
               {project ? "Edit project" : "New project"}
             </DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground mt-1">
-              {project 
-                ? "Update your project details" 
-                : "Create a new project to organize your documents"}
-            </DialogDescription>
+            {project && (
+              <DialogDescription className="text-sm text-muted-foreground mt-1">
+                Update your project details
+              </DialogDescription>
+            )}
           </DialogHeader>
         </div>
 
@@ -109,7 +109,6 @@ export const ProjectDialog = ({ open, onOpenChange, onSave, project, projects = 
                 value={name}
                 onChange={(e) => handleNameChange(e.target.value)}
                 onBlur={() => validateName(name)}
-                placeholder="e.g., Q4 Reports, Client Contracts"
                 disabled={isSaving}
                 className={cn(
                   "h-10 text-sm",

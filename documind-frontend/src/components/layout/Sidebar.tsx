@@ -47,16 +47,18 @@ interface SidebarProps {
   onSelectProject?: (projectId: string | null) => void;
   collapsed: boolean;
   onToggleCollapse: () => void;
+  openProjectDialog?: boolean;
+  onProjectDialogChange?: (open: boolean) => void;
 }
 
 const getFileIcon = (type: string) => {
   switch (type) {
     case 'pdf':
-      return <FileText className="h-4 w-4 text-red-400" />;
+      return <FileText className="h-[15px] w-[15px] text-red-400" />;
     case 'docx':
-      return <FileText className="h-4 w-4 text-blue-400" />;
+      return <FileText className="h-[15px] w-[15px] text-blue-400" />;
     default:
-      return <File className="h-4 w-4 text-muted-foreground" />;
+      return <File className="h-[15px] w-[15px] text-muted-foreground" />;
   }
 };
 
@@ -83,6 +85,8 @@ export const Sidebar = ({
   onSelectProject,
   collapsed,
   onToggleCollapse,
+  openProjectDialog,
+  onProjectDialogChange,
 }: SidebarProps) => {
   const [hoveredDoc, setHoveredDoc] = useState<string | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -90,6 +94,14 @@ export const Sidebar = ({
   const [projectDialogOpen, setProjectDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const { toast } = useToast();
+
+  // Handle external trigger to open project dialog
+  useEffect(() => {
+    if (openProjectDialog) {
+      setProjectDialogOpen(true);
+      onProjectDialogChange?.(false);
+    }
+  }, [openProjectDialog, onProjectDialogChange]);
 
   useEffect(() => {
     if (onSelectProject) {
@@ -173,18 +185,18 @@ export const Sidebar = ({
       <div key={project.id} className="space-y-0.5">
         <div
           className={cn(
-            "group flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-md text-sm transition-colors text-left relative",
+            "group flex items-center gap-2.5 w-full px-2.5 rounded-md text-[13px] transition-colors text-left relative",
             isSelected 
-              ? "bg-accent text-accent-foreground font-medium" 
-              : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+              ? "bg-accent text-accent-foreground font-medium py-1.5" 
+              : "text-muted-foreground hover:text-foreground hover:bg-accent/50 py-1.5"
           )}
           style={{ paddingLeft: `${level * 12 + 10}px` }}
           onClick={() => onSelectProject?.(project.id)}
         >
           {hasChildren ? (
-            <FolderOpen className="h-4 w-4 flex-shrink-0 text-foreground/70" />
+            <FolderOpen className="h-[15px] w-[15px] flex-shrink-0 text-foreground/70" />
           ) : (
-            <Folder className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+            <Folder className="h-[15px] w-[15px] flex-shrink-0 text-muted-foreground" />
           )}
           {!collapsed && (
             <>
@@ -199,9 +211,9 @@ export const Sidebar = ({
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                    className="h-[22px] w-[22px] opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
                   >
-                    <MoreVertical className="h-3.5 w-3.5" />
+                    <MoreVertical className="h-[13px] w-[13px]" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-40">
@@ -306,9 +318,9 @@ export const Sidebar = ({
                 variant="ghost"
                 size="icon"
                 onClick={() => setProjectDialogOpen(true)}
-                className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                className="h-[22px] w-[22px] text-muted-foreground hover:text-foreground"
               >
-                <Plus className="h-3.5 w-3.5" />
+                <Plus className="h-[13px] w-[13px]" />
               </Button>
             </div>
           )}
@@ -331,14 +343,14 @@ export const Sidebar = ({
             <div className="px-1.5 pb-2 space-y-0.5">
               <button
                 className={cn(
-                  "flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-md text-sm transition-colors text-left",
+                  "flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-md text-[13px] transition-colors text-left",
                   selectedProjectId === null 
                     ? "bg-accent text-accent-foreground font-medium" 
                     : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
                 )}
                 onClick={() => onSelectProject(null)}
               >
-                <Folder className="h-4 w-4 flex-shrink-0" />
+                <Folder className="h-[15px] w-[15px] flex-shrink-0" />
                 <span className="truncate">All Documents</span>
               </button>
               {loadingProjects ? (
@@ -371,7 +383,7 @@ export const Sidebar = ({
               onMouseEnter={() => setHoveredDoc(doc.id)}
               onMouseLeave={() => setHoveredDoc(null)}
               className={cn(
-                "group w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm transition-colors text-left cursor-pointer",
+                "group w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[13px] transition-colors text-left cursor-pointer",
                 selectedDocId === doc.id
                   ? "bg-accent text-accent-foreground font-medium"
                   : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
@@ -385,7 +397,7 @@ export const Sidebar = ({
               {!collapsed && (
                 <>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm truncate">{doc.name}</p>
+                    <p className="text-[13px] truncate">{doc.name}</p>
                     <div className="flex items-center gap-1.5 mt-0.5">
                       {getStatusIcon(doc.status)}
                       <span className="text-xs text-muted-foreground/70">{doc.size}</span>
@@ -399,9 +411,9 @@ export const Sidebar = ({
                         e.stopPropagation();
                         onDeleteDocument(doc.id);
                       }}
-                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive flex-shrink-0 flex items-center justify-center rounded hover:bg-destructive/10"
+                    className="h-[22px] w-[22px] opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive flex-shrink-0 flex items-center justify-center rounded hover:bg-destructive/10"
                     >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <Trash2 className="h-[13px] w-[13px]" />
                     </button>
                 </>
               )}
@@ -456,6 +468,7 @@ export const Sidebar = ({
             if (!open) {
               setProjectDialogOpen(false);
               setEditingProject(null);
+              onProjectDialogChange?.(false);
             }
           }}
           onSave={editingProject ? handleUpdateProject : handleCreateProject}

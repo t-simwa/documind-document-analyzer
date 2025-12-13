@@ -32,9 +32,11 @@ import {
   ArrowUp,
   ArrowDown,
   MessageSquare,
+  Share2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Document, DocumentTag, User } from "@/types/api";
+import { ShareDialog } from "@/components/sharing/ShareDialog";
 
 interface DocumentListTableProps {
   documents: Document[];
@@ -54,7 +56,7 @@ interface DocumentListTableProps {
 }
 
 const getFileIcon = (type: string) => {
-  const iconClass = "h-4 w-4";
+  const iconClass = "h-3.5 w-3.5";
   switch (type.toLowerCase()) {
     case "pdf":
       return <FileText className={cn(iconClass, "text-[#DC2626]")} />;
@@ -74,22 +76,22 @@ const getStatusBadge = (status: Document["status"]) => {
   switch (status) {
     case "ready":
       return (
-        <Badge variant="outline" className="gap-1.5 border-green-200 bg-green-50 text-green-700 dark:border-green-900 dark:bg-green-950 dark:text-green-400">
-          <CheckCircle2 className="h-3 w-3" />
+        <Badge variant="outline" className="gap-1 border-green-200 bg-green-50 text-green-700 dark:border-green-900 dark:bg-green-950 dark:text-green-400 h-5 text-[11px]">
+          <CheckCircle2 className="h-2.5 w-2.5" />
           <span className="font-normal">Ready</span>
         </Badge>
       );
     case "processing":
       return (
-        <Badge variant="outline" className="gap-1.5 border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-400">
-          <Loader2 className="h-3 w-3 animate-spin" />
+        <Badge variant="outline" className="gap-1 border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-400 h-5 text-[11px]">
+          <Loader2 className="h-2.5 w-2.5 animate-spin" />
           <span className="font-normal">Processing</span>
         </Badge>
       );
     case "error":
       return (
-        <Badge variant="outline" className="gap-1.5 border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-400">
-          <AlertCircle className="h-3 w-3" />
+        <Badge variant="outline" className="gap-1 border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-400 h-5 text-[11px]">
+          <AlertCircle className="h-2.5 w-2.5" />
           <span className="font-normal">Error</span>
         </Badge>
       );
@@ -118,7 +120,7 @@ const SortableHeader = ({
 }) => {
   if (!onSort) {
     return (
-      <TableHead className="h-11 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+      <TableHead className="h-10 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
         {label}
       </TableHead>
     );
@@ -126,11 +128,11 @@ const SortableHeader = ({
 
   const isActive = currentField === field;
   return (
-    <TableHead className="h-11">
+    <TableHead className="h-10">
       <button
         onClick={() => onSort(field)}
         className={cn(
-          "flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors group",
+          "flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors group",
           isActive && "text-foreground"
         )}
       >
@@ -178,6 +180,8 @@ export const DocumentListTable = ({
 }: DocumentListTableProps) => {
   const allSelected = documents.length > 0 && documents.every((d) => selectedIds.has(d.id));
   const someSelected = documents.some((d) => selectedIds.has(d.id));
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [selectedDocForShare, setSelectedDocForShare] = useState<Document | null>(null);
 
   const getUserName = (userId: string) => {
     return users.find((u) => u.id === userId)?.name || userId;
@@ -196,7 +200,7 @@ export const DocumentListTable = ({
       <Table>
         <TableHeader>
           <TableRow className="border-b hover:bg-transparent">
-            <TableHead className="w-12 h-11">
+            <TableHead className="w-12 h-10">
               <Checkbox
                 checked={allSelected}
                 onCheckedChange={onSelectAll}
@@ -231,16 +235,16 @@ export const DocumentListTable = ({
               currentDirection={sortDirection}
               onSort={onSort}
             />
-            <TableHead className="h-11 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            <TableHead className="h-10 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
               Type
             </TableHead>
-            <TableHead className="h-11 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            <TableHead className="h-10 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
               Size
             </TableHead>
-            <TableHead className="h-11 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            <TableHead className="h-10 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
               Tags
             </TableHead>
-            <TableHead className="w-12 h-11"></TableHead>
+            <TableHead className="w-12 h-10"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -259,7 +263,7 @@ export const DocumentListTable = ({
               <TableRow
                 key={doc.id}
                 className={cn(
-                  "border-b transition-colors",
+                  "border-b transition-colors h-10",
                   selectedIds.has(doc.id) && "bg-muted/30",
                   "hover:bg-muted/50"
                 )}
@@ -271,53 +275,53 @@ export const DocumentListTable = ({
                     aria-label={`Select ${doc.name}`}
                   />
                 </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-3 min-w-0">
+                <TableCell className="py-2.5">
+                  <div className="flex items-center gap-2.5 min-w-0">
                     <div className="flex-shrink-0">{getFileIcon(doc.type)}</div>
                     {doc.status === "ready" && onAnalyze ? (
                       <button
                         onClick={() => onAnalyze(doc)}
-                        className="font-medium text-sm truncate text-left hover:text-primary transition-colors cursor-pointer"
+                        className="font-medium text-xs truncate text-left hover:text-primary transition-colors cursor-pointer"
                         title="Click to analyze document"
                       >
                         {doc.name}
                       </button>
                     ) : (
-                      <span className="font-medium text-sm truncate">{doc.name}</span>
+                      <span className="font-medium text-xs truncate">{doc.name}</span>
                     )}
                   </div>
                 </TableCell>
-                <TableCell>
+                <TableCell className="py-2.5">
                   {getStatusBadge(doc.status)}
                 </TableCell>
-                <TableCell>
-                  <span className="text-sm text-muted-foreground">
+                <TableCell className="py-2.5">
+                  <span className="text-xs text-muted-foreground">
                     {format(doc.uploadedAt, "MMM d, yyyy")}
                   </span>
                 </TableCell>
-                <TableCell>
-                  <span className="text-sm text-muted-foreground">
+                <TableCell className="py-2.5">
+                  <span className="text-xs text-muted-foreground">
                     {getUserName(doc.uploadedBy)}
                   </span>
                 </TableCell>
-                <TableCell>
-                  <Badge variant="outline" className="font-mono text-xs font-normal">
+                <TableCell className="py-2.5">
+                  <Badge variant="outline" className="font-mono text-[11px] font-normal h-5">
                     {doc.type.toUpperCase()}
                   </Badge>
                 </TableCell>
-                <TableCell>
-                  <span className="text-sm text-muted-foreground font-mono">
+                <TableCell className="py-2.5">
+                  <span className="text-xs text-muted-foreground font-mono">
                     {formatFileSize(doc.size)}
                   </span>
                 </TableCell>
-                <TableCell>
+                <TableCell className="py-2.5">
                   <div className="flex flex-wrap gap-1.5">
                     {doc.tags.length > 0 ? (
                       doc.tags.slice(0, 2).map((tagId) => (
                         <Badge
                           key={tagId}
                           variant="outline"
-                          className="text-xs font-normal h-5 px-1.5 border-0"
+                          className="text-[11px] font-normal h-4 px-1.5 border-0"
                           style={{
                             backgroundColor: `${getTagColor(tagId)}15`,
                             color: getTagColor(tagId),
@@ -327,24 +331,24 @@ export const DocumentListTable = ({
                         </Badge>
                       ))
                     ) : (
-                      <span className="text-xs text-muted-foreground/60">—</span>
+                      <span className="text-[11px] text-muted-foreground/60">—</span>
                     )}
                     {doc.tags.length > 2 && (
-                      <Badge variant="outline" className="text-xs font-normal h-5 px-1.5">
+                      <Badge variant="outline" className="text-[11px] font-normal h-4 px-1.5">
                         +{doc.tags.length - 2}
                       </Badge>
                     )}
                   </div>
                 </TableCell>
-                <TableCell>
+                <TableCell className="py-2.5">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        className="h-7 w-7 text-muted-foreground hover:text-foreground"
                       >
-                        <MoreVertical className="h-4 w-4" />
+                        <MoreVertical className="h-3.5 w-3.5" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-48">
@@ -376,6 +380,16 @@ export const DocumentListTable = ({
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
+                        onClick={() => {
+                          setSelectedDocForShare(doc);
+                          setShareDialogOpen(true);
+                        }}
+                      >
+                        <Share2 className="h-4 w-4 mr-2" />
+                        Share
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
                         onClick={() => onDelete(doc.id)}
                         className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950"
                       >
@@ -390,6 +404,17 @@ export const DocumentListTable = ({
           )}
         </TableBody>
       </Table>
+
+      {/* Share Dialog */}
+      {selectedDocForShare && (
+        <ShareDialog
+          open={shareDialogOpen}
+          onOpenChange={setShareDialogOpen}
+          documentId={selectedDocForShare.id}
+          documentName={selectedDocForShare.name}
+          users={users}
+        />
+      )}
     </div>
   );
 };

@@ -12,11 +12,7 @@ const actions = [
     icon: UploadIcon,
     primary: true,
     onClick: (navigate: ReturnType<typeof useNavigate>, toast: ReturnType<typeof useToast>) => {
-      navigate("/app/documents");
-      toast({
-        title: "Upload Document",
-        description: "Navigate to documents page to upload files.",
-      });
+      navigate("/app/documents?upload=true");
     },
   },
   {
@@ -26,10 +22,7 @@ const actions = [
     icon: ProjectIcon,
     primary: false,
     onClick: (navigate: ReturnType<typeof useNavigate>, toast: ReturnType<typeof useToast>) => {
-      toast({
-        title: "New Project",
-        description: "Project creation feature coming soon!",
-      });
+      navigate("/app/documents?newProject=true");
     },
   },
   {

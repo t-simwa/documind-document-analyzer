@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { GlobalNavBar } from "@/components/layout/GlobalNavBar";
 import { UploadZone } from "@/components/upload/UploadZone";
@@ -53,9 +54,32 @@ const Documents = () => {
   const [selectedDocIds, setSelectedDocIds] = useState<Set<string>>(new Set());
   const [selectedDocuments, setSelectedDocuments] = useState<Document[]>([]);
   const [documentUrls, setDocumentUrls] = useState<Map<string, string>>(new Map());
+  const [openProjectDialog, setOpenProjectDialog] = useState(false);
   const { toast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const selectedDocument = documents.find((d) => d.id === selectedDocId);
+
+  // Check for newProject query parameter
+  useEffect(() => {
+    if (searchParams.get("newProject") === "true") {
+      setOpenProjectDialog(true);
+      // Remove the query parameter from URL
+      searchParams.delete("newProject");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
+  // Check for upload query parameter
+  useEffect(() => {
+    if (searchParams.get("upload") === "true") {
+      setViewState("upload");
+      setSelectedDocId(null);
+      // Remove the query parameter from URL
+      searchParams.delete("upload");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   // Fetch document URL when document is selected
   useEffect(() => {
@@ -452,6 +476,8 @@ const Documents = () => {
         onSelectProject={handleProjectSelect}
         collapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+        openProjectDialog={openProjectDialog}
+        onProjectDialogChange={setOpenProjectDialog}
       />
 
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -467,14 +493,14 @@ const Documents = () => {
               {viewState === "list" || (viewState === "chat" && selectedDocument) ? (
                 <div className="border-b border-border px-6 pt-3 pb-0">
                   <TabsList className="bg-transparent">
-                    <TabsTrigger value="list" className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-foreground data-[state=active]:rounded-none">
+                    <TabsTrigger value="list" className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-foreground data-[state=active]:rounded-none w-[100px] justify-center">
                       Documents
                     </TabsTrigger>
                     {selectedDocument && (
                       <TabsTrigger 
                         value="chat" 
                         disabled={selectedDocument.status !== "ready"}
-                        className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-foreground data-[state=active]:rounded-none"
+                        className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-foreground data-[state=active]:rounded-none w-[100px] justify-center"
                       >
                         Chat
                       </TabsTrigger>

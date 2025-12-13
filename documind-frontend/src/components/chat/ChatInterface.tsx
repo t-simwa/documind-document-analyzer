@@ -1,9 +1,11 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
 import { Button } from "@/components/ui/button";
 import { RotateCcw, Download, FileSearch } from "lucide-react";
 import { SuggestedQuestions } from "@/components/analysis/SuggestedQuestions";
+import { ExportDialog } from "@/components/sharing/ExportDialog";
+import type { DocumentSummary } from "@/types/api";
 
 interface Message {
   id: string;
@@ -22,7 +24,9 @@ interface ChatInterfaceProps {
   onSendMessage: (message: string) => void;
   onClearHistory: () => void;
   isLoading?: boolean;
+  documentId?: string;
   documentName?: string;
+  summary?: DocumentSummary;
   onCitationClick?: (citation: { text: string; page?: number; section?: string }) => void;
   suggestedQuestions?: string[];
   suggestedQuestionsLoading?: boolean;
@@ -33,12 +37,15 @@ export const ChatInterface = ({
   onSendMessage,
   onClearHistory,
   isLoading,
+  documentId,
   documentName,
+  summary,
   onCitationClick,
   suggestedQuestions = [],
   suggestedQuestionsLoading = false,
 }: ChatInterfaceProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -134,6 +141,7 @@ export const ChatInterface = ({
             variant="ghost"
             size="sm"
             className="h-7 text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => setExportDialogOpen(true)}
           >
             <Download className="h-3 w-3 mr-1.5" />
             Export conversation
@@ -145,6 +153,20 @@ export const ChatInterface = ({
       <div className="border-t border-border/50 bg-card/30 backdrop-blur-sm">
         <ChatInput onSendMessage={onSendMessage} isLoading={isLoading} />
       </div>
+
+      {/* Export Dialog */}
+      <ExportDialog
+        open={exportDialogOpen}
+        onOpenChange={setExportDialogOpen}
+        documentId={documentId}
+        documentName={documentName}
+        chatMessages={messages.map((msg) => ({
+          role: msg.role,
+          content: msg.content,
+          timestamp: msg.timestamp,
+        }))}
+        summary={summary}
+      />
     </div>
   );
 };

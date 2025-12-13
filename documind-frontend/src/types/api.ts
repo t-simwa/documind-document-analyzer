@@ -213,3 +213,125 @@ export interface ComparisonDifference {
   }>;
 }
 
+// Collaboration & Sharing Types
+export type SharePermission = "view" | "comment" | "edit";
+export type ShareAccess = "anyone" | "team" | "specific";
+
+export interface ShareLink {
+  id: string;
+  documentId: string;
+  shareToken: string;
+  shareUrl: string;
+  permission: SharePermission;
+  access: ShareAccess;
+  allowedUsers?: string[]; // User IDs
+  expiresAt?: Date;
+  createdAt: Date;
+  createdBy: string;
+  isActive: boolean;
+}
+
+export interface CreateShareLinkRequest {
+  documentId: string;
+  permission: SharePermission;
+  access: ShareAccess;
+  allowedUsers?: string[];
+  expiresAt?: Date;
+}
+
+export interface UpdateShareLinkRequest {
+  permission?: SharePermission;
+  access?: ShareAccess;
+  allowedUsers?: string[];
+  expiresAt?: Date;
+  isActive?: boolean;
+}
+
+export interface Comment {
+  id: string;
+  documentId: string;
+  content: string;
+  page?: number;
+  x?: number; // Position on page (for annotations)
+  y?: number;
+  createdBy: string;
+  createdByUser?: User;
+  createdAt: Date;
+  updatedAt: Date;
+  replies?: Comment[];
+  parentId?: string; // For reply comments
+  resolved?: boolean;
+}
+
+export interface CreateCommentRequest {
+  documentId: string;
+  content: string;
+  page?: number;
+  x?: number;
+  y?: number;
+  parentId?: string;
+}
+
+export interface UpdateCommentRequest {
+  content?: string;
+  resolved?: boolean;
+}
+
+export interface Annotation {
+  id: string;
+  documentId: string;
+  type: "highlight" | "note" | "drawing" | "text";
+  page: number;
+  x: number;
+  y: number;
+  width?: number;
+  height?: number;
+  color?: string;
+  content?: string;
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateAnnotationRequest {
+  documentId: string;
+  type: Annotation["type"];
+  page: number;
+  x: number;
+  y: number;
+  width?: number;
+  height?: number;
+  color?: string;
+  content?: string;
+}
+
+// Export Types
+export type ExportFormat = "pdf" | "docx" | "xlsx" | "txt" | "json";
+
+export interface ExportRequest {
+  documentId?: string;
+  format: ExportFormat;
+  includeChatHistory?: boolean;
+  includeSummary?: boolean;
+  includeAnnotations?: boolean;
+  chatMessages?: Array<{
+    role: "user" | "assistant";
+    content: string;
+    timestamp: Date;
+  }>;
+  summary?: DocumentSummary;
+}
+
+export interface AnalysisShareLink {
+  id: string;
+  documentId: string;
+  shareToken: string;
+  shareUrl: string;
+  includesChatHistory: boolean;
+  includesSummary: boolean;
+  expiresAt?: Date;
+  createdAt: Date;
+  createdBy: string;
+  isActive: boolean;
+}
+

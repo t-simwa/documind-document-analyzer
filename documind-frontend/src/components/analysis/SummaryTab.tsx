@@ -1,14 +1,20 @@
-import { FileText, AlertCircle, Clock } from "lucide-react";
+import { useState } from "react";
+import { FileText, AlertCircle, Clock, Download } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { ExportDialog } from "@/components/sharing/ExportDialog";
 import type { DocumentSummary } from "@/types/api";
 
 interface SummaryTabProps {
+  documentId?: string;
+  documentName?: string;
   summary: DocumentSummary | null;
   isLoading?: boolean;
   error?: string | null;
 }
 
-export const SummaryTab = ({ summary, isLoading, error }: SummaryTabProps) => {
+export const SummaryTab = ({ documentId, documentName, summary, isLoading, error }: SummaryTabProps) => {
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
   if (isLoading) {
     return (
       <div className="flex flex-col h-full overflow-y-auto">
@@ -69,14 +75,29 @@ export const SummaryTab = ({ summary, isLoading, error }: SummaryTabProps) => {
   return (
     <div className="flex flex-col h-full overflow-y-auto">
       <div className="max-w-4xl mx-auto px-6 py-8 w-full space-y-8">
-        {/* Executive Summary */}
-        <div className="space-y-4">
+        {/* Header with Export */}
+        <div className="flex items-center justify-between">
           <div className="space-y-0.5">
             <h2 className="text-xl font-semibold tracking-tight text-foreground">Summary</h2>
             <p className="text-xs text-muted-foreground">
               Overview of key information extracted from this document
             </p>
           </div>
+          {summary && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setExportDialogOpen(true)}
+              className="gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Export
+            </Button>
+          )}
+        </div>
+
+        {/* Executive Summary */}
+        <div className="space-y-4">
           
           <div className="prose prose-sm max-w-none">
             <div className="bg-card border border-border/50 rounded-lg p-6 shadow-sm">
@@ -133,6 +154,15 @@ export const SummaryTab = ({ summary, isLoading, error }: SummaryTabProps) => {
           </div>
         )}
       </div>
+
+      {/* Export Dialog */}
+      <ExportDialog
+        open={exportDialogOpen}
+        onOpenChange={setExportDialogOpen}
+        documentId={documentId}
+        documentName={documentName}
+        summary={summary || undefined}
+      />
     </div>
   );
 };
