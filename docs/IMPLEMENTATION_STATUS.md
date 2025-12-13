@@ -507,34 +507,37 @@ The project currently consists of a **frontend-only prototype** with mock/simula
   - ✅ Panel toggle functionality (collapse/expand)
   - ✅ Responsive collapse for mobile (single panel view)
 
-#### ❌ Pre-Built Insights - NOT IMPLEMENTED
+#### ✅ Pre-Built Insights - IMPLEMENTED
 
-- ❌ **Automatic Insights Display**
-  - No executive summary generation
-  - No summary display component
-  - No key entities extraction (organizations, people, dates, monetary values)
-  - No entities display component
-  - No suggested questions generation
-  - No suggested questions display
-  - No insights tabs (Summary, Extracts)
+- ✅ **Automatic Insights Display**
+  - ✅ Executive summary generation (`insightsApi.getInsights()`)
+  - ✅ Summary display component (`SummaryTab.tsx`)
+  - ✅ Key entities extraction (organizations, people, dates, monetary values, locations)
+  - ✅ Entities display component (`ExtractsTab.tsx`)
+  - ✅ Suggested questions generation (`insightsApi.getInsights()`)
+  - ✅ Suggested questions display (`SuggestedQuestions.tsx` integrated in `ChatInterface.tsx`)
+  - ✅ Insights tabs (Chat, Summary, Extracts) (`AnalysisTabs.tsx`)
 
-#### ✅ Analysis Tabs - PARTIALLY IMPLEMENTED
+#### ✅ Analysis Tabs - IMPLEMENTED
 
 - ✅ **Chat Tab**
   - ✅ Chat UI integrated with document viewer via SplitScreenAnalysis
   - ✅ Citation click handlers implemented to navigate to document pages
   - ✅ Citations highlight in document viewer thumbnails
+  - ✅ Suggested questions displayed in empty chat state
 
-- ❌ **Summary Tab**
-  - No summary tab component
-  - No auto-generated summary display
-  - No key points list
+- ✅ **Summary Tab**
+  - ✅ Summary tab component (`SummaryTab.tsx`)
+  - ✅ Auto-generated summary display with executive summary
+  - ✅ Key points list with numbered items
+  - ✅ Loading and error states
 
-- ❌ **Extracts Tab**
-  - No extracts tab component
-  - No structured data extraction display
-  - No table extraction and display
-  - No Excel/JSON export for extracted data
+- ✅ **Extracts Tab**
+  - ✅ Extracts tab component (`ExtractsTab.tsx`)
+  - ✅ Structured data extraction display with tabs for different entity types
+  - ✅ Organizations, People, Dates, Monetary Values, and Locations extraction
+  - ✅ Entity cards with context, page numbers, and occurrence counts
+  - ⚠️ Table extraction and Excel/JSON export - Not yet implemented (future enhancement)
 
 #### ❌ Cross-Document Analysis - NOT IMPLEMENTED
 

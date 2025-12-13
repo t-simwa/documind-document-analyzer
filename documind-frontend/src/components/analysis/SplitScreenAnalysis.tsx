@@ -3,9 +3,10 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/componen
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, FileText, MessageSquare } from "lucide-react";
 import { DocumentViewer } from "@/components/document-viewer/DocumentViewer";
-import { ChatInterface } from "@/components/chat/ChatInterface";
+import { AnalysisTabs } from "./AnalysisTabs";
 import { cn } from "@/lib/utils";
-import type { Document } from "@/types/api";
+import { insightsApi } from "@/services/api";
+import type { Document, DocumentInsights } from "@/types/api";
 
 interface Citation {
   text: string;
@@ -46,6 +47,9 @@ export const SplitScreenAnalysis = ({
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [highlightedText, setHighlightedText] = useState<string>("");
   const [activeCitations, setActiveCitations] = useState<Citation[]>([]);
+  const [insights, setInsights] = useState<DocumentInsights | null>(null);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+  const [insightsError, setInsightsError] = useState<string | null>(null);
 
   // Detect mobile viewport
   useEffect(() => {
@@ -75,6 +79,30 @@ export const SplitScreenAnalysis = ({
     });
     setActiveCitations(allCitations);
   }, [messages]);
+
+  // Fetch insights when document is ready
+  useEffect(() => {
+    if (document && document.status === "ready" && document.id) {
+      setInsightsLoading(true);
+      setInsightsError(null);
+      insightsApi
+        .getInsights(document.id)
+        .then((data) => {
+          setInsights(data);
+          setInsightsLoading(false);
+        })
+        .catch((error) => {
+          console.error("Error fetching insights:", error);
+          setInsightsError(error.message || "Failed to load insights");
+          setInsightsLoading(false);
+        });
+    } else {
+      // Reset insights when document changes or is not ready
+      setInsights(null);
+      setInsightsLoading(false);
+      setInsightsError(null);
+    }
+  }, [document?.id, document?.status]);
 
   // Handle citation click from chat
   const handleCitationClick = useCallback(
@@ -165,13 +193,16 @@ export const SplitScreenAnalysis = ({
           )}
           {!rightPanelCollapsed && (
             <div className="h-full">
-              <ChatInterface
+              <AnalysisTabs
                 messages={messages}
                 onSendMessage={onSendMessage}
                 onClearHistory={onClearHistory}
                 isLoading={isLoading}
                 documentName={document?.name}
                 onCitationClick={handleCitationClick}
+                insights={insights}
+                insightsLoading={insightsLoading}
+                insightsError={insightsError}
               />
             </div>
           )}
@@ -288,13 +319,16 @@ export const SplitScreenAnalysis = ({
                 </Button>
               </div>
               <div className="flex-1 overflow-hidden">
-                <ChatInterface
+                <AnalysisTabs
                   messages={messages}
                   onSendMessage={onSendMessage}
                   onClearHistory={onClearHistory}
                   isLoading={isLoading}
                   documentName={document?.name}
                   onCitationClick={handleCitationClick}
+                  insights={insights}
+                  insightsLoading={insightsLoading}
+                  insightsError={insightsError}
                 />
               </div>
             </div>

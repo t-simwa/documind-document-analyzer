@@ -29,8 +29,8 @@ const ResponseCard = ({ content, citations, onCitationClick }: { content: string
   };
 
   return (
-    <div className="space-y-4">
-      <div className="text-sm text-foreground leading-relaxed whitespace-pre-wrap font-sans">
+    <div className="space-y-3">
+      <div className="text-xs text-foreground/90 leading-relaxed whitespace-pre-wrap font-sans">
         {content}
       </div>
 
@@ -147,7 +147,7 @@ export const ChatMessage = ({
           {isLoading ? (
             <TypingIndicator />
           ) : isUser ? (
-            <p className="text-sm font-sans">{content}</p>
+            <p className="text-xs leading-relaxed font-sans">{content}</p>
           ) : (
             <ResponseCard content={content} citations={citations} onCitationClick={onCitationClick} />
           )}

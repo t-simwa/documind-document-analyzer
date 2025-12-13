@@ -97,3 +97,37 @@ export interface BulkActionRequest {
   };
 }
 
+// Insights Types
+export interface DocumentInsights {
+  summary: DocumentSummary;
+  entities: DocumentEntities;
+  suggestedQuestions: string[];
+}
+
+export interface DocumentSummary {
+  executiveSummary: string;
+  keyPoints: string[];
+  generatedAt: Date;
+}
+
+export interface DocumentEntities {
+  organizations: Entity[];
+  people: Entity[];
+  dates: Entity[];
+  monetaryValues: MonetaryEntity[];
+  locations?: Entity[];
+}
+
+export interface Entity {
+  text: string;
+  context?: string;
+  page?: number;
+  count?: number;
+}
+
+export interface MonetaryEntity extends Entity {
+  value: number;
+  currency: string;
+  formatted: string;
+}
+

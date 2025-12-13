@@ -2,7 +2,8 @@ import { useRef, useEffect } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
 import { Button } from "@/components/ui/button";
-import { RotateCcw, Download, FileText } from "lucide-react";
+import { RotateCcw, Download, FileSearch } from "lucide-react";
+import { SuggestedQuestions } from "@/components/analysis/SuggestedQuestions";
 
 interface Message {
   id: string;
@@ -23,6 +24,8 @@ interface ChatInterfaceProps {
   isLoading?: boolean;
   documentName?: string;
   onCitationClick?: (citation: { text: string; page?: number; section?: string }) => void;
+  suggestedQuestions?: string[];
+  suggestedQuestionsLoading?: boolean;
 }
 
 export const ChatInterface = ({
@@ -32,6 +35,8 @@ export const ChatInterface = ({
   isLoading,
   documentName,
   onCitationClick,
+  suggestedQuestions = [],
+  suggestedQuestionsLoading = false,
 }: ChatInterfaceProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -45,39 +50,47 @@ export const ChatInterface = ({
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto px-6 py-8">
           {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <div className="w-14 h-14 rounded-xl bg-muted/50 flex items-center justify-center mb-4">
-                <FileText className="h-6 w-6 text-muted-foreground" />
+            <div className="flex flex-col items-center justify-center py-12">
+              <div className="w-14 h-14 rounded-xl bg-muted/40 flex items-center justify-center mb-5 border border-border/50">
+                <FileSearch className="h-6 w-6 text-muted-foreground" />
               </div>
-              <h3 className="text-sm font-medium text-foreground mb-1.5">Start analyzing</h3>
-              <p className="text-xs text-muted-foreground text-center max-w-xs mb-6">
-                Ask questions about your document to extract insights and information
-              </p>
+              <div className="text-center space-y-1 mb-6">
+                <h3 className="text-xl font-semibold tracking-tight text-foreground">Start your analysis</h3>
+                <p className="text-xs text-muted-foreground max-w-md">
+                  Ask questions about your document to extract insights and information
+                </p>
+              </div>
+              
+              {/* Suggested Questions */}
+              {suggestedQuestions && suggestedQuestions.length > 0 && (
+                <div className="w-full max-w-2xl mb-6">
+                  <SuggestedQuestions
+                    questions={suggestedQuestions}
+                    isLoading={suggestedQuestionsLoading}
+                    onQuestionClick={onSendMessage}
+                  />
+                </div>
+              )}
+
               <div className="flex flex-wrap gap-2 justify-center max-w-md">
-                <Button
-                  variant="outline"
-                  size="sm"
+                <button
                   onClick={() => onSendMessage("What are the main points in this document?")}
-                  className="text-xs h-7"
+                  className="px-3.5 py-1.5 text-xs font-medium rounded-lg border border-border/50 bg-card/50 hover:bg-card hover:border-border text-foreground/80 hover:text-foreground transition-all duration-200"
                 >
                   Main points
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
+                </button>
+                <button
                   onClick={() => onSendMessage("Summarize this document")}
-                  className="text-xs h-7"
+                  className="px-3.5 py-1.5 text-xs font-medium rounded-lg border border-border/50 bg-card/50 hover:bg-card hover:border-border text-foreground/80 hover:text-foreground transition-all duration-200"
                 >
                   Summarize
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
+                </button>
+                <button
                   onClick={() => onSendMessage("What are the key findings?")}
-                  className="text-xs h-7"
+                  className="px-3.5 py-1.5 text-xs font-medium rounded-lg border border-border/50 bg-card/50 hover:bg-card hover:border-border text-foreground/80 hover:text-foreground transition-all duration-200"
                 >
                   Key findings
-                </Button>
+                </button>
               </div>
             </div>
           ) : (
