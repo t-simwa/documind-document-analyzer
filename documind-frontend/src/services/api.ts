@@ -13,6 +13,9 @@ import type {
   ProjectListResponse,
   BulkActionRequest,
   DocumentInsights,
+  CrossDocumentQueryRequest,
+  CrossDocumentQueryResponse,
+  DocumentComparison,
 } from "@/types/api";
 
 // Mock data storage (in a real app, this would be API calls)
@@ -421,6 +424,158 @@ export const insightsApi = {
     };
 
     return mockInsights;
+  },
+};
+
+// Cross-Document Analysis API
+export const crossDocumentApi = {
+  async query(request: CrossDocumentQueryRequest): Promise<CrossDocumentQueryResponse> {
+    await delay(1500); // Simulate API call delay
+    
+    // Mock cross-document query response
+    // In production: POST /api/v1/query/cross-document
+    const docNames = request.documentIds
+      .map((id) => mockDocuments.find((d) => d.id === id)?.name || id)
+      .join(", ");
+
+    const mockResponse: CrossDocumentQueryResponse = {
+      answer: `Based on my analysis of ${request.documentIds.length} document(s) (${docNames}), I found relevant information regarding your query: "${request.query}".\n\nThe documents collectively address this topic across multiple sections. Key insights include:\n\n1. Common themes and patterns emerge across the selected documents\n2. Different perspectives and approaches are presented\n3. Complementary information provides a comprehensive view\n\nI've identified specific passages from each document that relate to your question and cited them below.`,
+      citations: request.documentIds.map((docId, index) => {
+        const doc = mockDocuments.find((d) => d.id === docId);
+        return {
+          documentId: docId,
+          documentName: doc?.name || `Document ${index + 1}`,
+          text: `Relevant passage from ${doc?.name || "document"} addressing the query`,
+          page: (index + 1) * 3,
+          section: `Section ${index + 1}.${index + 2}`,
+          relevanceScore: 0.85 - index * 0.1,
+        };
+      }),
+      patterns: request.includePatterns
+        ? [
+            {
+              type: "theme" as const,
+              description: "Common strategic themes across documents",
+              documents: request.documentIds,
+              occurrences: 5,
+              examples: request.documentIds.slice(0, 2).map((docId) => {
+                const doc = mockDocuments.find((d) => d.id === docId);
+                return {
+                  documentId: docId,
+                  documentName: doc?.name || "Document",
+                  text: "Example of strategic theme",
+                  page: 2,
+                };
+              }),
+              confidence: 0.8,
+            },
+            {
+              type: "entity" as const,
+              description: "Shared entities and organizations mentioned",
+              documents: request.documentIds,
+              occurrences: 3,
+              examples: request.documentIds.slice(0, 2).map((docId) => {
+                const doc = mockDocuments.find((d) => d.id === docId);
+                return {
+                  documentId: docId,
+                  documentName: doc?.name || "Document",
+                  text: "Example entity reference",
+                  page: 4,
+                };
+              }),
+              confidence: 0.75,
+            },
+          ]
+        : undefined,
+      contradictions: request.includeContradictions
+        ? [
+            {
+              type: "factual" as const,
+              description: "Different factual claims about the same topic",
+              documents: [
+                {
+                  id: request.documentIds[0],
+                  name: mockDocuments.find((d) => d.id === request.documentIds[0])?.name || "Document 1",
+                  claim: "Claim A from first document",
+                  page: 5,
+                },
+                {
+                  id: request.documentIds[1] || request.documentIds[0],
+                  name: mockDocuments.find((d) => d.id === request.documentIds[1])?.name || "Document 2",
+                  claim: "Contradictory claim B from second document",
+                  page: 7,
+                },
+              ],
+              severity: "medium" as const,
+              confidence: 0.7,
+            },
+          ]
+        : undefined,
+      generatedAt: new Date(),
+    };
+
+    return mockResponse;
+  },
+
+  async compare(documentIds: string[]): Promise<DocumentComparison> {
+    await delay(1200); // Simulate API call delay
+    
+    // Mock document comparison
+    // In production: POST /api/v1/documents/compare
+    const docs = documentIds.map((id) => mockDocuments.find((d) => d.id === id)).filter(Boolean) as Document[];
+
+    const mockComparison: DocumentComparison = {
+      documentIds,
+      similarities: [
+        {
+          aspect: "Strategic Focus",
+          description: "Both documents emphasize digital transformation and innovation as core strategic priorities",
+          documents: documentIds,
+          examples: docs.slice(0, 2).map((doc, idx) => ({
+            documentId: doc.id,
+            documentName: doc.name,
+            text: "Example text about strategic focus",
+            page: idx + 1,
+          })),
+        },
+        {
+          aspect: "Key Stakeholders",
+          description: "Similar organizational structures and key personnel mentioned across documents",
+          documents: documentIds,
+          examples: docs.slice(0, 2).map((doc, idx) => ({
+            documentId: doc.id,
+            documentName: doc.name,
+            text: "Example stakeholder reference",
+            page: idx + 2,
+          })),
+        },
+      ],
+      differences: [
+        {
+          aspect: "Timeline",
+          description: "Different project timelines and deadlines",
+          documents: docs.map((doc, idx) => ({
+            id: doc.id,
+            name: doc.name,
+            value: `Q${idx + 1} 2024 - Q${idx + 2} 2025`,
+            page: idx + 3,
+          })),
+        },
+        {
+          aspect: "Budget Allocation",
+          description: "Varying budget figures and allocation strategies",
+          documents: docs.map((doc, idx) => ({
+            id: doc.id,
+            name: doc.name,
+            value: `$${(idx + 1) * 500}K`,
+            page: idx + 4,
+          })),
+        },
+      ],
+      generatedAt: new Date(),
+    };
+
+    return mockComparison;
   },
 };
 

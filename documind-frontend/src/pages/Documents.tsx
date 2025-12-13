@@ -7,12 +7,16 @@ import { SplitScreenAnalysis } from "@/components/analysis/SplitScreenAnalysis";
 import { ProcessingStatus } from "@/components/processing/ProcessingStatus";
 import { EmptyState } from "@/components/empty/EmptyState";
 import { DocumentListView } from "@/components/documents/DocumentListView";
+import { MultiDocumentSelector } from "@/components/cross-document/MultiDocumentSelector";
+import { CrossDocumentAnalysis } from "@/components/cross-document/CrossDocumentAnalysis";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { GitCompare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { documentsApi } from "@/services/api";
 import type { Document } from "@/types/api";
 
-type ViewState = "empty" | "upload" | "processing" | "chat" | "list";
+type ViewState = "empty" | "upload" | "processing" | "chat" | "list" | "multi-select" | "cross-document";
 
 const processingSteps = [
   { id: "upload", label: "Secure Upload", description: "Uploading to encrypted storage", status: "pending" as const },
@@ -46,6 +50,9 @@ const Documents = () => {
   const [processingDocName, setProcessingDocName] = useState("");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [documentUrl, setDocumentUrl] = useState<string | null>(null);
+  const [selectedDocIds, setSelectedDocIds] = useState<Set<string>>(new Set());
+  const [selectedDocuments, setSelectedDocuments] = useState<Document[]>([]);
+  const [documentUrls, setDocumentUrls] = useState<Map<string, string>>(new Map());
   const { toast } = useToast();
 
   const selectedDocument = documents.find((d) => d.id === selectedDocId);
@@ -256,6 +263,75 @@ const Documents = () => {
     }
   };
 
+  const handleMultiDocumentSelect = async () => {
+    // Load all ready documents for selection (not just current project)
+    try {
+      const response = await documentsApi.list({ status: ["ready"] });
+      setDocuments(response.documents);
+      setViewState("multi-select");
+      setSelectedDocIds(new Set());
+    } catch (error) {
+      console.error("Failed to load documents:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load documents for comparison",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleMultiDocumentSelectionChange = (selectedIds: Set<string>) => {
+    setSelectedDocIds(selectedIds);
+  };
+
+  const handleMultiDocumentConfirm = async (selectedIds: Set<string>) => {
+    if (selectedIds.size < 2) {
+      toast({
+        title: "Selection Required",
+        description: "Please select at least 2 documents for cross-document analysis",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Fetch selected documents and their URLs
+    const selected = documents.filter((d) => selectedIds.has(d.id) && d.status === "ready");
+    
+    if (selected.length < 2) {
+      toast({
+        title: "Error",
+        description: "Selected documents must be ready for analysis",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSelectedDocuments(selected);
+    
+    // Fetch URLs for all selected documents
+    const urlMap = new Map<string, string>();
+    for (const doc of selected) {
+      try {
+        const url = await documentsApi.getFileUrl(doc.id);
+        if (url) {
+          urlMap.set(doc.id, url);
+        }
+      } catch (error) {
+        console.error(`Failed to get URL for document ${doc.id}:`, error);
+      }
+    }
+    setDocumentUrls(urlMap);
+    
+    setViewState("cross-document");
+  };
+
+  const handleBackFromCrossDocument = () => {
+    setViewState("list");
+    setSelectedDocIds(new Set());
+    setSelectedDocuments([]);
+    setDocumentUrls(new Map());
+  };
+
   const renderContent = () => {
     switch (viewState) {
       case "empty":
@@ -316,7 +392,7 @@ const Documents = () => {
             projectId={selectedProjectId}
             onDocumentSelect={(doc) => {
               if (doc.status === "ready") {
-              setSelectedDocId(doc.id);
+                setSelectedDocId(doc.id);
                 setViewState("chat");
               } else {
                 toast({
@@ -326,6 +402,29 @@ const Documents = () => {
                 });
               }
             }}
+            onCompareDocuments={handleMultiDocumentSelect}
+          />
+        );
+
+      case "multi-select":
+        return (
+          <MultiDocumentSelector
+            documents={documents}
+            selectedIds={selectedDocIds}
+            onSelectionChange={handleMultiDocumentSelectionChange}
+            minSelection={2}
+            maxSelection={10}
+            onConfirm={handleMultiDocumentConfirm}
+            onCancel={() => setViewState("list")}
+          />
+        );
+
+      case "cross-document":
+        return (
+          <CrossDocumentAnalysis
+            documents={selectedDocuments}
+            documentUrls={documentUrls}
+            onBack={handleBackFromCrossDocument}
           />
         );
 
@@ -360,6 +459,10 @@ const Documents = () => {
         
         {/* Main Content */}
         <main className="flex-1 overflow-hidden bg-background">
+          {/* Render directly for multi-select and cross-document views */}
+          {(viewState === "multi-select" || viewState === "cross-document") ? (
+            renderContent()
+          ) : (
             <Tabs value={viewState} onValueChange={(v) => setViewState(v as ViewState)} className="h-full flex flex-col">
               {viewState === "list" || (viewState === "chat" && selectedDocument) ? (
                 <div className="border-b border-border px-6 pt-3 pb-0">
@@ -397,6 +500,7 @@ const Documents = () => {
                 </TabsContent>
               </div>
             </Tabs>
+          )}
         </main>
       </div>
     </div>

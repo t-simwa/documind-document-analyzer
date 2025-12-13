@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from "@/components/ui/pagination";
 import { Badge } from "@/components/ui/badge";
-import { Filter, X, Search } from "lucide-react";
+import { Filter, X, Search, Layers } from "lucide-react";
 import { DocumentListTable } from "./DocumentListTable";
 import { DocumentFilters } from "./DocumentFilters";
 import { BulkActionsDialog } from "./BulkActionsDialog";
@@ -18,9 +18,10 @@ import type { Document, DocumentTag, User, FilterParams, SortParams, BulkActionR
 interface DocumentListViewProps {
   projectId?: string | null;
   onDocumentSelect?: (document: Document) => void;
+  onCompareDocuments?: () => void;
 }
 
-export const DocumentListView = ({ projectId, onDocumentSelect }: DocumentListViewProps) => {
+export const DocumentListView = ({ projectId, onDocumentSelect, onCompareDocuments }: DocumentListViewProps) => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [tags, setTags] = useState<DocumentTag[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -208,6 +209,16 @@ export const DocumentListView = ({ projectId, onDocumentSelect }: DocumentListVi
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {onCompareDocuments && (
+              <Button
+                onClick={onCompareDocuments}
+                size="sm"
+                className="gap-2"
+              >
+                <Layers className="h-4 w-4" />
+                Compare Documents
+              </Button>
+            )}
             <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
               <SheetTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-2">

@@ -131,3 +131,85 @@ export interface MonetaryEntity extends Entity {
   formatted: string;
 }
 
+// Cross-Document Analysis Types
+export interface CrossDocumentQueryRequest {
+  documentIds: string[];
+  query: string;
+  includePatterns?: boolean;
+  includeContradictions?: boolean;
+}
+
+export interface CrossDocumentQueryResponse {
+  answer: string;
+  citations: CrossDocumentCitation[];
+  patterns?: DocumentPattern[];
+  contradictions?: DocumentContradiction[];
+  generatedAt: Date;
+}
+
+export interface CrossDocumentCitation {
+  documentId: string;
+  documentName: string;
+  text: string;
+  page?: number;
+  section?: string;
+  relevanceScore?: number;
+}
+
+export interface DocumentPattern {
+  type: "theme" | "entity" | "trend" | "relationship";
+  description: string;
+  documents: string[]; // document IDs
+  occurrences: number;
+  examples: Array<{
+    documentId: string;
+    documentName: string;
+    text: string;
+    page?: number;
+  }>;
+  confidence: number; // 0-1
+}
+
+export interface DocumentContradiction {
+  type: "factual" | "temporal" | "quantitative" | "categorical";
+  description: string;
+  documents: Array<{
+    id: string;
+    name: string;
+    claim: string;
+    page?: number;
+    section?: string;
+  }>;
+  severity: "low" | "medium" | "high";
+  confidence: number; // 0-1
+}
+
+export interface DocumentComparison {
+  documentIds: string[];
+  similarities: ComparisonSimilarity[];
+  differences: ComparisonDifference[];
+  generatedAt: Date;
+}
+
+export interface ComparisonSimilarity {
+  aspect: string;
+  description: string;
+  documents: string[]; // document IDs
+  examples: Array<{
+    documentId: string;
+    text: string;
+    page?: number;
+  }>;
+}
+
+export interface ComparisonDifference {
+  aspect: string;
+  description: string;
+  documents: Array<{
+    id: string;
+    name: string;
+    value: string;
+    page?: number;
+  }>;
+}
+
