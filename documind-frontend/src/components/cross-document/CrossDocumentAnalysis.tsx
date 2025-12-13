@@ -183,7 +183,7 @@ export const CrossDocumentAnalysis = ({
               <FileText className="h-4 w-4 text-muted-foreground" />
             </div>
             <div>
-              <h1 className="text-lg font-semibold tracking-tight">Cross-Document Analysis</h1>
+              <h1 className="text-xl font-semibold tracking-tight">Cross-Document Analysis</h1>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -296,7 +296,7 @@ export const CrossDocumentAnalysis = ({
                   <div className="w-12 h-12 rounded-lg bg-muted/40 flex items-center justify-center mb-4 border border-border/50">
                     <BarChart3 className="h-6 w-6 text-muted-foreground" />
                   </div>
-                  <p className="text-sm font-medium text-foreground mb-1">No patterns detected yet</p>
+                  <p className="text-xs font-medium text-foreground mb-1">No patterns detected yet</p>
                   <p className="text-xs text-muted-foreground max-w-sm">
                     Ask questions in the Query tab to discover patterns across documents
                   </p>
@@ -320,7 +320,7 @@ export const CrossDocumentAnalysis = ({
                   <div className="w-12 h-12 rounded-lg bg-muted/40 flex items-center justify-center mb-4 border border-border/50">
                     <AlertCircle className="h-6 w-6 text-muted-foreground" />
                   </div>
-                  <p className="text-sm font-medium text-foreground mb-1">No contradictions detected</p>
+                  <p className="text-xs font-medium text-foreground mb-1">No contradictions detected</p>
                   <p className="text-xs text-muted-foreground max-w-sm">
                     Ask questions in the Query tab to identify contradictions between documents
                   </p>

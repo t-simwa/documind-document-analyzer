@@ -93,7 +93,7 @@ export const MultiDocumentSelector = ({
               </Button>
             )}
             <div>
-              <h1 className="text-lg font-semibold tracking-tight">Compare Documents</h1>
+              <h1 className="text-xl font-semibold tracking-tight">Compare Documents</h1>
               <p className="text-sm text-muted-foreground mt-0.5">
                 Select {minSelection} or more documents to analyze together
                 {maxSelection && ` (max ${maxSelection})`}
@@ -159,7 +159,7 @@ export const MultiDocumentSelector = ({
               <div className="w-12 h-12 rounded-lg bg-muted/40 flex items-center justify-center mb-4 border border-border/50">
                 <FileText className="h-6 w-6 text-muted-foreground" />
               </div>
-              <p className="text-sm font-medium text-foreground mb-1">No documents available</p>
+              <p className="text-xs font-medium text-foreground mb-1">No documents available</p>
               <p className="text-xs text-muted-foreground max-w-sm">
                 Documents must be processed and ready before they can be selected for comparison
               </p>
@@ -191,7 +191,7 @@ export const MultiDocumentSelector = ({
                     />
                     <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">
+                      <p className="text-xs font-medium text-foreground truncate">
                         {doc.name}
                       </p>
                       <div className="flex items-center gap-2 mt-0.5">

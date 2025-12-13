@@ -146,12 +146,10 @@ export const documentsApi = {
     let filtered = [...mockDocuments];
 
     // Apply filters
-    if (params?.projectId !== undefined) {
-      if (params.projectId === null) {
-        filtered = filtered.filter((d) => !d.projectId || d.projectId === null);
-      } else {
-        filtered = filtered.filter((d) => d.projectId === params.projectId);
-      }
+    // Only filter by projectId if it's a specific string value
+    // null or undefined means show all documents regardless of project
+    if (params?.projectId !== undefined && params.projectId !== null) {
+      filtered = filtered.filter((d) => d.projectId === params.projectId);
     }
 
     if (params?.status && params.status.length > 0) {

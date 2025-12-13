@@ -300,7 +300,7 @@ const ComparisonCard = ({
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        <p className="text-sm text-muted-foreground">{similarity.description}</p>
+        <p className="text-xs text-muted-foreground">{similarity.description}</p>
         <div className="text-xs text-muted-foreground">
           <span className="font-medium text-foreground">Found in:</span> {docNames}
         </div>
@@ -338,7 +338,7 @@ const DifferenceCard = ({
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        <p className="text-sm text-muted-foreground">{difference.description}</p>
+        <p className="text-xs text-muted-foreground">{difference.description}</p>
         <div className="space-y-2 pt-2 border-t border-border/50">
           {difference.documents.map((doc, idx) => (
             <div key={idx} className="text-xs bg-muted/30 p-2.5 rounded border border-border/50 font-mono">
