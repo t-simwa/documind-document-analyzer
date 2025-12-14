@@ -41,6 +41,63 @@ export interface User {
   name: string;
   email: string;
   avatar?: string;
+  phone?: string;
+  bio?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+// User Profile Settings Types
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  phone?: string;
+  bio?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface UpdateUserProfileRequest {
+  name?: string;
+  email?: string;
+  phone?: string;
+  bio?: string;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+export interface NotificationPreferences {
+  emailNotifications: {
+    documentProcessed: boolean;
+    documentShared: boolean;
+    comments: boolean;
+    mentions: boolean;
+    weeklyDigest: boolean;
+  };
+  inAppNotifications: {
+    documentProcessed: boolean;
+    documentShared: boolean;
+    comments: boolean;
+    mentions: boolean;
+  };
+  pushNotifications: {
+    documentProcessed: boolean;
+    documentShared: boolean;
+    comments: boolean;
+    mentions: boolean;
+  };
+}
+
+export interface UpdateNotificationPreferencesRequest {
+  emailNotifications?: Partial<NotificationPreferences["emailNotifications"]>;
+  inAppNotifications?: Partial<NotificationPreferences["inAppNotifications"]>;
+  pushNotifications?: Partial<NotificationPreferences["pushNotifications"]>;
 }
 
 export interface PaginationParams {

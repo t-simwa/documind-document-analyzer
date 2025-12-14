@@ -119,8 +119,8 @@ export const GlobalNavBar = ({ onSearch }: GlobalNavBarProps) => {
   const location = useLocation();
   const { toast } = useToast();
   
-  // Check if we're on the dashboard page
-  const isDashboard = location.pathname === "/app" || location.pathname === "/app/";
+  // Check if we're on dashboard or settings page (show logo only on these pages)
+  const showLogo = location.pathname === "/app" || location.pathname === "/app/" || location.pathname === "/app/settings";
 
   // Mock user data - replace with actual auth context when available
   const user = {
@@ -175,8 +175,8 @@ export const GlobalNavBar = ({ onSearch }: GlobalNavBarProps) => {
   return (
     <nav className="h-[64px] border-b border-[#e5e5e5] dark:border-[#262626] bg-white/80 dark:bg-[#171717]/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/50 dark:supports-[backdrop-filter]:bg-[#171717]/50 sticky top-0 z-50">
       <div className="flex h-full items-center justify-between px-6">
-        {/* Left Section: Logo (Dashboard only) */}
-        {isDashboard && (
+        {/* Left Section: Logo (Dashboard and Settings only) */}
+        {showLogo && (
           <div className="flex-shrink-0 mr-6">
             <Link to="/app" className="flex items-center">
               <Logo showText={true} />
@@ -187,7 +187,7 @@ export const GlobalNavBar = ({ onSearch }: GlobalNavBarProps) => {
         {/* Center Section: Global Search Bar */}
         <div className={cn(
           "flex-1 flex justify-center min-w-0",
-          isDashboard ? "px-4" : "px-8"
+          showLogo ? "px-4" : "px-8"
         )}>
           <form onSubmit={handleSearch} className="relative hidden md:block w-full max-w-[600px]">
             <div className="relative group">

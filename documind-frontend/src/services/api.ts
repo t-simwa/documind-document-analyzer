@@ -27,6 +27,11 @@ import type {
   ExportRequest,
   ExportFormat,
   AnalysisShareLink,
+  UserProfile,
+  UpdateUserProfileRequest,
+  ChangePasswordRequest,
+  NotificationPreferences,
+  UpdateNotificationPreferencesRequest,
 } from "@/types/api";
 
 // Mock data storage (in a real app, this would be API calls)
@@ -56,6 +61,41 @@ let mockTags: DocumentTag[] = [
 let mockUsers: User[] = [
   { id: "user1", name: "Current User", email: "user@example.com" },
 ];
+
+// Mock user profile data
+let mockUserProfile: UserProfile = {
+  id: "user1",
+  name: "John Doe",
+  email: "john.doe@example.com",
+  avatar: undefined,
+  phone: "+1 (555) 123-4567",
+  bio: "Document analyst and AI enthusiast",
+  createdAt: new Date("2024-01-01"),
+  updatedAt: new Date("2024-01-01"),
+};
+
+// Mock notification preferences
+let mockNotificationPreferences: NotificationPreferences = {
+  emailNotifications: {
+    documentProcessed: true,
+    documentShared: true,
+    comments: true,
+    mentions: true,
+    weeklyDigest: false,
+  },
+  inAppNotifications: {
+    documentProcessed: true,
+    documentShared: true,
+    comments: true,
+    mentions: true,
+  },
+  pushNotifications: {
+    documentProcessed: false,
+    documentShared: false,
+    comments: true,
+    mentions: true,
+  },
+};
 
 // Helper to simulate API delay
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -869,6 +909,76 @@ export const analysisShareApi = {
     if (link) {
       link.isActive = false;
     }
+  },
+};
+
+// User Profile API
+export const userProfileApi = {
+  async getProfile(): Promise<UserProfile> {
+    await delay(300);
+    return { ...mockUserProfile };
+  },
+
+  async updateProfile(data: UpdateUserProfileRequest): Promise<UserProfile> {
+    await delay(400);
+    mockUserProfile = {
+      ...mockUserProfile,
+      ...data,
+      updatedAt: new Date(),
+    };
+    return { ...mockUserProfile };
+  },
+
+  async uploadAvatar(file: File): Promise<{ avatarUrl: string }> {
+    await delay(500);
+    // In a real app, this would upload to a storage service and return the URL
+    const avatarUrl = URL.createObjectURL(file);
+    mockUserProfile = {
+      ...mockUserProfile,
+      avatar: avatarUrl,
+      updatedAt: new Date(),
+    };
+    return { avatarUrl };
+  },
+
+  async changePassword(data: ChangePasswordRequest): Promise<void> {
+    await delay(400);
+    // Validate passwords match
+    if (data.newPassword !== data.confirmPassword) {
+      throw new Error("New passwords do not match");
+    }
+    // In a real app, this would validate current password and update it
+    // For mock, we just simulate success
+  },
+
+  async getNotificationPreferences(): Promise<NotificationPreferences> {
+    await delay(200);
+    return { ...mockNotificationPreferences };
+  },
+
+  async updateNotificationPreferences(
+    data: UpdateNotificationPreferencesRequest
+  ): Promise<NotificationPreferences> {
+    await delay(300);
+    if (data.emailNotifications) {
+      mockNotificationPreferences.emailNotifications = {
+        ...mockNotificationPreferences.emailNotifications,
+        ...data.emailNotifications,
+      };
+    }
+    if (data.inAppNotifications) {
+      mockNotificationPreferences.inAppNotifications = {
+        ...mockNotificationPreferences.inAppNotifications,
+        ...data.inAppNotifications,
+      };
+    }
+    if (data.pushNotifications) {
+      mockNotificationPreferences.pushNotifications = {
+        ...mockNotificationPreferences.pushNotifications,
+        ...data.pushNotifications,
+      };
+    }
+    return { ...mockNotificationPreferences };
   },
 };
 

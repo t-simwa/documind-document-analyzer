@@ -15,6 +15,7 @@ import IntegrationsPage from "./pages/products/IntegrationsPage";
 import AnalyticsPage from "./pages/products/AnalyticsPage";
 import MobilePage from "./pages/products/MobilePage";
 import ResourcesPage from "./pages/ResourcesPage";
+import UserProfileSettings from "./pages/UserProfileSettings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ const App = () => (
           <Route path="/resources" element={<ResourcesPage />} />
           <Route path="/app" element={<Dashboard />} />
           <Route path="/app/documents" element={<Documents />} />
+          <Route path="/app/settings" element={<UserProfileSettings />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
