@@ -98,8 +98,10 @@ async def process_document_async(
 ) -> None:
     """
     Background task to process a document
-    This would integrate with the RAG pipeline when implemented
+    Integrates with document ingestion service and RAG pipeline
     """
+    from app.services.document_ingestion import DocumentIngestionService
+    
     task_id = f"doc_process_{document_id}"
     task_queue.add_task(
         task_id=task_id,
@@ -115,21 +117,56 @@ async def process_document_async(
             file_type=file_type
         )
         
-        # Simulate processing steps
-        # In production, this would:
-        # 1. Load document
-        # 2. Extract text
-        # 3. Chunk document
-        # 4. Generate embeddings
-        # 5. Store in vector database
-        # 6. Update document status
+        # Step 1: Ingest document using document ingestion service
+        ingestion_service = DocumentIngestionService()
         
-        await asyncio.sleep(1)  # Simulate processing time
+        # Determine file extension
+        file_ext = f".{file_type}" if file_type and not file_type.startswith('.') else file_type
+        
+        # Ingest document
+        document_content = await ingestion_service.ingest_document(
+            file_path=file_path,
+            file_type=file_ext
+        )
+        
+        # Update task with ingestion results
+        task_queue.update_task_status(
+            task_id=task_id,
+            status="processing",
+            result={
+                "document_id": document_id,
+                "status": "ingested",
+                "content_length": len(document_content.text),
+                "page_count": len(document_content.pages) if document_content.pages else 0,
+                "table_count": len(document_content.tables) if document_content.tables else 0,
+                "metadata": document_content.metadata
+            }
+        )
+        
+        logger.info(
+            "document_ingestion_completed",
+            document_id=document_id,
+            content_length=len(document_content.text),
+            page_count=len(document_content.pages) if document_content.pages else 0
+        )
+        
+        # TODO: Step 2: Chunk document (to be implemented)
+        # TODO: Step 3: Generate embeddings (to be implemented)
+        # TODO: Step 4: Store in vector database (to be implemented)
+        # TODO: Step 5: Update document status (to be implemented)
+        
+        # For now, simulate remaining processing steps
+        await asyncio.sleep(0.5)  # Simulate chunking, embedding, indexing
         
         task_queue.update_task_status(
             task_id=task_id,
             status="completed",
-            result={"document_id": document_id, "status": "processed"}
+            result={
+                "document_id": document_id,
+                "status": "processed",
+                "content_length": len(document_content.text),
+                "metadata": document_content.metadata
+            }
         )
         
         logger.info("document_processing_completed", document_id=document_id)
