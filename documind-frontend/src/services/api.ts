@@ -32,7 +32,11 @@ import type {
   ChangePasswordRequest,
   NotificationPreferences,
   UpdateNotificationPreferencesRequest,
+  SecurityScanResult,
+  ProcessingStatus,
 } from "@/types/api";
+import { performSecurityScan } from "./securityScanService";
+import { processDocument, retryProcessing } from "./processingQueueService";
 
 // Mock data storage (in a real app, this would be API calls)
 let mockProjects: Project[] = [
@@ -299,7 +303,7 @@ export const documentsApi = {
     const newDoc: Document = {
       id: docId,
       name: file.name,
-      status: "ready", // Set to ready by default for testing
+      status: "processing", // Start as processing to trigger security scan and processing
       uploadedAt: new Date(),
       uploadedBy: "user1",
       size: file.size,
@@ -309,6 +313,14 @@ export const documentsApi = {
       metadata: {
         pageCount: file.type === "application/pdf" ? 10 : undefined, // Mock page count for PDFs
       },
+      securityScan: {
+        status: "pending",
+      },
+      processingStatus: {
+        currentStep: "upload",
+        progress: 0,
+        steps: [],
+      },
     };
     mockDocuments.push(newDoc);
     return newDoc;
@@ -317,6 +329,83 @@ export const documentsApi = {
   async getFileUrl(id: string): Promise<string | null> {
     // In a real app, this would be: `/api/v1/documents/${id}/download`
     return documentFileMap.get(id) || null;
+  },
+
+  async getSecurityScanStatus(id: string): Promise<SecurityScanResult | null> {
+    await delay(200);
+    const doc = mockDocuments.find((d) => d.id === id);
+    return doc?.securityScan || null;
+  },
+
+  async getProcessingStatus(id: string): Promise<ProcessingStatus | null> {
+    await delay(200);
+    const doc = mockDocuments.find((d) => d.id === id);
+    return doc?.processingStatus || null;
+  },
+
+  async updateSecurityScanStatus(id: string, scanResult: SecurityScanResult): Promise<void> {
+    await delay(200);
+    const doc = mockDocuments.find((d) => d.id === id);
+    if (doc) {
+      doc.securityScan = scanResult;
+    }
+  },
+
+  async updateProcessingStatus(id: string, status: ProcessingStatus): Promise<void> {
+    await delay(200);
+    const doc = mockDocuments.find((d) => d.id === id);
+    if (doc) {
+      doc.processingStatus = status;
+      // Update document status based on processing status
+      if (status.progress === 100 && !status.error) {
+        doc.status = "ready";
+      } else if (status.error && !status.error.recoverable) {
+        doc.status = "error";
+      } else {
+        doc.status = "processing";
+      }
+    }
+  },
+
+  async startSecurityScan(id: string, file: File): Promise<SecurityScanResult> {
+    await delay(300);
+    const scanResult = await performSecurityScan(file);
+    await this.updateSecurityScanStatus(id, scanResult);
+    return scanResult;
+  },
+
+  async startProcessing(
+    id: string,
+    fileName: string,
+    fileType: string,
+    onStatusUpdate?: (status: ProcessingStatus) => void
+  ): Promise<ProcessingStatus> {
+    await delay(300);
+    const processingStatus = await processDocument(id, fileName, fileType, async (status) => {
+      await this.updateProcessingStatus(id, status);
+      if (onStatusUpdate) {
+        onStatusUpdate(status);
+      }
+    });
+    await this.updateProcessingStatus(id, processingStatus);
+    return processingStatus;
+  },
+
+  async retryProcessing(
+    id: string,
+    fileName: string,
+    fileType: string,
+    onStatusUpdate?: (status: ProcessingStatus) => void
+  ): Promise<ProcessingStatus> {
+    await delay(300);
+    const processingStatus = await retryProcessing(id, fileName, fileType, async (status) => {
+      await this.updateProcessingStatus(id, status);
+      if (onStatusUpdate) {
+        onStatusUpdate(status);
+      }
+    });
+    await this.updateProcessingStatus(id, processingStatus);
+    return processingStatus;
   },
 
   async update(

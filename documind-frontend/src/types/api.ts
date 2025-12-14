@@ -27,6 +27,69 @@ export interface Document {
     language?: string;
     [key: string]: any;
   };
+  securityScan?: SecurityScanResult;
+  processingStatus?: ProcessingStatus;
+}
+
+export interface SecurityScanResult {
+  status: "pending" | "scanning" | "clean" | "threat_detected" | "error";
+  scannedAt?: Date;
+  malwareScan?: {
+    status: "pending" | "scanning" | "clean" | "threat_detected" | "error";
+    scannedAt?: Date;
+    threats?: SecurityThreat[];
+  };
+  virusScan?: {
+    status: "pending" | "scanning" | "clean" | "threat_detected" | "error";
+    scannedAt?: Date;
+    threats?: SecurityThreat[];
+  };
+  error?: string;
+}
+
+export interface SecurityThreat {
+  type: "malware" | "virus" | "suspicious_content" | "phishing";
+  name: string;
+  severity: "low" | "medium" | "high" | "critical";
+  description: string;
+  detectedAt: Date;
+}
+
+export interface ProcessingStatus {
+  currentStep: string;
+  progress: number; // 0-100
+  steps: ProcessingStepStatus[];
+  ocrStatus?: OCRStatus;
+  error?: ProcessingError;
+  queuePosition?: number;
+  estimatedTimeRemaining?: number; // in seconds
+}
+
+export interface ProcessingStepStatus {
+  id: string;
+  label: string;
+  status: "pending" | "processing" | "completed" | "error";
+  startedAt?: Date;
+  completedAt?: Date;
+  error?: string;
+}
+
+export interface OCRStatus {
+  status: "not_required" | "pending" | "processing" | "completed" | "error";
+  progress?: number; // 0-100
+  pagesProcessed?: number;
+  totalPages?: number;
+  language?: string;
+  error?: string;
+}
+
+export interface ProcessingError {
+  code: string;
+  message: string;
+  step: string;
+  occurredAt: Date;
+  recoverable: boolean;
+  retryCount?: number;
 }
 
 export interface DocumentTag {

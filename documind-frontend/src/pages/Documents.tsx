@@ -15,13 +15,15 @@ import { Button } from "@/components/ui/button";
 import { GitCompare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { documentsApi } from "@/services/api";
-import type { Document } from "@/types/api";
+import type { Document, ProcessingStatus as ProcessingStatusType, SecurityScanResult } from "@/types/api";
 
 type ViewState = "empty" | "upload" | "processing" | "chat" | "list" | "multi-select" | "cross-document";
 
 const processingSteps = [
   { id: "upload", label: "Secure Upload", description: "Uploading to encrypted storage", status: "pending" as const },
+  { id: "security_scan", label: "Security Scan", description: "Scanning for malware and viruses", status: "pending" as const },
   { id: "extract", label: "Text Extraction", description: "Parsing document content", status: "pending" as const },
+  { id: "ocr", label: "OCR Processing", description: "Extracting text from images", status: "pending" as const },
   { id: "chunk", label: "Smart Chunking", description: "Splitting into semantic sections", status: "pending" as const },
   { id: "embed", label: "Vector Embeddings", description: "Creating searchable representations", status: "pending" as const },
   { id: "index", label: "Indexing", description: "Building retrieval index", status: "pending" as const },
@@ -47,6 +49,9 @@ const Documents = () => {
   const [viewState, setViewState] = useState<ViewState>("list");
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+  const [processingStatus, setProcessingStatus] = useState<ProcessingStatusType | null>(null);
+  const [securityScanResult, setSecurityScanResult] = useState<SecurityScanResult | null>(null);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [processingDocName, setProcessingDocName] = useState("");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -104,46 +109,64 @@ const Documents = () => {
     setSelectedDocId(null);
   };
 
-  const simulateProcessing = useCallback(async (docName: string, docId: string, docProjectId?: string | null) => {
+  const processDocumentWithSecurity = useCallback(async (
+    docName: string,
+    docId: string,
+    file: File,
+    docProjectId?: string | null
+  ) => {
     setProcessingDocName(docName);
     setViewState("processing");
     setCurrentStep(0);
+    setSecurityScanResult(null);
+    setProcessingStatus(null);
 
-    // Show processing animation (document is already ready, but we show the simulation)
-    for (let i = 0; i < processingSteps.length; i++) {
-      setCurrentStep(i);
-      await new Promise((resolve) => setTimeout(resolve, 800)); // Slightly faster for better UX
-    }
-
-    // Document is already ready, just reload to ensure UI is updated
     try {
-      // Get the document directly by ID, or reload documents for the document's project
-      // This ensures we find the document regardless of the currently selected project
-      let updatedDoc: Document | undefined;
-      
-      // First, try to get the document directly
-      try {
-        updatedDoc = await documentsApi.get(docId);
-      } catch (e) {
-        // If direct get fails, reload documents for the document's project
-        const response = await documentsApi.list({ projectId: docProjectId });
-        updatedDoc = response.documents.find((d) => d.id === docId);
-      }
-      
-      // If still not found, reload all documents (no filter)
-      if (!updatedDoc) {
-        const response = await documentsApi.list();
-        updatedDoc = response.documents.find((d) => d.id === docId);
-      }
-      
-      if (updatedDoc && updatedDoc.status === "ready") {
-        // Reload documents for the current view (selected project or all)
+      // Step 1: Security Scan
+      setCurrentStep(1); // security_scan step
+      const scanResult = await documentsApi.startSecurityScan(docId, file);
+      setSecurityScanResult(scanResult);
+
+      // If threat detected, stop processing
+      if (scanResult.status === "threat_detected") {
+        toast({
+          title: "Security Threat Detected",
+          description: "The uploaded file contains a security threat and cannot be processed.",
+          variant: "destructive",
+        });
+        // Update document status to error
         const response = await documentsApi.list({ projectId: selectedProjectId });
         setDocuments(response.documents);
-        
-        // Set the selected document and open split viewer
+        setViewState("list");
+        return;
+      }
+
+      // Step 2: Start document processing
+      const fileType = file.type || "";
+      const processingStatus = await documentsApi.startProcessing(
+        docId,
+        docName,
+        fileType,
+        (status) => {
+          setProcessingStatus(status);
+          // Update current step based on processing status
+          const stepIndex = processingSteps.findIndex(step => step.id === status.currentStep);
+          if (stepIndex >= 0) {
+            setCurrentStep(stepIndex);
+          }
+        }
+      );
+
+      setProcessingStatus(processingStatus);
+
+      // Reload documents to get updated status
+      const response = await documentsApi.list({ projectId: selectedProjectId });
+      setDocuments(response.documents);
+
+      // Check if processing completed successfully
+      const updatedDoc = response.documents.find((d) => d.id === docId);
+      if (updatedDoc && updatedDoc.status === "ready") {
         setSelectedDocId(docId);
-        // Use setTimeout to ensure state updates are processed before changing view
         setTimeout(() => {
           setViewState("chat");
         }, 50);
@@ -151,32 +174,87 @@ const Documents = () => {
           title: "Document Ready",
           description: `${docName} has been processed successfully. You can now analyze it.`,
         });
+      } else if (updatedDoc && updatedDoc.status === "error") {
+        toast({
+          title: "Processing Error",
+          description: "An error occurred during document processing.",
+          variant: "destructive",
+        });
+        setViewState("list");
       } else {
-        // Reload documents for the current view
-        const response = await documentsApi.list({ projectId: selectedProjectId });
-        setDocuments(response.documents);
         setViewState("list");
         toast({
-          title: "Document Ready",
-          description: `${docName} has been processed successfully.`,
+          title: "Processing Complete",
+          description: `${docName} processing has completed.`,
         });
       }
     } catch (error) {
-      console.error("Failed to reload documents:", error);
-      // Reload documents for the current view
+      console.error("Processing error:", error);
+      toast({
+        title: "Processing Failed",
+        description: "Failed to process document. Please try again.",
+        variant: "destructive",
+      });
       const response = await documentsApi.list({ projectId: selectedProjectId });
       setDocuments(response.documents);
       setViewState("list");
-      toast({
-        title: "Document Ready",
-        description: `${docName} has been processed successfully.`,
-      });
     }
   }, [selectedProjectId, toast]);
+
+  const handleRetryProcessing = useCallback(async () => {
+    if (!uploadedFile || !selectedDocId) return;
+
+    const doc = documents.find((d) => d.id === selectedDocId);
+    if (!doc) return;
+
+    try {
+      const fileType = uploadedFile.type || "";
+      const processingStatus = await documentsApi.retryProcessing(
+        selectedDocId,
+        doc.name,
+        fileType,
+        (status) => {
+          setProcessingStatus(status);
+          const stepIndex = processingSteps.findIndex(step => step.id === status.currentStep);
+          if (stepIndex >= 0) {
+            setCurrentStep(stepIndex);
+          }
+        }
+      );
+
+      setProcessingStatus(processingStatus);
+
+      // Reload documents
+      const response = await documentsApi.list({ projectId: selectedProjectId });
+      setDocuments(response.documents);
+
+      if (processingStatus.progress === 100 && !processingStatus.error) {
+        const updatedDoc = response.documents.find((d) => d.id === selectedDocId);
+        if (updatedDoc && updatedDoc.status === "ready") {
+          setSelectedDocId(selectedDocId);
+          setTimeout(() => {
+            setViewState("chat");
+          }, 50);
+          toast({
+            title: "Processing Complete",
+            description: "Document has been processed successfully.",
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Retry error:", error);
+      toast({
+        title: "Retry Failed",
+        description: "Failed to retry processing. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [uploadedFile, selectedDocId, documents, selectedProjectId, toast]);
 
   const handleUpload = useCallback(async (files: File[], projectId?: string | null) => {
     setIsLoading(true);
     setUploadProgress(0);
+    setUploadedFile(files[0]);
 
     const progressInterval = setInterval(() => {
       setUploadProgress((prev) => Math.min(prev + 15, 95));
@@ -194,8 +272,8 @@ const Documents = () => {
       setDocuments(response.documents);
 
       setIsLoading(false);
-      // Pass the projectId that was used for upload to simulateProcessing
-      simulateProcessing(file.name, newDoc.id, newDoc.projectId);
+      // Start security scan and processing
+      await processDocumentWithSecurity(file.name, newDoc.id, file, newDoc.projectId);
     } catch (error) {
       clearInterval(progressInterval);
       setIsLoading(false);
@@ -205,7 +283,7 @@ const Documents = () => {
         variant: "destructive",
       });
     }
-  }, [selectedProjectId, simulateProcessing, toast]);
+  }, [selectedProjectId, processDocumentWithSecurity, toast]);
 
   const handleSelectDocument = (id: string) => {
     const doc = documents.find((d) => d.id === id);
@@ -215,6 +293,15 @@ const Documents = () => {
     } else if (doc?.status === "processing") {
       setViewState("processing");
       setProcessingDocName(doc.name);
+      setSecurityScanResult(doc.securityScan || null);
+      setProcessingStatus(doc.processingStatus || null);
+      // Set current step based on processing status
+      if (doc.processingStatus) {
+        const stepIndex = processingSteps.findIndex(step => step.id === doc.processingStatus?.currentStep);
+        if (stepIndex >= 0) {
+          setCurrentStep(stepIndex);
+        }
+      }
     }
   };
 
@@ -373,15 +460,35 @@ const Documents = () => {
         );
 
       case "processing":
+        // Map processing status steps to display steps
+        const displaySteps = processingSteps.map((step, index) => {
+          const stepStatus = processingStatus?.steps.find(s => s.id === step.id);
+          let status: "pending" | "processing" | "completed" | "error" = "pending";
+          
+          if (stepStatus) {
+            status = stepStatus.status;
+          } else if (index < currentStep) {
+            status = "completed";
+          } else if (index === currentStep) {
+            status = "processing";
+          }
+
+          return {
+            ...step,
+            status,
+          };
+        });
+
         return (
-          <div className="flex items-center justify-center h-full p-6">
+          <div className="flex items-start justify-center h-full p-4 overflow-y-auto">
             <ProcessingStatus
-              steps={processingSteps.map((step, index) => ({
-                ...step,
-                status: index < currentStep ? "completed" : index === currentStep ? "processing" : "pending",
-              }))}
+              steps={displaySteps}
               currentStep={currentStep}
               documentName={processingDocName}
+              securityScan={securityScanResult || undefined}
+              ocrStatus={processingStatus?.ocrStatus}
+              processingError={processingStatus?.error}
+              onRetry={handleRetryProcessing}
             />
           </div>
         );
