@@ -198,12 +198,17 @@ class ChromaVectorStore(BaseVectorStore):
             texts = [doc.document for doc in documents]
             
             # Filter out None values from metadata (ChromaDB doesn't accept None)
+            # ChromaDB requires at least one metadata attribute
             metadatas = []
             for doc in documents:
                 clean_metadata = {
                     k: v for k, v in doc.metadata.items()
                     if v is not None
                 }
+                # ChromaDB requires at least one metadata field
+                # Add a dummy field if metadata is empty
+                if not clean_metadata:
+                    clean_metadata = {"_placeholder": "true"}
                 metadatas.append(clean_metadata)
             
             collection.add(

@@ -39,7 +39,29 @@ class RetrievalService:
             keyword_search: Keyword search service instance
         """
         self.embedding_service = embedding_service or EmbeddingService()
-        self.vector_store = vector_store or VectorStoreService()
+        
+        # Get dimension from embedding service if vector_store not provided
+        if vector_store is None:
+            try:
+                # Get dimension from embedding provider
+                dimension = self.embedding_service.provider.get_embedding_dimension()
+                self.vector_store = VectorStoreService(dimension=dimension)
+                logger.debug(
+                    "vector_store_initialized_with_embedding_dimension",
+                    dimension=dimension,
+                    provider=self.embedding_service.provider_name
+                )
+            except Exception as e:
+                # Fallback to default if dimension detection fails
+                logger.warning(
+                    "failed_to_get_embedding_dimension",
+                    error=str(e),
+                    using_default=True
+                )
+                self.vector_store = VectorStoreService()
+        else:
+            self.vector_store = vector_store
+        
         self.keyword_search = keyword_search or KeywordSearchService(
             k1=settings.RETRIEVAL_BM25_K1,
             b=settings.RETRIEVAL_BM25_B

@@ -138,6 +138,30 @@ class Settings(BaseSettings):
     RETRIEVAL_BM25_K1: float = 1.5  # BM25 k1 parameter
     RETRIEVAL_BM25_B: float = 0.75  # BM25 b parameter
     
+    # LLM Configuration
+    LLM_PROVIDER: str = "ollama"  # openai, gemini, claude, ollama (FREE), huggingface (FREE tier)
+    LLM_MODEL: str = "llama3"  # Model name (e.g., "gpt-4", "gemini-pro", "llama3", "mistralai/Mistral-7B-Instruct-v0.2")
+    LLM_TEMPERATURE: float = 0.7  # Temperature for generation (0-2)
+    LLM_MAX_TOKENS: int = 2000  # Maximum tokens in response
+    LLM_TOP_P: float = 1.0  # Top-p sampling parameter
+    LLM_FREQUENCY_PENALTY: float = 0.0  # Frequency penalty
+    LLM_PRESENCE_PENALTY: float = 0.0  # Presence penalty
+    LLM_TIMEOUT: int = 60  # Request timeout in seconds
+    LLM_MAX_RETRIES: int = 3  # Maximum retries for failed requests
+    LLM_STREAM_ENABLED: bool = True  # Enable streaming responses
+    
+    # Anthropic Claude Configuration
+    ANTHROPIC_API_KEY: str = ""
+    ANTHROPIC_MODEL: str = "claude-3-opus-20240229"
+    
+    # Ollama Configuration (Supports Local and Cloud)
+    OLLAMA_BASE_URL: str = "https://ollama.com"  # Ollama API URL (https://ollama.com for cloud, http://localhost:11434 for local)
+    OLLAMA_API_KEY: str = ""  # Required for Ollama Cloud (get from https://ollama.com), not needed for local
+    
+    # Hugging Face Configuration (FREE tier available)
+    HUGGINGFACE_API_KEY: str = ""  # Get free token from https://huggingface.co/settings/tokens
+    HUGGINGFACE_MODEL: str = "mistralai/Mistral-7B-Instruct-v0.2"  # Default model
+    
     @field_validator("CORS_ORIGINS", "CORS_METHODS", "CORS_HEADERS", "ALLOWED_EXTENSIONS", mode="before")
     @classmethod
     def parse_comma_separated(cls, v: Union[str, List[str]]) -> List[str]:

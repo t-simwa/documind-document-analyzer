@@ -9,6 +9,7 @@ from datetime import datetime
 from app.api.v1.health import routes as health_routes
 from app.api.v1.health.schemas import HealthResponse
 from app.api.v1.tasks import routes as tasks_routes
+from app.api.v1.query import routes as query_routes
 from app.core.config import settings
 
 # Create main v1 router
@@ -41,6 +42,12 @@ api_router.include_router(
     tasks_routes.router,
     prefix="/tasks",
     tags=["Tasks"]
+)
+
+api_router.include_router(
+    query_routes.router,
+    prefix="/query",
+    tags=["Query"]
 )
 
 # Additional routers will be added here as they are implemented
