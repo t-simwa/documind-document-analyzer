@@ -111,6 +111,33 @@ class Settings(BaseSettings):
     QDRANT_COLLECTION_NAME: str = "documind"
     QDRANT_DIMENSION: int = 1536
     
+    # Retrieval Configuration
+    RETRIEVAL_SEARCH_TYPE: str = "hybrid"  # vector, keyword, hybrid
+    RETRIEVAL_TOP_K: int = 10
+    RETRIEVAL_VECTOR_WEIGHT: float = 0.7  # Weight for vector search in hybrid (0-1)
+    RETRIEVAL_KEYWORD_WEIGHT: float = 0.3  # Weight for keyword search in hybrid (0-1)
+    RETRIEVAL_FUSION_METHOD: str = "rrf"  # rrf, weighted, mean
+    RETRIEVAL_RRF_K: int = 60  # RRF constant
+    
+    # Re-ranking Configuration
+    RETRIEVAL_RERANK_ENABLED: bool = False
+    RETRIEVAL_RERANK_PROVIDER: str = "cohere"  # cohere, cross_encoder, none
+    RETRIEVAL_RERANK_TOP_N: int = 20  # Re-rank top N results
+    RETRIEVAL_RERANK_THRESHOLD: float = 0.0  # Minimum score threshold for re-ranking
+    RETRIEVAL_RERANK_MODEL: str = "rerank-english-v3.0"  # Cohere rerank model
+    
+    # Query Optimization
+    RETRIEVAL_QUERY_EXPANSION_ENABLED: bool = False
+    RETRIEVAL_QUERY_PREPROCESSING_ENABLED: bool = True
+    
+    # Deduplication
+    RETRIEVAL_DEDUPLICATION_ENABLED: bool = True
+    RETRIEVAL_DEDUPLICATION_THRESHOLD: float = 0.95  # Similarity threshold for deduplication
+    
+    # BM25 Configuration
+    RETRIEVAL_BM25_K1: float = 1.5  # BM25 k1 parameter
+    RETRIEVAL_BM25_B: float = 0.75  # BM25 b parameter
+    
     @field_validator("CORS_ORIGINS", "CORS_METHODS", "CORS_HEADERS", "ALLOWED_EXTENSIONS", mode="before")
     @classmethod
     def parse_comma_separated(cls, v: Union[str, List[str]]) -> List[str]:
