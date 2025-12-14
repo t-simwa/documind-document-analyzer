@@ -150,13 +150,63 @@ async def process_document_async(
             page_count=len(document_content.pages) if document_content.pages else 0
         )
         
-        # TODO: Step 2: Chunk document (to be implemented)
+        # Step 2: Chunk document using chunking service
+        from app.services.chunking import ChunkingService, ChunkingConfig
+        
+        # Detect document type from metadata if available
+        doc_type = None
+        if metadata:
+            doc_type = metadata.get("document_type")
+        
+        # Create chunking service with appropriate config
+        chunking_config = ChunkingConfig(document_type=doc_type)
+        chunking_service = ChunkingService(config=chunking_config)
+        
+        # Chunk the document
+        chunks = chunking_service.chunk_document(
+            document_content=document_content,
+            document_id=document_id,
+            document_type=doc_type
+        )
+        
+        # Update task with chunking results
+        task_queue.update_task_status(
+            task_id=task_id,
+            status="processing",
+            result={
+                "document_id": document_id,
+                "status": "chunked",
+                "content_length": len(document_content.text),
+                "page_count": len(document_content.pages) if document_content.pages else 0,
+                "chunk_count": len(chunks),
+                "chunks": [
+                    {
+                        "chunk_index": chunk.chunk_index,
+                        "char_count": chunk.char_count,
+                        "word_count": chunk.word_count,
+                        "page_number": chunk.page_number,
+                        "section": chunk.section,
+                        "heading": chunk.heading,
+                    }
+                    for chunk in chunks[:10]  # Include first 10 chunks in result
+                ],
+                "metadata": document_content.metadata
+            }
+        )
+        
+        logger.info(
+            "document_chunking_completed",
+            document_id=document_id,
+            chunk_count=len(chunks),
+            avg_chunk_size=sum(len(c.text) for c in chunks) / len(chunks) if chunks else 0
+        )
+        
         # TODO: Step 3: Generate embeddings (to be implemented)
         # TODO: Step 4: Store in vector database (to be implemented)
         # TODO: Step 5: Update document status (to be implemented)
         
         # For now, simulate remaining processing steps
-        await asyncio.sleep(0.5)  # Simulate chunking, embedding, indexing
+        await asyncio.sleep(0.5)  # Simulate embedding, indexing
         
         task_queue.update_task_status(
             task_id=task_id,
@@ -165,6 +215,7 @@ async def process_document_async(
                 "document_id": document_id,
                 "status": "processed",
                 "content_length": len(document_content.text),
+                "chunk_count": len(chunks),
                 "metadata": document_content.metadata
             }
         )

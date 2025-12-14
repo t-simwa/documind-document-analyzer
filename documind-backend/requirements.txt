@@ -52,6 +52,7 @@ chardet==5.2.0
 pandas==2.1.3
 unstructured==0.11.6
 langdetect==1.0.9  # Language detection for text preprocessing
+# Note: Custom RecursiveCharacterTextSplitter implementation in chunking_service.py (no external dependency needed)
 
 # Testing (Development)
 pytest==7.4.3
