@@ -809,7 +809,7 @@ The project now has a **complete backend architecture** with FastAPI, middleware
     - [ ] Add performance monitoring
     - [ ] Create health check dashboards
 
-### VIII. RAG Pipeline (12.5% Complete)
+### VIII. RAG Pipeline (25% Complete)
 
 #### ✅ Document Ingestion - IMPLEMENTED (100%)
 
@@ -836,15 +836,34 @@ The project now has a **complete backend architecture** with FastAPI, middleware
 - Integrated into document processing pipeline
 - See `docs/DOCUMENT_INGESTION_VERIFICATION.md` for testing instructions
 
-- ⚠️ **Pre-processing** - PARTIALLY IMPLEMENTED
-  - ❌ No page number removal
-  - ❌ No header/footer removal
+- ✅ **Pre-processing** - IMPLEMENTED (100%)
+  - ✅ Page number removal - `app/services/document_loaders/preprocessing.py`
+  - ✅ Header/footer removal - `app/services/document_loaders/preprocessing.py`
   - ✅ Table extraction (implemented in DOCX, Excel, CSV, PPTX loaders)
   - ✅ Image extraction/OCR (implemented in ImageLoader)
   - ✅ Metadata extraction (implemented in all loaders)
   - ✅ Text cleaning (basic normalization in base loader)
   - ✅ Encoding normalization (implemented in TextLoader with chardet)
-  - ❌ No language detection
+  - ✅ Language detection (langdetect) - `app/services/document_loaders/preprocessing.py`
+
+**Implementation Details:**
+- Preprocessing utilities in `app/services/document_loaders/preprocessing.py`
+- Page number removal with multiple pattern detection:
+  - Standalone numbers (1, 2, 3, etc.)
+  - "Page X" or "Page X of Y" formats
+  - "- X -" format
+  - "X / Y" or "X/Y" formats
+  - Numbers at start/end of lines
+- Header/footer removal by identifying repetitive lines across pages (minimum 2 occurrences)
+- Language detection using langdetect library with confidence scores and top 5 languages
+- All preprocessing integrated into all document loaders (PDF, DOCX, TXT, Markdown, PPTX, Image OCR)
+- Excel/CSV loaders use language detection only (no page numbers/headers removal)
+- Preprocessing metadata included in document content:
+  - `page_numbers_removed`: Count of removed page numbers
+  - `headers_footers_removed`: Count of removed header/footer lines
+  - `detected_language`: Primary language code (e.g., 'en', 'es', 'fr')
+  - `language_confidence`: Confidence score (0.0 to 1.0)
+  - `language_detection_method`: Detection method used
 
 #### ❌ Chunking Strategy - NOT IMPLEMENTED
 

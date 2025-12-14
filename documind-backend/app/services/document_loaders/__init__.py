@@ -8,6 +8,12 @@ from .excel_loader import ExcelLoader, CSVLoader
 from .pptx_loader import PPTXLoader
 from .image_loader import ImageLoader
 from .factory import DocumentLoaderFactory
+from .preprocessing import (
+    remove_page_numbers,
+    remove_headers_footers,
+    detect_language,
+    preprocess_text,
+)
 
 __all__ = [
     "DocumentLoader",
@@ -22,5 +28,9 @@ __all__ = [
     "PPTXLoader",
     "ImageLoader",
     "DocumentLoaderFactory",
+    "remove_page_numbers",
+    "remove_headers_footers",
+    "detect_language",
+    "preprocess_text",
 ]
 

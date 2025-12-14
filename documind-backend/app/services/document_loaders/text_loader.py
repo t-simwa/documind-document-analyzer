@@ -36,12 +36,32 @@ class TextLoader(DocumentLoader):
             with open(self.file_path, 'r', encoding=encoding, errors='replace') as file:
                 text = file.read()
             
+            # Apply preprocessing
+            from .preprocessing import preprocess_text
+            preprocess_result = preprocess_text(
+                text,
+                remove_page_nums=True,
+                remove_headers_footers=True,
+                detect_lang=True
+            )
+            text = preprocess_result["text"]
+            
             # Normalize text
-            normalized_text = self._normalize_text(text)
+            normalized_text = self._normalize_text(text, apply_preprocessing=False)
             
             # Extract line and word counts
             lines = normalized_text.split('\n')
             words = normalized_text.split()
+            
+            # Add preprocessing metadata
+            if "page_numbers_removed" in preprocess_result:
+                metadata["page_numbers_removed"] = preprocess_result["page_numbers_removed"]
+            if "headers_footers_removed" in preprocess_result:
+                metadata["headers_footers_removed"] = preprocess_result["headers_footers_removed"]
+            if "language_detection" in preprocess_result:
+                lang_info = preprocess_result["language_detection"]
+                metadata["detected_language"] = lang_info.get("language", "unknown")
+                metadata["language_confidence"] = lang_info.get("confidence", 0.0)
             
             metadata.update({
                 "encoding": encoding,
@@ -146,7 +166,27 @@ class TextLoader(DocumentLoader):
                     text_parts.append(file.read())
             
             text = ''.join(text_parts)
-            normalized_text = self._normalize_text(text)
+            
+            # Apply preprocessing
+            from .preprocessing import preprocess_text
+            preprocess_result = preprocess_text(
+                text,
+                remove_page_nums=True,
+                remove_headers_footers=True,
+                detect_lang=True
+            )
+            text = preprocess_result["text"]
+            normalized_text = self._normalize_text(text, apply_preprocessing=False)
+            
+            # Add preprocessing metadata
+            if "page_numbers_removed" in preprocess_result:
+                metadata["page_numbers_removed"] = preprocess_result["page_numbers_removed"]
+            if "headers_footers_removed" in preprocess_result:
+                metadata["headers_footers_removed"] = preprocess_result["headers_footers_removed"]
+            if "language_detection" in preprocess_result:
+                lang_info = preprocess_result["language_detection"]
+                metadata["detected_language"] = lang_info.get("language", "unknown")
+                metadata["language_confidence"] = lang_info.get("confidence", 0.0)
             
             metadata.update({
                 "encoding": encoding,
@@ -178,7 +218,7 @@ class MarkdownLoader(TextLoader):
             DocumentContent: Extracted content with text and metadata
         """
         try:
-            # Use parent class to load text
+            # Use parent class to load text (preprocessing already applied)
             content = super().load()
             
             # Add Markdown-specific metadata

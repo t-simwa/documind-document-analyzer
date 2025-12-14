@@ -11,6 +11,7 @@
 - ✅ Markdown loader
 - ✅ CSV/Excel loaders (XLSX, PPTX)
 - ✅ Image-based document OCR (EasyOCR - primary, Tesseract - fallback)
+- ✅ Text preprocessing (page number removal, header/footer removal, language detection)
 - ✅ Error handling for unsupported formats
 - ✅ Large file handling (streaming)
 - ✅ Document loader factory with format detection
@@ -168,7 +169,43 @@
 - Creation and modification dates
 - Table count
 
-### 7. Image OCR Loader ✅
+### 7. Text Preprocessing ✅
+
+**Files Created:**
+- `documind-backend/app/services/document_loaders/preprocessing.py` - Text preprocessing utilities
+
+**Features:**
+- Page number removal with multiple pattern detection
+- Header/footer removal by identifying repetitive lines
+- Language detection using langdetect library
+- Configurable preprocessing options
+- Preprocessing metadata tracking
+
+**Page Number Patterns Detected:**
+- Standalone numbers (1, 2, 3, etc.)
+- "Page X" or "Page X of Y" formats
+- "- X -" format
+- "X / Y" or "X/Y" formats
+- Numbers at start/end of lines
+
+**Header/Footer Removal:**
+- Identifies repetitive lines across pages
+- Minimum repetition threshold (default: 2 occurrences)
+- Preserves unique content
+- Tracks removal count
+
+**Language Detection:**
+- Uses langdetect library (pip-installable)
+- Detects primary language with confidence score
+- Returns top 5 languages with probabilities
+- Works with minimal text (10+ characters)
+
+**Integration:**
+- Automatically applied in all document loaders
+- Preprocessing metadata included in document content
+- Can be disabled per loader if needed
+
+### 8. Image OCR Loader ✅
 
 **Files Created:**
 - `documind-backend/app/services/document_loaders/image_loader.py` - Image OCR loader
@@ -207,7 +244,7 @@
 - **EasyOCR** (recommended): `pip install easyocr` - Works everywhere, cloud-ready
 - **Tesseract** (optional fallback): Requires system installation (not recommended for cloud)
 
-### 8. Document Loader Factory ✅
+### 9. Document Loader Factory ✅
 
 **Files Created:**
 - `documind-backend/app/services/document_loaders/factory.py` - Document loader factory
@@ -235,7 +272,7 @@
 - `get_supported_extensions()`: Returns list of supported extensions
 - `get_supported_mime_types()`: Returns list of supported MIME types
 
-### 9. Document Ingestion Service ✅
+### 10. Document Ingestion Service ✅
 
 **Files Created:**
 - `documind-backend/app/services/document_ingestion.py` - Document ingestion service
@@ -262,7 +299,7 @@
   - CSV: First 10,000 rows
   - PPTX: First 50 slides
 
-### 10. Integration with Processing Pipeline ✅
+### 11. Integration with Processing Pipeline ✅
 
 **Files Modified:**
 - `documind-backend/app/workers/tasks.py` - Integrated document ingestion
@@ -589,7 +626,61 @@ chmod +x tests/run_tests.sh
 - Text from all slides is extracted
 - Slide numbers are correct
 
-### Feature 6: Image OCR Loader
+### Feature 6: Text Preprocessing
+
+#### Test 6.1: Page Number Removal
+
+**Steps:**
+1. Create a test document with page numbers (e.g., PDF with "1", "2", "3" on each page)
+2. Load the document using any loader
+3. Check metadata for `page_numbers_removed` count
+
+**Expected Results:**
+- Page numbers are removed from text
+- Metadata shows count of removed page numbers
+- Text is cleaner without page number artifacts
+
+**What to Verify:**
+- Page numbers are detected and removed
+- Multiple page number formats are handled
+- Count is accurate in metadata
+
+#### Test 6.2: Header/Footer Removal
+
+**Steps:**
+1. Create a multi-page document with repetitive headers/footers
+2. Load the document
+3. Check metadata for `headers_footers_removed` count
+
+**Expected Results:**
+- Repetitive headers/footers are removed
+- Metadata shows count of removed lines
+- Text content is preserved
+
+**What to Verify:**
+- Headers/footers are identified across pages
+- Only repetitive lines are removed
+- Count is accurate in metadata
+
+#### Test 6.3: Language Detection
+
+**Steps:**
+1. Load a document in a specific language (e.g., Spanish, French)
+2. Check metadata for language detection results
+
+**Expected Results:**
+- Language is detected correctly
+- Confidence score is provided (0.0 to 1.0)
+- Metadata includes `detected_language` and `language_confidence`
+
+**What to Verify:**
+- Language detection works for multiple languages
+- Confidence scores are reasonable (>0.5 for clear text)
+- Detection method is recorded in metadata
+
+**Note:** Language detection requires `langdetect` library: `pip install langdetect`
+
+### Feature 7: Image OCR Loader
 
 #### Test 6.1: Image OCR
 
@@ -629,7 +720,7 @@ chmod +x tests/run_tests.sh
 - Page count is accurate
 - Text from all pages is combined
 
-### Feature 7: Document Loader Factory
+### Feature 8: Document Loader Factory
 
 #### Test 7.1: Format Detection
 
@@ -663,7 +754,7 @@ chmod +x tests/run_tests.sh
 - Supported formats are clearly listed
 - Exception handling is graceful
 
-### Feature 8: Document Ingestion Service
+### Feature 9: Document Ingestion Service
 
 #### Test 8.1: Basic Ingestion
 
@@ -724,7 +815,7 @@ chmod +x tests/run_tests.sh
 - Error messages are clear
 - Warnings are helpful
 
-### Feature 9: Integration Testing
+### Feature 10: Integration Testing
 
 #### Test 9.1: End-to-End Processing
 
@@ -807,6 +898,12 @@ Use this checklist to quickly verify all features:
   - [ ] OCR confidence metrics are provided
   - [ ] Multi-page TIFF works
 
+- [ ] **Text Preprocessing**
+  - [ ] Page number removal works
+  - [ ] Header/footer removal works
+  - [ ] Language detection works
+  - [ ] Preprocessing metadata is included
+
 - [ ] **Factory**
   - [ ] Format detection works
   - [ ] Correct loader is selected
@@ -888,6 +985,7 @@ All Document Ingestion features from the gap analysis have been successfully imp
 ✅ **CSV/Excel Loaders** - pandas-based extraction with multi-sheet support  
 ✅ **PPTX Loader** - Slide-by-slide extraction  
 ✅ **Image OCR Loader** - EasyOCR-based OCR (pip-installable, cloud-ready) with Tesseract fallback  
+✅ **Text Preprocessing** - Page number removal, header/footer removal, language detection  
 ✅ **Error Handling** - Comprehensive error handling for unsupported formats  
 ✅ **Large File Handling** - Streaming support for all applicable loaders  
 ✅ **Factory Pattern** - Automatic format detection and loader selection  

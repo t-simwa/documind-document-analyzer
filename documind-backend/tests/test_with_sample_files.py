@@ -95,6 +95,17 @@ async def test_file(file_path: str):
                 value = content.metadata[key]
                 print(f"   {key}: {value}")
         
+        # Preprocessing metadata (new features)
+        print(f"\n🔧 Preprocessing Results:")
+        if 'page_numbers_removed' in content.metadata:
+            print(f"   Page Numbers Removed: {content.metadata['page_numbers_removed']}")
+        if 'headers_footers_removed' in content.metadata:
+            print(f"   Headers/Footers Removed: {content.metadata['headers_footers_removed']}")
+        if 'detected_language' in content.metadata:
+            lang = content.metadata['detected_language']
+            confidence = content.metadata.get('language_confidence', 0.0)
+            print(f"   Detected Language: {lang} (confidence: {confidence:.2%})")
+        
         # Show text preview
         if content.text:
             preview = content.text[:200].replace('\n', ' ')

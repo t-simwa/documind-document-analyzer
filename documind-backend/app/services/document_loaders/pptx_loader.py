@@ -84,7 +84,27 @@ class PPTXLoader(DocumentLoader):
             
             # Combine all text
             combined_text = "\n\n".join(full_text)
-            combined_text = self._normalize_text(combined_text)
+            
+            # Apply preprocessing
+            from .preprocessing import preprocess_text
+            preprocess_result = preprocess_text(
+                combined_text,
+                remove_page_nums=True,
+                remove_headers_footers=True,
+                detect_lang=True
+            )
+            combined_text = preprocess_result["text"]
+            combined_text = self._normalize_text(combined_text, apply_preprocessing=False)
+            
+            # Add preprocessing metadata
+            if "page_numbers_removed" in preprocess_result:
+                metadata["page_numbers_removed"] = preprocess_result["page_numbers_removed"]
+            if "headers_footers_removed" in preprocess_result:
+                metadata["headers_footers_removed"] = preprocess_result["headers_footers_removed"]
+            if "language_detection" in preprocess_result:
+                lang_info = preprocess_result["language_detection"]
+                metadata["detected_language"] = lang_info.get("language", "unknown")
+                metadata["language_confidence"] = lang_info.get("confidence", 0.0)
             
             metadata.update({
                 "table_count": len(tables_data),
@@ -219,7 +239,27 @@ class PPTXLoader(DocumentLoader):
                     full_text.append(f"Slide {slide_num}:\n{normalized_slide_text}")
             
             combined_text = "\n\n".join(full_text)
-            combined_text = self._normalize_text(combined_text)
+            
+            # Apply preprocessing
+            from .preprocessing import preprocess_text
+            preprocess_result = preprocess_text(
+                combined_text,
+                remove_page_nums=True,
+                remove_headers_footers=True,
+                detect_lang=True
+            )
+            combined_text = preprocess_result["text"]
+            combined_text = self._normalize_text(combined_text, apply_preprocessing=False)
+            
+            # Add preprocessing metadata
+            if "page_numbers_removed" in preprocess_result:
+                metadata["page_numbers_removed"] = preprocess_result["page_numbers_removed"]
+            if "headers_footers_removed" in preprocess_result:
+                metadata["headers_footers_removed"] = preprocess_result["headers_footers_removed"]
+            if "language_detection" in preprocess_result:
+                lang_info = preprocess_result["language_detection"]
+                metadata["detected_language"] = lang_info.get("language", "unknown")
+                metadata["language_confidence"] = lang_info.get("confidence", 0.0)
             
             metadata.update({
                 "table_count": len(tables_data),

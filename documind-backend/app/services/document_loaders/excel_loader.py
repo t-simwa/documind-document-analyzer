@@ -69,7 +69,23 @@ class ExcelLoader(DocumentLoader):
             
             # Combine all text
             combined_text = "\n\n".join(full_text)
-            combined_text = self._normalize_text(combined_text)
+            
+            # Apply preprocessing (language detection only for Excel/CSV)
+            from .preprocessing import preprocess_text
+            preprocess_result = preprocess_text(
+                combined_text,
+                remove_page_nums=False,  # Excel doesn't have page numbers
+                remove_headers_footers=False,  # Headers are data in Excel
+                detect_lang=True
+            )
+            combined_text = preprocess_result["text"]
+            combined_text = self._normalize_text(combined_text, apply_preprocessing=False)
+            
+            # Add language detection metadata
+            if "language_detection" in preprocess_result:
+                lang_info = preprocess_result["language_detection"]
+                metadata["detected_language"] = lang_info.get("language", "unknown")
+                metadata["language_confidence"] = lang_info.get("confidence", 0.0)
             
             metadata.update({
                 "table_count": len(tables_data),
@@ -163,7 +179,23 @@ class ExcelLoader(DocumentLoader):
                     )
             
             combined_text = "\n\n".join(full_text)
-            combined_text = self._normalize_text(combined_text)
+            
+            # Apply preprocessing (language detection only)
+            from .preprocessing import preprocess_text
+            preprocess_result = preprocess_text(
+                combined_text,
+                remove_page_nums=False,
+                remove_headers_footers=False,
+                detect_lang=True
+            )
+            combined_text = preprocess_result["text"]
+            combined_text = self._normalize_text(combined_text, apply_preprocessing=False)
+            
+            # Add language detection metadata
+            if "language_detection" in preprocess_result:
+                lang_info = preprocess_result["language_detection"]
+                metadata["detected_language"] = lang_info.get("language", "unknown")
+                metadata["language_confidence"] = lang_info.get("confidence", 0.0)
             
             metadata.update({
                 "table_count": len(tables_data),
@@ -209,7 +241,17 @@ class CSVLoader(DocumentLoader):
             
             # Convert to text
             text = df.to_string(index=False)
-            normalized_text = self._normalize_text(text)
+            
+            # Apply preprocessing (language detection only for CSV)
+            from .preprocessing import preprocess_text
+            preprocess_result = preprocess_text(
+                text,
+                remove_page_nums=False,
+                remove_headers_footers=False,
+                detect_lang=True
+            )
+            text = preprocess_result["text"]
+            normalized_text = self._normalize_text(text, apply_preprocessing=False)
             
             # Store table data
             table_data = {
@@ -218,6 +260,12 @@ class CSVLoader(DocumentLoader):
                 "row_count": len(df),
                 "column_count": len(df.columns),
             }
+            
+            # Add language detection metadata
+            if "language_detection" in preprocess_result:
+                lang_info = preprocess_result["language_detection"]
+                metadata["detected_language"] = lang_info.get("language", "unknown")
+                metadata["language_confidence"] = lang_info.get("confidence", 0.0)
             
             metadata.update({
                 "delimiter": delimiter,
@@ -303,7 +351,17 @@ class CSVLoader(DocumentLoader):
             )
             
             text = df.to_string(index=False)
-            normalized_text = self._normalize_text(text)
+            
+            # Apply preprocessing (language detection only)
+            from .preprocessing import preprocess_text
+            preprocess_result = preprocess_text(
+                text,
+                remove_page_nums=False,
+                remove_headers_footers=False,
+                detect_lang=True
+            )
+            text = preprocess_result["text"]
+            normalized_text = self._normalize_text(text, apply_preprocessing=False)
             
             table_data = {
                 "rows": df.values.tolist(),
@@ -312,6 +370,12 @@ class CSVLoader(DocumentLoader):
                 "column_count": len(df.columns),
                 "is_partial": max_rows is not None and len(df) >= max_rows,
             }
+            
+            # Add language detection metadata
+            if "language_detection" in preprocess_result:
+                lang_info = preprocess_result["language_detection"]
+                metadata["detected_language"] = lang_info.get("language", "unknown")
+                metadata["language_confidence"] = lang_info.get("confidence", 0.0)
             
             metadata.update({
                 "delimiter": delimiter,

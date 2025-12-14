@@ -102,22 +102,46 @@ class DocumentLoader(ABC):
         """
         return self.get_file_size() > threshold
     
-    def _normalize_text(self, text: str) -> str:
+    def _normalize_text(self, text: str, apply_preprocessing: bool = True) -> str:
         """
-        Normalize extracted text
+        Normalize extracted text with optional preprocessing
         
         Args:
             text: Raw extracted text
+            apply_preprocessing: Whether to apply preprocessing (page numbers, headers/footers)
             
         Returns:
             str: Normalized text
         """
+        if apply_preprocessing:
+            from .preprocessing import preprocess_text
+            result = preprocess_text(
+                text,
+                remove_page_nums=True,
+                remove_headers_footers=True,
+                detect_lang=False  # Language detection done separately
+            )
+            text = result["text"]
+        
         # Remove excessive whitespace
         import re
         text = re.sub(r'\s+', ' ', text)
         # Remove leading/trailing whitespace
         text = text.strip()
         return text
+    
+    def _detect_language(self, text: str) -> Dict[str, Any]:
+        """
+        Detect language of the text
+        
+        Args:
+            text: Text to analyze
+            
+        Returns:
+            Dict[str, Any]: Language detection results
+        """
+        from .preprocessing import detect_language
+        return detect_language(text)
     
     def _extract_metadata(self) -> Dict[str, Any]:
         """
