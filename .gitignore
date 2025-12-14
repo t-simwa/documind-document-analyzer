@@ -1,0 +1,12 @@
+# Root level .gitignore
+
+# Documentation folder
+docs/
+
+# Vercel configuration
+vercel.js
+vercel.json
+
+# Keep existing ignores from subdirectories
+# Backend and frontend have their own .gitignore files
+

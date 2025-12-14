@@ -62,3 +62,6 @@ uploads/
 temp/
 *.tmp
 
+# Vercel configuration (if in backend directory)
+vercel.js
+vercel.json

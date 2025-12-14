@@ -9,6 +9,7 @@ import asyncio
 import structlog
 
 from app.core.logging_config import get_logger
+from app.core.config import settings
 
 logger = get_logger(__name__)
 
@@ -201,13 +202,94 @@ async def process_document_async(
             avg_chunk_size=sum(len(c.text) for c in chunks) / len(chunks) if chunks else 0
         )
         
-        # TODO: Step 3: Generate embeddings (to be implemented)
-        # TODO: Step 4: Store in vector database (to be implemented)
-        # TODO: Step 5: Update document status (to be implemented)
+        # Step 3: Generate embeddings
+        from app.services.embeddings import EmbeddingService
+        from app.services.vector_store import VectorStoreService, VectorDocument
         
-        # For now, simulate remaining processing steps
-        await asyncio.sleep(0.5)  # Simulate embedding, indexing
+        embedding_service = EmbeddingService()
+        vector_store = VectorStoreService(dimension=embedding_service.get_embedding_dimension())
         
+        # Prepare texts for embedding
+        chunk_texts = [chunk.text for chunk in chunks]
+        
+        # Generate embeddings
+        embedding_result = await embedding_service.embed_texts(
+            texts=chunk_texts,
+            batch_size=settings.EMBEDDING_BATCH_SIZE
+        )
+        
+        logger.info(
+            "document_embedding_completed",
+            document_id=document_id,
+            embedding_count=len(embedding_result.embeddings),
+            dimension=embedding_result.metadata.get("dimension"),
+            cache_hits=embedding_result.metadata.get("cache_hits", 0),
+            cache_misses=embedding_result.metadata.get("cache_misses", 0)
+        )
+        
+        # Step 4: Store in vector database
+        collection_name = settings.VECTOR_STORE_COLLECTION_PREFIX
+        tenant_id = metadata.get("tenant_id") if metadata else None
+        
+        # Ensure collection exists
+        if not await vector_store.collection_exists(collection_name, tenant_id=tenant_id):
+            await vector_store.create_collection(collection_name, tenant_id=tenant_id)
+        
+        # Prepare vector documents
+        vector_documents = []
+        for chunk, embedding in zip(chunks, embedding_result.embeddings):
+            # Build metadata, filtering out None values (ChromaDB doesn't accept None)
+            metadata = {
+                "document_id": document_id,
+                "chunk_index": chunk.chunk_index,
+                "char_count": chunk.char_count,
+                "word_count": chunk.word_count,
+            }
+            
+            # Add optional fields only if they're not None
+            if chunk.page_number is not None:
+                metadata["page_number"] = chunk.page_number
+            if chunk.section is not None:
+                metadata["section"] = chunk.section
+            if chunk.heading is not None:
+                metadata["heading"] = chunk.heading
+            if chunk.document_type is not None:
+                metadata["document_type"] = chunk.document_type
+            if chunk.start_char_index is not None:
+                metadata["start_char_index"] = chunk.start_char_index
+            if chunk.end_char_index is not None:
+                metadata["end_char_index"] = chunk.end_char_index
+            if chunk.timestamp is not None:
+                metadata["timestamp"] = chunk.timestamp.isoformat()
+            
+            # Add any additional metadata from chunk, filtering None values
+            for key, value in chunk.metadata.items():
+                if value is not None:
+                    metadata[key] = value
+            
+            vector_doc = VectorDocument(
+                id=f"{document_id}_{chunk.chunk_index}",
+                embedding=embedding,
+                document=chunk.text,
+                metadata=metadata
+            )
+            vector_documents.append(vector_doc)
+        
+        # Store documents in vector store
+        stored_ids = await vector_store.add_documents(
+            documents=vector_documents,
+            collection_name=collection_name,
+            tenant_id=tenant_id
+        )
+        
+        logger.info(
+            "document_indexing_completed",
+            document_id=document_id,
+            stored_count=len(stored_ids),
+            collection_name=collection_name
+        )
+        
+        # Step 5: Update document status
         task_queue.update_task_status(
             task_id=task_id,
             status="completed",
@@ -216,6 +298,12 @@ async def process_document_async(
                 "status": "processed",
                 "content_length": len(document_content.text),
                 "chunk_count": len(chunks),
+                "embedding_count": len(embedding_result.embeddings),
+                "stored_count": len(stored_ids),
+                "embedding_provider": embedding_result.provider,
+                "embedding_model": embedding_result.model,
+                "vector_store_provider": vector_store.provider_name,
+                "collection_name": collection_name,
                 "metadata": document_content.metadata
             }
         )
