@@ -137,6 +137,7 @@ async def process_document_async(
             result={
                 "document_id": document_id,
                 "status": "ingested",
+                "step": "extract",
                 "content_length": len(document_content.text),
                 "page_count": len(document_content.pages) if document_content.pages else 0,
                 "table_count": len(document_content.tables) if document_content.tables else 0,
@@ -177,6 +178,7 @@ async def process_document_async(
             result={
                 "document_id": document_id,
                 "status": "chunked",
+                "step": "chunk",
                 "content_length": len(document_content.text),
                 "page_count": len(document_content.pages) if document_content.pages else 0,
                 "chunk_count": len(chunks),
@@ -296,6 +298,7 @@ async def process_document_async(
             result={
                 "document_id": document_id,
                 "status": "processed",
+                "step": "index",
                 "content_length": len(document_content.text),
                 "chunk_count": len(chunks),
                 "embedding_count": len(embedding_result.embeddings),
@@ -307,6 +310,14 @@ async def process_document_async(
                 "metadata": document_content.metadata
             }
         )
+        
+        # Update document status in documents_store
+        try:
+            from app.api.v1.documents.routes import documents_store
+            if document_id in documents_store:
+                documents_store[document_id]["status"] = "ready"
+        except Exception as e:
+            logger.warning("Failed to update document status in store", document_id=document_id, error=str(e))
         
         logger.info("document_processing_completed", document_id=document_id)
         
@@ -321,6 +332,14 @@ async def process_document_async(
             status="failed",
             error=str(e)
         )
+        
+        # Update document status in documents_store to error
+        try:
+            from app.api.v1.documents.routes import documents_store
+            if document_id in documents_store:
+                documents_store[document_id]["status"] = "error"
+        except Exception as store_error:
+            logger.warning("Failed to update document status in store", document_id=document_id, error=str(store_error))
 
 
 async def security_scan_async(

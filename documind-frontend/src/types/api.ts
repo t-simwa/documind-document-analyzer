@@ -290,6 +290,77 @@ export interface DocumentPattern {
   confidence: number; // 0-1
 }
 
+// Query API Types
+export interface QueryRequest {
+  query: string;
+  collection_name: string;
+  document_ids?: string[];
+  generate_insights?: boolean;
+  conversation_history?: Array<{
+    role: "user" | "assistant";
+    content: string;
+  }>;
+  top_k?: number;
+  search_type?: "vector" | "keyword" | "hybrid";
+  rerank_enabled?: boolean;
+  temperature?: number;
+  max_tokens?: number;
+}
+
+export interface QueryResponse {
+  answer: string;
+  citations: CitationResponse[];
+  confidence: number;
+  key_points?: KeyPointResponse[];
+  entities?: EntityResponse[];
+  model: string;
+  provider: string;
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+  };
+  metadata: Record<string, any>;
+  generated_at: string;
+}
+
+export interface CitationResponse {
+  index: number;
+  document_id: string;
+  chunk_id: string;
+  page?: number;
+  score: number;
+  metadata: Record<string, any>;
+}
+
+export interface KeyPointResponse {
+  text: string;
+  importance: number;
+  citations: number[];
+}
+
+export interface EntityResponse {
+  text: string;
+  type: string;
+  value?: any;
+  citations: number[];
+}
+
+export interface QueryHistoryItem {
+  id: string;
+  query: string;
+  answer: string;
+  collection_name: string;
+  document_ids: string[];
+  created_at: string;
+  metadata: Record<string, any>;
+}
+
+export interface QueryHistoryResponse {
+  items: QueryHistoryItem[];
+  total: number;
+}
+
 export interface DocumentContradiction {
   type: "factual" | "temporal" | "quantitative" | "categorical";
   description: string;

@@ -258,11 +258,20 @@ class ChromaVectorStore(BaseVectorStore):
             # ChromaDB uses where filter for metadata
             where = filter if filter else None
             
+            # Log filter for debugging
+            if where:
+                logger.debug("ChromaDB search with filter", filter=where, collection=collection_name)
+            
             results = collection.query(
                 query_embeddings=[query_embedding],
                 n_results=top_k,
                 where=where
             )
+            
+            # Log results for debugging
+            if results and results.get("ids"):
+                result_count = len(results.get("ids", [[]])[0]) if results.get("ids") else 0
+                logger.debug("ChromaDB search results", count=result_count, collection=collection_name)
             
             # Extract results - handle case where results might be empty or None
             if not results:

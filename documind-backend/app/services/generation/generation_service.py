@@ -73,7 +73,41 @@ class GenerationService:
         if not query or not query.strip():
             raise GenerationValidationError("Query cannot be empty")
         
-        logger.info("Generating answer", query=query[:100], collection=collection_name)
+        logger.info("Generating answer", query=query[:100], collection=collection_name, document_ids=document_ids)
+        
+        # Use default retrieval config if not provided
+        if retrieval_config is None:
+            from app.services.retrieval import RetrievalConfig
+            retrieval_config = RetrievalConfig()
+        
+        # Increase top_k for more comprehensive context (better for exhaustive answers)
+        # Higher top_k helps find related information even if not exact matches
+        if retrieval_config.top_k < 20:
+            logger.debug(
+                "Increasing top_k for comprehensive answer",
+                old_value=retrieval_config.top_k,
+                new_value=20
+            )
+            retrieval_config.top_k = 20
+        
+        # Enable query expansion to find related terms and synonyms
+        # This helps find information even if the exact words aren't used
+        if not retrieval_config.query_expansion_enabled:
+            retrieval_config.query_expansion_enabled = True
+            logger.debug("Enabled query expansion for better retrieval")
+        
+        # Add document_ids filter to retrieval config if provided
+        if document_ids:
+            # ChromaDB uses $in operator for filtering by multiple values
+            if retrieval_config.metadata_filter is None:
+                retrieval_config.metadata_filter = {}
+            # For ChromaDB, we need to use $in operator for document_id filtering
+            # ChromaDB format: {"document_id": {"$in": ["id1", "id2"]}}
+            if len(document_ids) == 1:
+                retrieval_config.metadata_filter["document_id"] = document_ids[0]
+            else:
+                retrieval_config.metadata_filter["document_id"] = {"$in": document_ids}
+            logger.debug("Added document_id filter to retrieval config", filter=retrieval_config.metadata_filter)
         
         # Step 1: Retrieve relevant chunks
         retrieval_result = await self.retrieval_service.retrieve(
@@ -84,9 +118,9 @@ class GenerationService:
         )
         
         if not retrieval_result.documents:
-            logger.warning("No documents retrieved for query", query=query)
+            logger.warning("No documents retrieved for query", query=query, document_ids=document_ids)
             return GenerationResponse(
-                answer="I couldn't find any relevant information in the documents to answer your question. Please try rephrasing your query or check if the relevant documents have been uploaded.",
+                answer="I couldn't find any relevant information in the documents to answer your question. Please try rephrasing your query or check if the relevant documents have been uploaded and indexed.",
                 citations=[],
                 confidence=0.0,
                 key_points=[],
@@ -94,42 +128,8 @@ class GenerationService:
                 model=self.llm_service.llm.model,
                 provider=self.llm_service.provider.value,
                 usage={},
-                metadata={"retrieval_count": 0}
+                metadata={"retrieval_count": 0, "document_ids": document_ids}
             )
-        
-        # Filter by document_ids if provided
-        if document_ids:
-            filtered_docs = []
-            filtered_metadata = []
-            filtered_scores = []
-            filtered_ids = []
-            
-            for i, metadata in enumerate(retrieval_result.metadata):
-                doc_id = metadata.get("document_id")
-                if doc_id in document_ids:
-                    filtered_docs.append(retrieval_result.documents[i])
-                    filtered_metadata.append(metadata)
-                    filtered_scores.append(retrieval_result.scores[i])
-                    filtered_ids.append(retrieval_result.ids[i])
-            
-            if not filtered_docs:
-                logger.warning("No documents match filter", document_ids=document_ids)
-                return GenerationResponse(
-                    answer="I couldn't find any relevant information in the specified documents to answer your question.",
-                    citations=[],
-                    confidence=0.0,
-                    key_points=[],
-                    entities=[],
-                    model=self.llm_service.llm.model,
-                    provider=self.llm_service.provider.value,
-                    usage={},
-                    metadata={"retrieval_count": 0, "filtered": True}
-                )
-            
-            retrieval_result.documents = filtered_docs
-            retrieval_result.metadata = filtered_metadata
-            retrieval_result.scores = filtered_scores
-            retrieval_result.ids = filtered_ids
         
         # Step 2: Convert retrieval results to context chunks
         context_chunks = self._convert_to_context_chunks(retrieval_result)
@@ -142,6 +142,33 @@ class GenerationService:
         )
         
         # Step 4: Generate answer using LLM
+        # Ensure LLM config allows for thorough, complete answers
+        if llm_config is None:
+            llm_config = LLMConfig()
+            # Set optimized defaults for accuracy and thoroughness
+            llm_config.max_tokens = 4000  # Increased for comprehensive answers
+            llm_config.temperature = 0.3  # Lower for more accurate, deterministic responses
+        else:
+            # Adjust if values are too restrictive for thorough answers
+            if llm_config.max_tokens < 3000:
+                # Increase max_tokens to allow for more comprehensive answers
+                logger.debug(
+                    "Increasing max_tokens for thorough answer",
+                    old_value=llm_config.max_tokens,
+                    new_value=4000
+                )
+                llm_config.max_tokens = 4000
+            
+            # Lower temperature if too high for accuracy-focused responses
+            if llm_config.temperature > 0.5:
+                # Lower temperature for more accurate, focused responses
+                logger.debug(
+                    "Lowering temperature for accuracy",
+                    old_value=llm_config.temperature,
+                    new_value=0.3
+                )
+                llm_config.temperature = 0.3
+        
         try:
             llm_response = await self.llm_service.generate_chat(
                 messages=messages,

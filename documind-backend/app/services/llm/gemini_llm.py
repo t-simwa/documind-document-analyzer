@@ -1,5 +1,5 @@
 """
-Google Gemini LLM service implementation
+Google Gemini LLM service implementation using google-genai package
 """
 
 import asyncio
@@ -12,12 +12,11 @@ from .exceptions import LLMError, LLMConfigurationError, LLMRateLimitError, LLMT
 logger = structlog.get_logger(__name__)
 
 try:
-    import google.generativeai as genai
-    from google.api_core import exceptions as google_exceptions
+    from google import genai
     GEMINI_AVAILABLE = True
 except ImportError:
     GEMINI_AVAILABLE = False
-    logger.warning("google-generativeai not installed. Gemini LLM service will not be available.")
+    logger.warning("google-genai not installed. Gemini LLM service will not be available.")
 
 
 class GeminiLLMService(BaseLLMService):
@@ -26,28 +25,27 @@ class GeminiLLMService(BaseLLMService):
     def __init__(
         self,
         api_key: str,
-        model: str = "gemini-pro",
+        model: str = "gemini-2.5-flash",
         max_retries: int = 3,
         timeout: int = 60
     ):
         """
-        Initialize Gemini LLM service
+        Initialize Gemini LLM service using google-genai package
         
         Args:
             api_key: Google API key
-            model: Model name (e.g., "gemini-pro", "gemini-pro-vision")
+            model: Model name (e.g., "gemini-2.5-flash", "gemini-1.5-pro", "gemini-1.5-flash")
             max_retries: Maximum number of retries
             timeout: Request timeout in seconds
         """
         if not GEMINI_AVAILABLE:
-            raise LLMConfigurationError("google-generativeai package is not installed")
+            raise LLMConfigurationError("google-genai package is not installed")
         
         super().__init__(api_key, model, max_retries, timeout)
         if not api_key:
             raise LLMConfigurationError("Gemini API key is required")
         
-        genai.configure(api_key=api_key)
-        self.model_instance = genai.GenerativeModel(model)
+        self.client = genai.Client(api_key=api_key)
     
     async def generate(
         self,
@@ -76,13 +74,14 @@ class GeminiLLMService(BaseLLMService):
         
         try:
             response = await asyncio.to_thread(
-                self.model_instance.generate_content,
-                full_prompt,
-                generation_config=generation_config,
+                self.client.models.generate_content,
+                model=self.model,
+                contents=full_prompt,
+                config=generation_config,
                 **kwargs
             )
             
-            content = response.text if response.text else ""
+            content = response.text if hasattr(response, 'text') and response.text else ""
             
             # Estimate token usage (Gemini doesn't provide exact counts)
             prompt_tokens = len(full_prompt.split()) * 1.3  # Rough estimate
@@ -100,15 +99,17 @@ class GeminiLLMService(BaseLLMService):
                 finish_reason=getattr(response, "finish_reason", None),
                 metadata={"response_id": getattr(response, "id", None)}
             )
-        except google_exceptions.ResourceExhausted as e:
-            logger.error("Gemini rate limit exceeded", error=str(e))
-            raise LLMRateLimitError(f"Gemini rate limit exceeded: {str(e)}")
-        except google_exceptions.DeadlineExceeded as e:
-            logger.error("Gemini request timeout", error=str(e))
-            raise LLMTimeoutError(f"Gemini request timeout: {str(e)}")
         except Exception as e:
-            logger.error("Unexpected error in Gemini generation", error=str(e))
-            raise LLMError(f"Gemini API error: {str(e)}")
+            error_str = str(e)
+            if "rate limit" in error_str.lower() or "quota" in error_str.lower():
+                logger.error("Gemini rate limit exceeded", error=error_str)
+                raise LLMRateLimitError(f"Gemini rate limit exceeded: {error_str}")
+            elif "timeout" in error_str.lower() or "deadline" in error_str.lower():
+                logger.error("Gemini request timeout", error=error_str)
+                raise LLMTimeoutError(f"Gemini request timeout: {error_str}")
+            else:
+                logger.error("Unexpected error in Gemini generation", error=error_str)
+                raise LLMError(f"Gemini API error: {error_str}")
     
     async def generate_stream(
         self,
@@ -136,25 +137,27 @@ class GeminiLLMService(BaseLLMService):
         
         try:
             response = await asyncio.to_thread(
-                self.model_instance.generate_content,
-                full_prompt,
-                generation_config=generation_config,
-                stream=True,
+                self.client.models.generate_content_stream,
+                model=self.model,
+                contents=full_prompt,
+                config=generation_config,
                 **kwargs
             )
             
             for chunk in response:
-                if chunk.text:
+                if hasattr(chunk, 'text') and chunk.text:
                     yield chunk.text
-        except google_exceptions.ResourceExhausted as e:
-            logger.error("Gemini rate limit exceeded", error=str(e))
-            raise LLMRateLimitError(f"Gemini rate limit exceeded: {str(e)}")
-        except google_exceptions.DeadlineExceeded as e:
-            logger.error("Gemini request timeout", error=str(e))
-            raise LLMTimeoutError(f"Gemini request timeout: {str(e)}")
         except Exception as e:
-            logger.error("Unexpected error in Gemini streaming", error=str(e))
-            raise LLMError(f"Gemini API error: {str(e)}")
+            error_str = str(e)
+            if "rate limit" in error_str.lower() or "quota" in error_str.lower():
+                logger.error("Gemini rate limit exceeded", error=error_str)
+                raise LLMRateLimitError(f"Gemini rate limit exceeded: {error_str}")
+            elif "timeout" in error_str.lower() or "deadline" in error_str.lower():
+                logger.error("Gemini request timeout", error=error_str)
+                raise LLMTimeoutError(f"Gemini request timeout: {error_str}")
+            else:
+                logger.error("Unexpected error in Gemini streaming", error=error_str)
+                raise LLMError(f"Gemini API error: {error_str}")
     
     async def generate_chat(
         self,
@@ -166,17 +169,22 @@ class GeminiLLMService(BaseLLMService):
         self._validate_messages(messages)
         
         # Convert messages to Gemini format
-        # Gemini uses a single prompt with role prefixes
+        # For now, convert to a single prompt string (the new API may support message objects)
         chat_prompt = ""
+        system_prompt = None
         for msg in messages:
             role = msg["role"]
             content = msg["content"]
             if role == "system":
-                chat_prompt = f"{content}\n\n{chat_prompt}"
+                system_prompt = content
             elif role == "user":
                 chat_prompt += f"User: {content}\n\n"
             elif role == "assistant":
                 chat_prompt += f"Assistant: {content}\n\n"
+        
+        # Combine system prompt if present
+        if system_prompt:
+            chat_prompt = f"{system_prompt}\n\n{chat_prompt}"
         
         # Remove trailing newlines
         chat_prompt = chat_prompt.strip()
@@ -193,13 +201,14 @@ class GeminiLLMService(BaseLLMService):
         
         try:
             response = await asyncio.to_thread(
-                self.model_instance.generate_content,
-                chat_prompt,
-                generation_config=generation_config,
+                self.client.models.generate_content,
+                model=self.model,
+                contents=chat_prompt,
+                config=generation_config,
                 **kwargs
             )
             
-            content = response.text if response.text else ""
+            content = response.text if hasattr(response, 'text') and response.text else ""
             
             prompt_tokens = len(chat_prompt.split()) * 1.3
             completion_tokens = len(content.split()) * 1.3
@@ -216,15 +225,17 @@ class GeminiLLMService(BaseLLMService):
                 finish_reason=getattr(response, "finish_reason", None),
                 metadata={"response_id": getattr(response, "id", None)}
             )
-        except google_exceptions.ResourceExhausted as e:
-            logger.error("Gemini rate limit exceeded", error=str(e))
-            raise LLMRateLimitError(f"Gemini rate limit exceeded: {str(e)}")
-        except google_exceptions.DeadlineExceeded as e:
-            logger.error("Gemini request timeout", error=str(e))
-            raise LLMTimeoutError(f"Gemini request timeout: {str(e)}")
         except Exception as e:
-            logger.error("Unexpected error in Gemini chat", error=str(e))
-            raise LLMError(f"Gemini API error: {str(e)}")
+            error_str = str(e)
+            if "rate limit" in error_str.lower() or "quota" in error_str.lower():
+                logger.error("Gemini rate limit exceeded", error=error_str)
+                raise LLMRateLimitError(f"Gemini rate limit exceeded: {error_str}")
+            elif "timeout" in error_str.lower() or "deadline" in error_str.lower():
+                logger.error("Gemini request timeout", error=error_str)
+                raise LLMTimeoutError(f"Gemini request timeout: {error_str}")
+            else:
+                logger.error("Unexpected error in Gemini chat", error=error_str)
+                raise LLMError(f"Gemini API error: {error_str}")
     
     async def generate_chat_stream(
         self,
@@ -236,15 +247,20 @@ class GeminiLLMService(BaseLLMService):
         self._validate_messages(messages)
         
         chat_prompt = ""
+        system_prompt = None
         for msg in messages:
             role = msg["role"]
             content = msg["content"]
             if role == "system":
-                chat_prompt = f"{content}\n\n{chat_prompt}"
+                system_prompt = content
             elif role == "user":
                 chat_prompt += f"User: {content}\n\n"
             elif role == "assistant":
                 chat_prompt += f"Assistant: {content}\n\n"
+        
+        # Combine system prompt if present
+        if system_prompt:
+            chat_prompt = f"{system_prompt}\n\n{chat_prompt}"
         
         chat_prompt = chat_prompt.strip()
         
@@ -260,23 +276,25 @@ class GeminiLLMService(BaseLLMService):
         
         try:
             response = await asyncio.to_thread(
-                self.model_instance.generate_content,
-                chat_prompt,
-                generation_config=generation_config,
-                stream=True,
+                self.client.models.generate_content_stream,
+                model=self.model,
+                contents=chat_prompt,
+                config=generation_config,
                 **kwargs
             )
             
             for chunk in response:
-                if chunk.text:
+                if hasattr(chunk, 'text') and chunk.text:
                     yield chunk.text
-        except google_exceptions.ResourceExhausted as e:
-            logger.error("Gemini rate limit exceeded", error=str(e))
-            raise LLMRateLimitError(f"Gemini rate limit exceeded: {str(e)}")
-        except google_exceptions.DeadlineExceeded as e:
-            logger.error("Gemini request timeout", error=str(e))
-            raise LLMTimeoutError(f"Gemini request timeout: {str(e)}")
         except Exception as e:
-            logger.error("Unexpected error in Gemini chat streaming", error=str(e))
-            raise LLMError(f"Gemini API error: {str(e)}")
+            error_str = str(e)
+            if "rate limit" in error_str.lower() or "quota" in error_str.lower():
+                logger.error("Gemini rate limit exceeded", error=error_str)
+                raise LLMRateLimitError(f"Gemini rate limit exceeded: {error_str}")
+            elif "timeout" in error_str.lower() or "deadline" in error_str.lower():
+                logger.error("Gemini request timeout", error=error_str)
+                raise LLMTimeoutError(f"Gemini request timeout: {error_str}")
+            else:
+                logger.error("Unexpected error in Gemini chat streaming", error=error_str)
+                raise LLMError(f"Gemini API error: {error_str}")
 

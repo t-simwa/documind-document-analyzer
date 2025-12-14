@@ -28,10 +28,144 @@ const ResponseCard = ({ content, citations, onCitationClick }: { content: string
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Format content for better display - only headers in bold, clean formatting
+  const formatContent = (text: string) => {
+    const lines = text.split('\n');
+    const elements: JSX.Element[] = [];
+    let currentParagraph: string[] = [];
+    let listItems: string[] = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmed = line.trim();
+      const prevLine = i > 0 ? lines[i - 1].trim() : '';
+      const nextLine = i < lines.length - 1 ? lines[i + 1].trim() : '';
+
+      // Check if it's a header (short line, no sentence-ending punctuation, title case)
+      const isHeader = trimmed.length > 0 && 
+                       trimmed.length < 100 && 
+                       !trimmed.includes('.') && 
+                       !trimmed.includes('!') &&
+                       !trimmed.includes('?') &&
+                       !trimmed.includes('•') &&
+                       !trimmed.match(/^\d+\./) &&
+                       (prevLine === '' || prevLine.endsWith('.')) &&
+                       (trimmed[0] === trimmed[0].toUpperCase());
+
+      if (isHeader) {
+        // Flush current paragraph and list
+        if (currentParagraph.length > 0) {
+          elements.push(
+            <div key={`para-${i}`} className="mb-3 text-foreground/90 leading-relaxed">
+              {currentParagraph.join(' ')}
+            </div>
+          );
+          currentParagraph = [];
+        }
+        if (listItems.length > 0) {
+          elements.push(
+            <div key={`list-group-${i}`} className="ml-4 mb-3 space-y-1">
+              {listItems.map((item, idx) => (
+                <div key={idx} className="text-foreground/90 leading-relaxed">
+                  {item}
+                </div>
+              ))}
+            </div>
+          );
+          listItems = [];
+        }
+        // Add header (only bold element)
+        elements.push(
+          <div key={`header-${i}`} className="font-semibold text-foreground mb-2 mt-4 first:mt-0 text-sm">
+            {trimmed}
+          </div>
+        );
+      } else if (trimmed.startsWith('•') || trimmed.match(/^\d+\./)) {
+        // Flush current paragraph
+        if (currentParagraph.length > 0) {
+          elements.push(
+            <div key={`para-${i}`} className="mb-3 text-foreground/90 leading-relaxed">
+              {currentParagraph.join(' ')}
+            </div>
+          );
+          currentParagraph = [];
+        }
+        // Format list items - handle numbered items with quotes
+        let formattedItem = trimmed;
+        // Convert "• Number - Content" to "Number. Content" for better readability
+        if (trimmed.match(/^•\s*\d+\s*-\s*/)) {
+          formattedItem = trimmed.replace(/^•\s*(\d+)\s*-\s*/, '$1. ');
+        }
+        // Accumulate list items
+        listItems.push(formattedItem);
+      } else if (trimmed) {
+        // Flush list if we have accumulated items
+        if (listItems.length > 0) {
+          elements.push(
+            <div key={`list-group-${i}`} className="ml-4 mb-3 space-y-1">
+              {listItems.map((item, idx) => (
+                <div key={idx} className="text-foreground/90 leading-relaxed">
+                  {item}
+                </div>
+              ))}
+            </div>
+          );
+          listItems = [];
+        }
+        // Regular text - accumulate into paragraph
+        currentParagraph.push(trimmed);
+      } else {
+        // Empty line - flush paragraph and list
+        if (currentParagraph.length > 0) {
+          elements.push(
+            <div key={`para-${i}`} className="mb-3 text-foreground/90 leading-relaxed">
+              {currentParagraph.join(' ')}
+            </div>
+          );
+          currentParagraph = [];
+        }
+        if (listItems.length > 0) {
+          elements.push(
+            <div key={`list-group-${i}`} className="ml-4 mb-3 space-y-1">
+              {listItems.map((item, idx) => (
+                <div key={idx} className="text-foreground/90 leading-relaxed">
+                  {item}
+                </div>
+              ))}
+            </div>
+          );
+          listItems = [];
+        }
+      }
+    }
+
+    // Flush remaining paragraph and list
+    if (currentParagraph.length > 0) {
+      elements.push(
+        <div key="para-final" className="mb-3 text-foreground/90 leading-relaxed">
+          {currentParagraph.join(' ')}
+        </div>
+      );
+    }
+    if (listItems.length > 0) {
+      elements.push(
+        <div key="list-group-final" className="ml-4 mb-3 space-y-1">
+          {listItems.map((item, idx) => (
+            <div key={idx} className="text-foreground/90 leading-relaxed">
+              {item}
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    return elements.length > 0 ? elements : [<div key="empty">{text}</div>];
+  };
+
   return (
     <div className="space-y-3">
-      <div className="text-xs text-foreground/90 leading-relaxed whitespace-pre-wrap font-sans">
-        {content}
+      <div className="text-xs leading-relaxed font-sans">
+        {formatContent(content)}
       </div>
 
       {citations && citations.length > 0 && (

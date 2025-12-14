@@ -2,9 +2,29 @@
 // Manages document processing queue and status updates
 
 import type { ProcessingStatus, ProcessingStepStatus, ProcessingError, OCRStatus } from "@/types/api";
+import { tasksApi } from "./api";
+import { API_BASE_URL } from "@/config/api";
 
 // Helper to simulate API delay
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Map backend task status to frontend processing step
+function mapBackendStatusToFrontendStep(taskResult: any): string | null {
+  if (!taskResult?.status) return null;
+  
+  switch (taskResult.status) {
+    case "ingested":
+      return "extract";
+    case "chunked":
+      return "chunk";
+    case "embedded":
+      return "embed";
+    case "processed":
+      return "index";  // Final step - document is indexed and ready
+    default:
+      return null;
+  }
+}
 
 // Processing queue (in production, this would be managed by the backend)
 interface QueueItem {
@@ -229,10 +249,176 @@ export async function retryProcessing(
   return processDocument(documentId, fileName, fileType, onStatusUpdate);
 }
 
-// Get processing status
+// Get processing status from backend
 export async function getProcessingStatus(documentId: string): Promise<ProcessingStatus | null> {
-  await delay(200);
-  // In production, this would fetch from the backend
+  const taskId = `doc_process_${documentId}`;
+  
+  try {
+    const task = await tasksApi.getTaskStatus(taskId);
+    
+    if (!task) {
+      // Task not found - might be due to server reload
+      // Check document status as fallback
+      try {
+        // Import documentsApi dynamically to avoid circular dependency
+        const { documentsApi } = await import('./api');
+        const doc = await documentsApi.get(documentId);
+        
+        if (doc.status === "ready") {
+          // Document is ready, return completed status
+          const steps: ProcessingStepStatus[] = [
+            { id: "upload", label: "Secure Upload", status: "completed" },
+            { id: "security_scan", label: "Security Scan", status: "completed" },
+            { id: "extract", label: "Text Extraction", status: "completed" },
+            { id: "ocr", label: "OCR Processing", status: "completed" },
+            { id: "chunk", label: "Smart Chunking", status: "completed" },
+            { id: "embed", label: "Vector Embeddings", status: "completed" },
+            { id: "index", label: "Indexing", status: "completed" },
+          ];
+          return {
+            currentStep: "",
+            progress: 100,
+            steps,
+            queuePosition: 0,
+          };
+        } else if (doc.status === "error") {
+          // Document processing failed
+          const steps: ProcessingStepStatus[] = [
+            { id: "upload", label: "Secure Upload", status: "completed" },
+            { id: "security_scan", label: "Security Scan", status: "completed" },
+            { id: "extract", label: "Text Extraction", status: "error" },
+            { id: "ocr", label: "OCR Processing", status: "pending" },
+            { id: "chunk", label: "Smart Chunking", status: "pending" },
+            { id: "embed", label: "Vector Embeddings", status: "pending" },
+            { id: "index", label: "Indexing", status: "pending" },
+          ];
+          return {
+            currentStep: "extract",
+            progress: 0,
+            steps,
+            queuePosition: 0,
+            error: {
+              code: "PROCESSING_FAILED",
+              message: "Document processing failed",
+              step: "extract",
+              occurredAt: new Date(),
+              recoverable: true,
+            },
+          };
+        }
+        // Document is still processing, return null to continue polling
+        return null;
+      } catch (docError) {
+        // Document not found either, return null
+        console.error("Failed to get document status:", docError);
+        return null;
+      }
+    }
+
+    return mapTaskToProcessingStatus(task, documentId);
+  } catch (error: any) {
+    // Handle other errors
+    console.error("Failed to get processing status:", error);
   return null;
+  }
+}
+
+function mapTaskToProcessingStatus(task: any, documentId: string): ProcessingStatus {
+  const steps: ProcessingStepStatus[] = [
+    { id: "upload", label: "Secure Upload", status: "completed" },
+    { id: "security_scan", label: "Security Scan", status: "completed" },
+    { id: "extract", label: "Text Extraction", status: "pending" },
+    { id: "ocr", label: "OCR Processing", status: "pending" },
+    { id: "chunk", label: "Smart Chunking", status: "pending" },
+    { id: "embed", label: "Vector Embeddings", status: "pending" },
+    { id: "index", label: "Indexing", status: "pending" },
+  ];
+
+  // Map backend task status to frontend steps
+  // Check if task has a step field (new format) or use status mapping (old format)
+  let currentStepId: string | null = null;
+  
+  if (task.result?.step) {
+    // New format: step is explicitly provided
+    currentStepId = task.result.step;
+  } else if (task.result?.status) {
+    // Old format: map status to step
+    currentStepId = mapBackendStatusToFrontendStep(task.result);
+  }
+  
+  if (currentStepId) {
+    const stepIndex = steps.findIndex(s => s.id === currentStepId);
+    if (stepIndex >= 0) {
+      // Mark current step as in_progress if still processing
+      if (task.status === "processing") {
+        steps[stepIndex].status = "in_progress";
+        steps[stepIndex].startedAt = new Date();
+      } else {
+        // Task completed this step
+        steps[stepIndex].status = "completed";
+        steps[stepIndex].completedAt = new Date();
+      }
+      
+      // Mark all previous steps as completed
+      for (let i = 0; i < stepIndex; i++) {
+        steps[i].status = "completed";
+        if (task.updated_at) {
+          steps[i].completedAt = new Date(task.updated_at);
+        }
+      }
+    }
+  }
+  
+  // If task is completed, mark all steps as completed
+  if (task.status === "completed") {
+    steps.forEach(step => {
+      if (step.status !== "completed") {
+        step.status = "completed";
+        if (task.updated_at) {
+          step.completedAt = new Date(task.updated_at);
+        }
+      }
+    });
+  }
+
+  // Handle task status
+  if (task.status === "failed") {
+    const currentStepIndex = steps.findIndex(s => s.status === "processing");
+    if (currentStepIndex >= 0) {
+      steps[currentStepIndex].status = "error";
+      steps[currentStepIndex].error = task.error || "Processing failed";
+    }
+  }
+
+  // Calculate progress
+  const completedCount = steps.filter(s => s.status === "completed").length;
+  const progress = Math.round((completedCount / steps.length) * 100);
+  
+  // Determine current step
+  // First check for in_progress step, then processing, then completed
+  let currentStepIndex = steps.findIndex(s => s.status === "in_progress");
+  if (currentStepIndex < 0) {
+    currentStepIndex = steps.findIndex(s => s.status === "processing");
+  }
+  const currentStep = currentStepIndex >= 0 
+    ? steps[currentStepIndex].id 
+    : (task.status === "completed" ? "" : (currentStepId || steps[0].id));
+
+  return {
+    currentStep,
+    progress,
+    steps,
+    queuePosition: 0,
+    // Add error if task failed
+    ...(task.status === "failed" && {
+      error: {
+        code: "PROCESSING_FAILED",
+        message: task.error || "Document processing failed",
+        step: currentStep,
+        occurredAt: new Date(task.updated_at),
+        recoverable: true,
+      },
+    }),
+  };
 }
 

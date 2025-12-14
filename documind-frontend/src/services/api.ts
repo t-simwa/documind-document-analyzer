@@ -34,9 +34,13 @@ import type {
   UpdateNotificationPreferencesRequest,
   SecurityScanResult,
   ProcessingStatus,
+  QueryRequest,
+  QueryResponse,
+  QueryHistoryResponse,
 } from "@/types/api";
 import { performSecurityScan } from "./securityScanService";
 import { processDocument, retryProcessing } from "./processingQueueService";
+import { API_BASE_URL, DEFAULT_COLLECTION_NAME } from "@/config/api";
 
 // Mock data storage (in a real app, this would be API calls)
 let mockProjects: Project[] = [
@@ -197,6 +201,124 @@ export const documentsApi = {
   async list(
     params?: PaginationParams & SortParams & FilterParams
   ): Promise<DocumentListResponse> {
+    try {
+      // Try to fetch from backend first
+      const queryParams = new URLSearchParams();
+      if (params?.projectId) {
+        queryParams.append("project_id", params.projectId);
+      }
+      if (params?.status && params.status.length > 0) {
+        queryParams.append("status", params.status[0]); // Backend accepts single status for now
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/v1/documents/?${queryParams.toString()}`, {
+        method: "GET",
+        headers: {
+          // Add authentication headers if needed
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Convert backend documents to frontend format
+        const documents: Document[] = data.documents.map((doc: any) => ({
+          id: doc.id,
+          name: doc.name,
+          status: doc.status as "processing" | "ready" | "error",
+          uploadedAt: new Date(doc.uploaded_at),
+          uploadedBy: doc.uploaded_by,
+          size: doc.size,
+          type: doc.type,
+          projectId: doc.project_id || null,
+          tags: doc.tags || [],
+          metadata: doc.metadata || {},
+        }));
+
+        // Update mock documents for compatibility
+        mockDocuments = documents;
+
+        // Apply additional frontend filters (search, tags, etc.)
+        let filtered = [...documents];
+
+        // Apply filters
+        // Note: projectId and status are already filtered by backend, but we apply additional filters here
+        if (params?.fileType && params.fileType.length > 0) {
+          filtered = filtered.filter((d) => params.fileType!.includes(d.type));
+        }
+
+        if (params?.tags && params.tags.length > 0) {
+          filtered = filtered.filter((d) =>
+            params.tags!.some((tag) => d.tags.includes(tag))
+          );
+        }
+
+        if (params?.uploadedBy && params.uploadedBy.length > 0) {
+          filtered = filtered.filter((d) => params.uploadedBy!.includes(d.uploadedBy));
+        }
+
+        if (params?.dateFrom) {
+          filtered = filtered.filter((d) => d.uploadedAt >= params.dateFrom!);
+        }
+
+        if (params?.dateTo) {
+          filtered = filtered.filter((d) => d.uploadedAt <= params.dateTo!);
+        }
+
+        if (params?.search) {
+          const searchLower = params.search.toLowerCase();
+          filtered = filtered.filter((d) => d.name.toLowerCase().includes(searchLower));
+        }
+
+        // Apply sorting
+        if (params?.field) {
+          filtered.sort((a, b) => {
+            let aVal: any = a[params.field as keyof Document];
+            let bVal: any = b[params.field as keyof Document];
+
+            if (params.field === "uploadedAt") {
+              aVal = new Date(aVal).getTime();
+              bVal = new Date(bVal).getTime();
+            }
+
+            if (typeof aVal === "string") {
+              aVal = aVal.toLowerCase();
+              bVal = bVal.toLowerCase();
+            }
+
+            if (aVal < bVal) return params.direction === "asc" ? -1 : 1;
+            if (aVal > bVal) return params.direction === "asc" ? 1 : -1;
+            return 0;
+          });
+        } else {
+          // Default sort by uploadedAt desc
+          filtered.sort((a, b) => b.uploadedAt.getTime() - a.uploadedAt.getTime());
+        }
+
+        // Apply pagination
+        const page = params?.page || 1;
+        const limit = params?.limit || 20;
+        const start = (page - 1) * limit;
+        const end = start + limit;
+
+        return {
+          documents: filtered.slice(start, end),
+          pagination: {
+            page,
+            limit,
+            total: filtered.length,
+            totalPages: Math.ceil(filtered.length / limit),
+            hasNext: end < filtered.length,
+            hasPrev: page > 1,
+          },
+        };
+      }
+      // If response is not ok, fall through to mock implementation
+    } catch (error) {
+      console.error("Failed to fetch documents from backend, using mock data:", error);
+      // Fallback to mock implementation
+    }
+    
+    // Fallback to mock implementation
     await delay(300);
     let filtered = [...mockDocuments];
 
@@ -293,26 +415,44 @@ export const documentsApi = {
     file: File,
     projectId?: string | null
   ): Promise<Document> {
-    await delay(500);
-    const docId = Date.now().toString();
+    try {
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append("file", file);
+      if (projectId) {
+        formData.append("project_id", projectId);
+      }
+
+      // Upload to backend
+      const response = await fetch(`${API_BASE_URL}/api/v1/documents/upload`, {
+        method: "POST",
+        body: formData,
+        // Don't set Content-Type header - browser will set it with boundary for FormData
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: "Upload failed" }));
+        throw new Error(error.detail || `HTTP ${response.status}`);
+      }
+
+      const uploadResponse = await response.json();
     
-    // Create blob URL for the uploaded file
+      // Create blob URL for the uploaded file (for frontend display)
     const blobUrl = URL.createObjectURL(file);
-    documentFileMap.set(docId, blobUrl);
+      documentFileMap.set(uploadResponse.id, blobUrl);
     
+      // Convert backend response to frontend Document format
     const newDoc: Document = {
-      id: docId,
-      name: file.name,
-      status: "processing", // Start as processing to trigger security scan and processing
-      uploadedAt: new Date(),
+        id: uploadResponse.id,
+        name: uploadResponse.name,
+        status: uploadResponse.status as "processing" | "ready" | "error",
+        uploadedAt: new Date(uploadResponse.uploaded_at),
       uploadedBy: "user1",
-      size: file.size,
-      type: file.name.split(".").pop()?.toLowerCase() || "",
-      projectId: projectId || null,
+        size: uploadResponse.size,
+        type: uploadResponse.type,
+        projectId: uploadResponse.project_id || null,
       tags: [],
-      metadata: {
-        pageCount: file.type === "application/pdf" ? 10 : undefined, // Mock page count for PDFs
-      },
+        metadata: uploadResponse.metadata || {},
       securityScan: {
         status: "pending",
       },
@@ -322,8 +462,15 @@ export const documentsApi = {
         steps: [],
       },
     };
+      
+      // Add to mock documents for compatibility (until we fully migrate to backend)
     mockDocuments.push(newDoc);
+      
     return newDoc;
+    } catch (error) {
+      console.error("Upload failed:", error);
+      throw error;
+    }
   },
   
   async getFileUrl(id: string): Promise<string | null> {
@@ -1068,6 +1215,169 @@ export const userProfileApi = {
       };
     }
     return { ...mockNotificationPreferences };
+  },
+};
+
+// Query API - RAG Pipeline Integration
+export const queryApi = {
+  /**
+   * Query documents using RAG pipeline
+   */
+  async query(request: QueryRequest): Promise<QueryResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/query/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          // Add authentication headers if needed
+        },
+        body: JSON.stringify(request),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: `HTTP ${response.status}: ${response.statusText}` }));
+        throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      // Handle network errors (CORS, connection refused, etc.)
+      if (error instanceof TypeError && error.message === "Failed to fetch") {
+        throw new Error(
+          `Failed to connect to backend server at ${API_BASE_URL}. ` +
+          `Please ensure the backend server is running. ` +
+          `If using a different port, set VITE_API_BASE_URL in your .env file.`
+        );
+      }
+      throw error;
+    }
+  },
+
+  /**
+   * Stream query response using Server-Sent Events
+   */
+  async queryStream(
+    request: QueryRequest,
+    onChunk: (chunk: string) => void,
+    onComplete?: (answerLength: number) => void,
+    onError?: (error: Error) => void
+  ): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/api/v1/query/stream`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        // Add authentication headers if needed
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: "Streaming query failed" }));
+      onError?.(new Error(error.detail || `HTTP ${response.status}`));
+      return;
+    }
+
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+
+    if (!reader) {
+      onError?.(new Error("No response body"));
+      return;
+    }
+
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.chunk) {
+              onChunk(data.chunk);
+            }
+            if (data.done) {
+              onComplete?.(data.answer_length || 0);
+              return;
+            }
+          } catch (e) {
+            console.error("Failed to parse SSE data:", e);
+          }
+        }
+      }
+    }
+  },
+
+  /**
+   * Get query history
+   */
+  async getHistory(): Promise<QueryHistoryResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/v1/query/history`, {
+      method: "GET",
+      headers: {
+        // Add authentication headers if needed
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    return response.json();
+  },
+};
+
+// Tasks API - Processing Status Integration
+export const tasksApi = {
+  /**
+   * Get task status from backend
+   */
+  async getTaskStatus(taskId: string): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/api/v1/tasks/${taskId}`, {
+      method: "GET",
+      headers: {
+        // Add authentication headers if needed
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        // Return null to indicate task not found
+        // The caller should check document status as fallback
+        return null;
+      }
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    return response.json();
+  },
+
+  /**
+   * List all tasks with optional filtering
+   */
+  async listTasks(taskType?: string, taskStatus?: string): Promise<{ tasks: any[]; count: number }> {
+    const params = new URLSearchParams();
+    if (taskType) params.append("task_type", taskType);
+    if (taskStatus) params.append("task_status", taskStatus);
+
+    const response = await fetch(`${API_BASE_URL}/api/v1/tasks?${params.toString()}`, {
+      method: "GET",
+      headers: {
+        // Add authentication headers if needed
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    return response.json();
   },
 };
 

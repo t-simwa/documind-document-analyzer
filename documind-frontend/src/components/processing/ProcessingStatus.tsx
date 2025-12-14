@@ -55,35 +55,35 @@ export const ProcessingStatus = ({
   const progressPercentage = Math.round(((currentStep + 1) / steps.length) * 100);
 
   return (
-    <div className="w-full max-w-lg mx-auto animate-in">
+    <div className="w-full max-w-3xl mx-auto animate-in">
       {/* Main Card */}
       <div className="bg-white dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#262626] rounded-lg shadow-sm">
         {/* Header */}
-        <div className="px-3 py-2 border-b border-[#e5e5e5] dark:border-[#262626]">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-md bg-[#f5f5f5] dark:bg-[#262626] flex items-center justify-center flex-shrink-0">
-              <ProcessingSpinnerIcon className="h-4 w-4 text-[#171717] dark:text-[#fafafa]" />
+        <div className="px-6 py-4 border-b border-[#e5e5e5] dark:border-[#262626]">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-md bg-[#f5f5f5] dark:bg-[#262626] flex items-center justify-center flex-shrink-0">
+              <ProcessingSpinnerIcon className="h-5 w-5 text-[#171717] dark:text-[#fafafa]" />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="text-[12px] font-semibold text-[#171717] dark:text-[#fafafa] leading-tight">
+              <h3 className="text-base font-semibold text-[#171717] dark:text-[#fafafa] leading-tight">
                 Processing Document
               </h3>
-              <p className="text-[11px] text-[#737373] dark:text-[#a3a3a3] truncate mt-0.5">
+              <p className="text-sm text-[#737373] dark:text-[#a3a3a3] truncate mt-1">
                 {documentName}
               </p>
             </div>
             <div className="text-right flex-shrink-0">
-              <div className="text-lg font-semibold text-[#171717] dark:text-[#fafafa] leading-none">
+              <div className="text-2xl font-semibold text-[#171717] dark:text-[#fafafa] leading-none">
                 {progressPercentage}%
               </div>
-              <div className="text-[9px] text-[#737373] dark:text-[#a3a3a3] mt-0.5">
+              <div className="text-xs text-[#737373] dark:text-[#a3a3a3] mt-1">
                 {currentStep + 1}/{steps.length}
               </div>
             </div>
           </div>
         </div>
 
-        <div className="p-3 space-y-2.5">
+        <div className="p-6 space-y-4">
           {/* Security Scan Results */}
           {securityScan && securityScanStep && (
             <div>
@@ -207,16 +207,16 @@ export const ProcessingStatus = ({
           </div>
 
           {/* Overall Progress Bar */}
-          <div className="pt-2 border-t border-[#e5e5e5] dark:border-[#262626]">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[11px] font-medium text-[#171717] dark:text-[#fafafa]">
+          <div className="pt-4 border-t border-[#e5e5e5] dark:border-[#262626]">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-[#171717] dark:text-[#fafafa]">
                 Overall Progress
               </span>
-              <span className="text-[11px] font-semibold text-[#171717] dark:text-[#fafafa]">
+              <span className="text-sm font-semibold text-[#171717] dark:text-[#fafafa]">
                 {progressPercentage}%
               </span>
             </div>
-            <div className="relative h-1.5 rounded-full bg-[#e5e5e5] dark:bg-[#262626] overflow-hidden">
+            <div className="relative h-2 rounded-full bg-[#e5e5e5] dark:bg-[#262626] overflow-hidden">
               <div
                 className="h-full bg-[#0071ce] dark:bg-[#0071ce] transition-all duration-500 rounded-full"
                 style={{ width: `${progressPercentage}%` }}

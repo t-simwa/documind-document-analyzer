@@ -1,6 +1,6 @@
 # FastAPI and Server
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
 python-multipart==0.0.6
 
 # API Documentation
@@ -14,7 +14,7 @@ python-jose[cryptography]==3.3.0
 cryptography==41.0.7
 
 # CORS and Middleware
-starlette==0.27.0
+starlette==0.37.2
 
 # Rate Limiting
 slowapi==0.1.9
@@ -62,12 +62,12 @@ openai==1.3.0
 # Cohere embeddings (optional, requires API key)
 # cohere==4.37
 # Google Gemini embeddings (optional, requires API key)
-# google-generativeai==0.3.0
+# google-generativeai==0.3.0  # Old package, deprecated
 
 # LLM Services (install only the providers you need)
 # OpenAI LLM (default, requires API key) - already included above
 # Google Gemini LLM (optional, requires API key)
-# google-generativeai==0.3.0  # Same as Gemini embeddings above
+google-genai==1.55.0  # New Google GenAI SDK for Gemini models
 # Anthropic Claude LLM (optional, requires API key)
 # anthropic==0.18.1
 

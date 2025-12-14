@@ -111,6 +111,10 @@ class RetrievalService:
         # Build metadata filter
         metadata_filter = self._build_metadata_filter(config, tenant_id)
         
+        # Log metadata filter for debugging
+        if metadata_filter:
+            logger.debug("Using metadata filter", filter=metadata_filter)
+        
         # Perform search based on type
         if config.search_type == SearchType.VECTOR:
             result = await self._vector_search(
@@ -514,7 +518,12 @@ class RetrievalService:
         for key, value in filter_dict.items():
             if key not in metadata:
                 return False
-            if metadata[key] != value:
+            
+            # Handle ChromaDB $in operator for multiple values
+            if isinstance(value, dict) and "$in" in value:
+                if metadata[key] not in value["$in"]:
+                    return False
+            elif metadata[key] != value:
                 return False
         return True
     
