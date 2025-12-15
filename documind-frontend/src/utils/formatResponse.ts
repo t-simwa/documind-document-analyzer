@@ -1,21 +1,56 @@
 /**
- * Format LLM responses to remove markdown symbols and improve readability
- * Only keeps headers in bold, removes other markdown formatting
+ * Format LLM responses to match professional chat providers (Gemini, OpenAI, etc.)
+ * Replaces citation markers with superscript numbers and properly formats markdown
  */
+
+// Helper function to convert numbers to superscript
+function toSuperscript(num: number): string {
+  const superscriptMap: { [key: string]: string } = {
+    '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
+    '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹'
+  };
+  return num.toString().split('').map(digit => superscriptMap[digit] || digit).join('');
+}
 
 export function formatResponse(text: string): string {
   if (!text) return text;
 
   let formatted = text;
 
-  // FIRST: Remove ALL ** symbols globally (most aggressive approach)
+  // FIRST: Replace citation markers with superscript numbers BEFORE processing markdown
+  // Handle complex cases like [Citation: 16, Citation: 20] -> ¹⁶²⁰
+  // This pattern matches: [Citation: X, Citation: Y, Citation: Z] etc.
+  formatted = formatted.replace(/\[Citation:\s*\d+(?:\s*,\s*Citation:\s*\d+)*\]/gi, (match) => {
+    // Extract all numbers from the match
+    const numberMatches = match.match(/\d+/g);
+    if (numberMatches && numberMatches.length > 0) {
+      return numberMatches.map((num: string) => toSuperscript(parseInt(num))).join('');
+    }
+    return match;
+  });
+  
+  // Handle single citations: [Citation: 1] -> ¹
+  formatted = formatted.replace(/\[Citation:\s*(\d+)\]/gi, (match, num) => {
+    return toSuperscript(parseInt(num));
+  });
+  
+  // Handle multiple citations: [Citation: 1, 2] or [Citation: 1,2] -> ¹²
+  formatted = formatted.replace(/\[Citation:\s*(\d+(?:\s*,\s*\d+)+)\]/gi, (match, nums) => {
+    const numbers = nums.split(',').map((n: string) => parseInt(n.trim()));
+    return numbers.map((n: number) => toSuperscript(n)).join('');
+  });
+  
+  // Handle other citation formats
+  formatted = formatted.replace(/【Citation:\s*(\d+)】/g, (match, num) => {
+    return toSuperscript(parseInt(num));
+  });
+  formatted = formatted.replace(/【(\d+)†[^】]+】/g, (match, num) => {
+    return toSuperscript(parseInt(num));
+  });
+
+  // Remove ALL ** symbols globally (most aggressive approach)
   // This ensures no ** symbols can appear in the output
   formatted = formatted.replace(/\*\*/g, '');
-
-  // Remove citation markers like [Citation: 1], 【Citation: 1】, or 【1†L1-L5】
-  formatted = formatted.replace(/\[Citation:\s*\d+\]/gi, '');
-  formatted = formatted.replace(/【Citation:\s*\d+】/g, '');
-  formatted = formatted.replace(/【\d+†[^】]+】/g, ''); // Remove 【1†L1-L5】 style citations
 
   // Process markdown tables - convert to readable format
   const lines = formatted.split('\n');
@@ -79,6 +114,8 @@ export function formatResponse(text: string): string {
         // Clean header: remove # symbols, keep text only
         // Note: ** symbols already removed at function start
         let headerText = trimmedLine.replace(/^#{1,6}\s+/, '').trim();
+        // Remove any trailing superscript citations from headers (they should be in the content, not headers)
+        headerText = headerText.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]+$/, '');
         processedLines.push(headerText);
       } else {
         // Process regular text - remove ALL markdown formatting
@@ -117,16 +154,28 @@ export function formatResponse(text: string): string {
         // Clean up multiple spaces
         processedLine = processedLine.replace(/\s{2,}/g, ' ');
 
-        // Convert numbered list items: "• Number - Content" to "Number. Content"
-        const numberedListItemMatch = processedLine.trim().match(/^[-•]\s*(\d+)\s*-\s*(.+)$/);
-        if (numberedListItemMatch) {
-          const number = numberedListItemMatch[1];
-          const content = numberedListItemMatch[2].trim();
-          // Format as "Number. Content" instead of "• Number - Content"
-          processedLine = processedLine.replace(/^(\s*)[-•]\s*(\d+)\s*-\s*/, `$1$2. `);
-        } else if (processedLine.trim().match(/^[-•]\s+/)) {
-          // Regular bullet point
-          processedLine = processedLine.replace(/^(\s*)[-•]\s+/, '$1• ');
+        // Convert asterisk bullets (*) to proper bullet points (•)
+        if (processedLine.trim().match(/^\*\s+/)) {
+          processedLine = processedLine.replace(/^(\s*)\*\s+/, '$1• ');
+        }
+        
+        // Handle numbered lists: preserve numbered format (1., 2., etc.)
+        if (processedLine.trim().match(/^\d+\.\s+/)) {
+          // Already properly formatted numbered list, keep as is
+          // Just ensure proper spacing
+          processedLine = processedLine.replace(/^(\s*)(\d+\.)\s+/, '$1$2 ');
+        } else {
+          // Convert numbered list items: "• Number - Content" to "Number. Content"
+          const numberedListItemMatch = processedLine.trim().match(/^[-•]\s*(\d+)\s*-\s*(.+)$/);
+          if (numberedListItemMatch) {
+            const number = numberedListItemMatch[1];
+            const content = numberedListItemMatch[2].trim();
+            // Format as "Number. Content" instead of "• Number - Content"
+            processedLine = processedLine.replace(/^(\s*)[-•]\s*(\d+)\s*-\s*/, `$1$2. `);
+          } else if (processedLine.trim().match(/^[-•]\s+/)) {
+            // Regular bullet point
+            processedLine = processedLine.replace(/^(\s*)[-•]\s+/, '$1• ');
+          }
         }
 
         // Remove trailing punctuation that looks AI-generated
