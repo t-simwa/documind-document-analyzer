@@ -100,6 +100,13 @@ class RetrievalConfig:
     # RRF configuration
     rrf_k: int = 60  # RRF constant (typically 60)
     
+    # Gemini retrieval configuration
+    use_gemini_retrieval: bool = False  # Use Gemini File Search/Google Search instead of vector/keyword
+    gemini_file_search_enabled: bool = True  # Enable File Search tool
+    gemini_google_search_enabled: bool = False  # Enable Google Search tool for external knowledge
+    gemini_file_search_store_id: Optional[str] = None  # File Search store ID
+    gemini_custom_functions: Optional[List[Dict[str, Any]]] = None  # Custom function definitions for Function Calling
+    
     def __post_init__(self):
         """Validate configuration"""
         if self.vector_weight + self.keyword_weight != 1.0:

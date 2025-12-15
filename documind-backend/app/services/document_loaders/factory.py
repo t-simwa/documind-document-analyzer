@@ -15,6 +15,18 @@ from .excel_loader import ExcelLoader, CSVLoader
 from .pptx_loader import PPTXLoader
 from .image_loader import ImageLoader
 
+# Try to import Gemini loaders
+try:
+    from .gemini_loader import GeminiLoader, GeminiPDFLoader, GeminiImageLoader
+    GEMINI_LOADERS_AVAILABLE = True
+except ImportError:
+    GEMINI_LOADERS_AVAILABLE = False
+    GeminiLoader = None
+    GeminiPDFLoader = None
+    GeminiImageLoader = None
+
+from app.core.config import settings
+
 logger = structlog.get_logger(__name__)
 
 
@@ -156,7 +168,36 @@ class DocumentLoaderFactory:
             )
             raise LoaderError(error_msg, file_path=file_path)
         
-        # Get loader class
+        # Check if Gemini loaders should be used
+        use_gemini = kwargs.pop('use_gemini', None)
+        if use_gemini is None:
+            use_gemini = getattr(settings, 'USE_GEMINI_LOADERS', False)
+        
+        # Use Gemini loader if enabled and available
+        if use_gemini and GEMINI_LOADERS_AVAILABLE:
+            # Check if Gemini API key is available
+            gemini_api_key = kwargs.pop('api_key', None) or getattr(settings, 'GEMINI_API_KEY', None)
+            if gemini_api_key:
+                # Use GeminiLoader for all supported types
+                gemini_model = kwargs.pop('model', None) or getattr(settings, 'GEMINI_LOADER_MODEL', 'gemini-2.5-flash')
+                loader_class = GeminiLoader
+                logger.info(
+                    "creating_gemini_loader",
+                    file_path=file_path,
+                    extension=extension,
+                    model=gemini_model
+                )
+                # Pass api_key and model explicitly, remove from kwargs to avoid conflicts
+                loader = loader_class(file_path, api_key=gemini_api_key, model=gemini_model, **kwargs)
+                return loader
+            else:
+                logger.warning(
+                    "gemini_loader_requested_but_no_api_key",
+                    file_path=file_path,
+                    falling_back_to_traditional=True
+                )
+        
+        # Get loader class from traditional loaders
         loader_class = cls.LOADER_MAP[extension]
         
         # Create loader instance

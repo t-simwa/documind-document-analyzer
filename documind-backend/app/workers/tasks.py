@@ -264,10 +264,27 @@ async def process_document_async(
             if chunk.timestamp is not None:
                 metadata["timestamp"] = chunk.timestamp.isoformat()
             
-            # Add any additional metadata from chunk, filtering None values
+            # Add any additional metadata from chunk, filtering None values and complex types
+            # ChromaDB only accepts: str, int, float, bool, None
             for key, value in chunk.metadata.items():
                 if value is not None:
-                    metadata[key] = value
+                    # Convert complex types to ChromaDB-compatible formats
+                    if isinstance(value, (list, dict)):
+                        # Skip nested structures (ChromaDB doesn't support them)
+                        # Convert to JSON string if needed, or skip
+                        if key == "all_languages" and isinstance(value, list):
+                            # Convert list of dicts to comma-separated string
+                            lang_strs = [f"{item.get('language', '')}:{item.get('probability', 0)}" 
+                                       for item in value if isinstance(item, dict)]
+                            metadata[key] = ",".join(lang_strs) if lang_strs else None
+                        else:
+                            # Skip other complex types
+                            continue
+                    elif isinstance(value, (str, int, float, bool)):
+                        metadata[key] = value
+                    else:
+                        # Convert other types to string
+                        metadata[key] = str(value)
             
             vector_doc = VectorDocument(
                 id=f"{document_id}_{chunk.chunk_index}",

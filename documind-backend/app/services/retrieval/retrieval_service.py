@@ -18,6 +18,14 @@ from .keyword_search import KeywordSearchService
 from .reranking import RerankingService
 from .exceptions import RetrievalError, RetrievalConfigurationError
 
+# Try to import Gemini retrieval service
+try:
+    from .gemini_retrieval import GeminiRetrievalService
+    GEMINI_RETRIEVAL_AVAILABLE = True
+except ImportError:
+    GEMINI_RETRIEVAL_AVAILABLE = False
+    GeminiRetrievalService = None
+
 logger = structlog.get_logger(__name__)
 
 
@@ -67,6 +75,21 @@ class RetrievalService:
             b=settings.RETRIEVAL_BM25_B
         )
         self.query_optimizer = QueryOptimizer()
+        
+        # Initialize Gemini retrieval service if available and enabled
+        self.gemini_retrieval = None
+        if GEMINI_RETRIEVAL_AVAILABLE and settings.USE_GEMINI_RETRIEVAL:
+            try:
+                self.gemini_retrieval = GeminiRetrievalService(
+                    api_key=settings.GEMINI_API_KEY,
+                    model=settings.GEMINI_RETRIEVAL_MODEL,
+                    enable_file_search=settings.GEMINI_FILE_SEARCH_ENABLED,
+                    enable_google_search=settings.GEMINI_GOOGLE_SEARCH_ENABLED,
+                    file_search_store_id=getattr(settings, 'GEMINI_FILE_SEARCH_STORE_ID', None)
+                )
+                logger.info("gemini_retrieval_service_initialized")
+            except Exception as e:
+                logger.warning("failed_to_initialize_gemini_retrieval", error=str(e))
     
     async def retrieve(
         self,
@@ -107,6 +130,36 @@ class RetrievalService:
         # Expand query if enabled
         if config.query_expansion_enabled:
             query = self.query_optimizer.expand_query(query)
+        
+        # Check if Gemini retrieval should be used
+        if config.use_gemini_retrieval and self.gemini_retrieval:
+            logger.info("using_gemini_retrieval", query=query)
+            try:
+                result = await self.gemini_retrieval.retrieve(
+                    query=query,
+                    collection_name=collection_name,
+                    config=config,
+                    tenant_id=tenant_id
+                )
+                
+                # Apply top_k limit
+                if len(result.ids) > config.top_k:
+                    result = RetrievalResult(
+                        ids=result.ids[:config.top_k],
+                        documents=result.documents[:config.top_k],
+                        metadata=result.metadata[:config.top_k],
+                        scores=result.scores[:config.top_k],
+                        distances=result.distances[:config.top_k],
+                        rerank_scores=result.rerank_scores[:config.top_k] if result.rerank_scores else None,
+                        search_type=result.search_type,
+                        vector_scores=result.vector_scores[:config.top_k] if result.vector_scores else None,
+                        keyword_scores=result.keyword_scores[:config.top_k] if result.keyword_scores else None
+                    )
+                
+                return result
+            except Exception as e:
+                logger.warning("gemini_retrieval_failed_falling_back", error=str(e))
+                # Fall back to traditional retrieval
         
         # Build metadata filter
         metadata_filter = self._build_metadata_filter(config, tenant_id)

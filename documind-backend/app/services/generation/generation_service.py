@@ -9,9 +9,11 @@ from app.services.retrieval import RetrievalService, RetrievalConfig, RetrievalR
 from app.services.llm import LLMService, LLMConfig
 from .prompt_engine import PromptEngine, ContextChunk
 from .structured_output import GenerationResponse, Citation, KeyPoint, Entity
+from .citation_schemas import StructuredAnswer
 from .response_formatter import ResponseFormatter
 from .insights_generator import InsightsGenerator
 from .exceptions import GenerationError, GenerationValidationError
+from app.core.config import settings
 
 logger = structlog.get_logger(__name__)
 
@@ -134,11 +136,19 @@ class GenerationService:
         # Step 2: Convert retrieval results to context chunks
         context_chunks = self._convert_to_context_chunks(retrieval_result)
         
+        # Check if we should use structured outputs (Gemini only)
+        # This needs to be checked BEFORE building messages
+        use_structured_outputs = (
+            settings.USE_GEMINI_STRUCTURED_OUTPUTS and
+            self.llm_service.provider.value == "gemini"
+        )
+        
         # Step 3: Build prompt with context
         messages = self.prompt_engine.build_chat_messages(
             query=query,
             chunks=context_chunks,
-            conversation_history=conversation_history
+            conversation_history=conversation_history,
+            use_structured_outputs=use_structured_outputs
         )
         
         # Step 4: Generate answer using LLM
@@ -146,18 +156,18 @@ class GenerationService:
         if llm_config is None:
             llm_config = LLMConfig()
             # Set optimized defaults for accuracy and thoroughness
-            llm_config.max_tokens = 4000  # Increased for comprehensive answers
+            llm_config.max_tokens = 8000  # Increased for comprehensive answers (was 4000, increased to prevent truncation)
             llm_config.temperature = 0.3  # Lower for more accurate, deterministic responses
         else:
             # Adjust if values are too restrictive for thorough answers
-            if llm_config.max_tokens < 3000:
-                # Increase max_tokens to allow for more comprehensive answers
+            if llm_config.max_tokens < 6000:
+                # Increase max_tokens to allow for more comprehensive answers (prevent truncation)
                 logger.debug(
                     "Increasing max_tokens for thorough answer",
                     old_value=llm_config.max_tokens,
-                    new_value=4000
+                    new_value=8000
                 )
-                llm_config.max_tokens = 4000
+                llm_config.max_tokens = 8000
             
             # Lower temperature if too high for accuracy-focused responses
             if llm_config.temperature > 0.5:
@@ -169,31 +179,118 @@ class GenerationService:
                 )
                 llm_config.temperature = 0.3
         
+        structured_schema = None
+        if use_structured_outputs:
+            # Get JSON schema from Pydantic model
+            structured_schema = StructuredAnswer.model_json_schema()
+            logger.info("Using Gemini Structured Outputs for citation extraction")
+        
         try:
             llm_response = await self.llm_service.generate_chat(
                 messages=messages,
-                config=llm_config
+                config=llm_config,
+                structured_output_schema=structured_schema if use_structured_outputs else None
             )
         except Exception as e:
             logger.error("LLM generation failed", error=str(e))
             raise GenerationError(f"Failed to generate answer: {str(e)}")
         
-        # Step 5: Extract citations from response
-        citation_indices = self.prompt_engine.extract_citations_from_response(llm_response.content)
+        # Step 5: Extract citations and answer from response
         citations = []
-        for idx in citation_indices:
-            if 1 <= idx <= len(context_chunks):
-                chunk = context_chunks[idx - 1]
-                citations.append(
-                    Citation(
-                        index=idx,
-                        document_id=chunk.document_id,
-                        chunk_id=chunk.chunk_id,
-                        page=chunk.metadata.get("page"),
-                        score=chunk.score,
-                        metadata=chunk.metadata
-                    )
+        citation_indices = []
+        final_answer = llm_response.content  # Default to raw content
+        
+        if use_structured_outputs and llm_response.metadata.get("structured_output"):
+            # Parse structured output from Gemini
+            try:
+                structured_data = llm_response.metadata["structured_output"]
+                structured_answer = StructuredAnswer.model_validate(structured_data)
+                
+                # Use the answer from structured output (this is the properly formatted answer)
+                final_answer = structured_answer.answer
+                
+                # Defensive check: ensure answer is not JSON string
+                if isinstance(final_answer, str) and final_answer.strip().startswith('{'):
+                    try:
+                        import json
+                        parsed = json.loads(final_answer)
+                        if isinstance(parsed, dict) and "answer" in parsed:
+                            final_answer = parsed["answer"]
+                            logger.warning("Extracted answer from nested JSON string")
+                    except (json.JSONDecodeError, TypeError):
+                        pass  # Not JSON, use as-is
+                
+                # Ensure answer is a string, not dict or other type
+                if not isinstance(final_answer, str):
+                    final_answer = str(final_answer)
+                    logger.warning("Converted answer to string", original_type=type(final_answer).__name__)
+                
+                # Extract citations from structured output
+                for citation_ref in structured_answer.citations_used:
+                    idx = citation_ref.citation_index
+                    if 1 <= idx <= len(context_chunks):
+                        citation_indices.append(idx)
+                        chunk = context_chunks[idx - 1]
+                        citations.append(
+                            Citation(
+                                index=idx,
+                                document_id=chunk.document_id,
+                                chunk_id=chunk.chunk_id,
+                                page=chunk.metadata.get("page"),
+                                score=chunk.score,
+                                metadata=chunk.metadata
+                            )
+                        )
+                
+                logger.info(
+                    "Extracted citations from structured output",
+                    citation_count=len(citations),
+                    confidence=structured_answer.confidence_level,
+                    answer_length=len(final_answer)
                 )
+            except Exception as e:
+                logger.warning("Failed to parse structured output, falling back to regex", error=str(e))
+                # Fall back to regex extraction
+                # Also check if content is raw JSON and extract answer
+                if isinstance(llm_response.content, str) and llm_response.content.strip().startswith('{'):
+                    try:
+                        import json
+                        parsed = json.loads(llm_response.content)
+                        if isinstance(parsed, dict) and "answer" in parsed:
+                            final_answer = parsed["answer"]
+                            logger.info("Extracted answer from fallback JSON parsing")
+                    except (json.JSONDecodeError, TypeError):
+                        pass  # Not JSON, use as-is
+                citation_indices = self.prompt_engine.extract_citations_from_response(final_answer)
+        else:
+            # Use regex-based citation extraction (fallback or non-Gemini providers)
+            # Check if content is raw JSON (shouldn't happen, but defensive check)
+            if isinstance(llm_response.content, str) and llm_response.content.strip().startswith('{'):
+                try:
+                    import json
+                    parsed = json.loads(llm_response.content)
+                    if isinstance(parsed, dict) and "answer" in parsed:
+                        final_answer = parsed["answer"]
+                        logger.info("Extracted answer from JSON in non-structured output")
+                except (json.JSONDecodeError, TypeError):
+                    pass  # Not JSON, use as-is
+            citation_indices = self.prompt_engine.extract_citations_from_response(final_answer)
+        
+        # Build citations if not already built from structured output
+        if not citations:
+            for idx in citation_indices:
+                if 1 <= idx <= len(context_chunks):
+                    chunk = context_chunks[idx - 1]
+                    citations.append(
+                        Citation(
+                            index=idx,
+                            document_id=chunk.document_id,
+                            chunk_id=chunk.chunk_id,
+                            page=chunk.metadata.get("page"),
+                            score=chunk.score,
+                            metadata=chunk.metadata
+                        )
+                    )
         
         # Step 6: Generate additional insights if requested
         key_points = []
@@ -210,9 +307,28 @@ class GenerationService:
         # Step 7: Calculate confidence score
         confidence = self._calculate_confidence(retrieval_result.scores, len(citations))
         
+        # Step 7.5: Clean and format the answer
+        # Ensure answer is clean text, properly formatted
+        if not isinstance(final_answer, str):
+            final_answer = str(final_answer)
+        
+        # Remove any remaining JSON artifacts
+        final_answer = final_answer.strip()
+        
+        # Final defensive check: if answer still looks like JSON, try to extract
+        if final_answer.startswith('{') and '"answer"' in final_answer:
+            try:
+                import json
+                parsed = json.loads(final_answer)
+                if isinstance(parsed, dict) and "answer" in parsed:
+                    final_answer = parsed["answer"]
+                    logger.warning("Final cleanup: extracted answer from JSON string")
+            except (json.JSONDecodeError, TypeError):
+                pass  # Not valid JSON, use as-is
+        
         # Step 8: Build response
         response = GenerationResponse(
-            answer=llm_response.content,
+            answer=final_answer.strip(),  # Use extracted answer from structured output if available, ensure clean
             citations=citations,
             confidence=confidence,
             key_points=key_points,

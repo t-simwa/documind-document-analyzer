@@ -5,7 +5,7 @@ Loads settings from environment variables with sensible defaults
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import field_validator
-from typing import List, Union
+from typing import List, Union, Optional
 import os
 
 
@@ -59,6 +59,10 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE: int = 20971520  # 20MB in bytes
     UPLOAD_DIR: str = "./uploads"
     ALLOWED_EXTENSIONS: Union[str, List[str]] = "pdf,docx,txt,md,png,jpg,jpeg,tiff,bmp"
+    
+    # Document Loader Configuration
+    USE_GEMINI_LOADERS: bool = False  # Use Gemini native document understanding instead of traditional loaders
+    GEMINI_LOADER_MODEL: str = "gemini-2.5-flash"  # Model to use for Gemini document loading
     
     # Embedding Configuration
     EMBEDDING_PROVIDER: str = "openai"  # openai, cohere, gemini, sentence-transformers
@@ -138,6 +142,13 @@ class Settings(BaseSettings):
     RETRIEVAL_BM25_K1: float = 1.5  # BM25 k1 parameter
     RETRIEVAL_BM25_B: float = 0.75  # BM25 b parameter
     
+    # Gemini Retrieval Configuration
+    USE_GEMINI_RETRIEVAL: bool = False  # Use Gemini File Search/Google Search instead of vector/keyword search
+    GEMINI_RETRIEVAL_MODEL: str = "gemini-2.5-flash"  # Model to use for Gemini retrieval
+    GEMINI_FILE_SEARCH_ENABLED: bool = True  # Enable File Search tool for document retrieval
+    GEMINI_GOOGLE_SEARCH_ENABLED: bool = False  # Enable Google Search tool for external knowledge
+    GEMINI_FILE_SEARCH_STORE_ID: Optional[str] = None  # File Search store ID (if using File Search stores)
+    
     # LLM Configuration
     LLM_PROVIDER: str = "ollama"  # openai, gemini, claude, ollama (FREE), huggingface (FREE tier)
     LLM_MODEL: str = "llama3"  # Model name (e.g., "gpt-4", "gemini-pro", "llama3", "mistralai/Mistral-7B-Instruct-v0.2")
@@ -149,6 +160,9 @@ class Settings(BaseSettings):
     LLM_TIMEOUT: int = 60  # Request timeout in seconds
     LLM_MAX_RETRIES: int = 3  # Maximum retries for failed requests
     LLM_STREAM_ENABLED: bool = True  # Enable streaming responses
+    
+    # Gemini Structured Outputs Configuration
+    USE_GEMINI_STRUCTURED_OUTPUTS: bool = False  # Use Gemini Structured Outputs for citation extraction (Gemini only) - DISABLED
     
     # Anthropic Claude Configuration
     ANTHROPIC_API_KEY: str = ""

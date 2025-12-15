@@ -237,7 +237,11 @@ class CSVLoader(DocumentLoader):
             delimiter = self._detect_delimiter()
             
             # Load CSV
-            df = pd.read_csv(self.file_path, delimiter=delimiter, encoding='utf-8', errors='replace')
+            try:
+                df = pd.read_csv(self.file_path, delimiter=delimiter, encoding='utf-8')
+            except UnicodeDecodeError:
+                # Fallback to latin-1 if UTF-8 fails
+                df = pd.read_csv(self.file_path, delimiter=delimiter, encoding='latin-1')
             
             # Convert to text
             text = df.to_string(index=False)
