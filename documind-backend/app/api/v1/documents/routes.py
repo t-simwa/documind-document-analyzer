@@ -2,9 +2,10 @@
 Document upload and management API routes
 """
 
-from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Form, Depends
+from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Form, Depends, Body
 from fastapi.responses import JSONResponse
-from typing import Optional
+from typing import Optional, List
+from pydantic import Field
 import os
 import time
 import structlog
@@ -18,7 +19,12 @@ from .schemas import (
     DocumentResponse,
     DocumentInsightsResponse,
     DocumentSummaryResponse,
-    DocumentEntitiesResponse
+    DocumentEntitiesResponse,
+    DocumentComparisonResponse,
+    ComparisonSimilarityResponse,
+    ComparisonDifferenceResponse,
+    ComparisonExampleResponse,
+    ComparisonDifferenceDocumentResponse
 )
 from app.services.retrieval import RetrievalService
 from app.services.llm import LLMService
@@ -401,4 +407,135 @@ async def list_documents(
         ],
         "total": len(documents)
     }
+
+
+@router.post(
+    "/compare",
+    response_model=DocumentComparisonResponse,
+    summary="Compare documents",
+    description="Compare multiple documents and generate similarities and differences using RAG pipeline"
+)
+async def compare_documents(
+    document_ids: List[str] = Body(..., description="List of document IDs to compare (minimum 2)"),
+    generation_service: GenerationService = Depends(get_generation_service)
+):
+    """
+    Compare multiple documents and generate similarities and differences
+    
+    Args:
+        document_ids: List of document IDs to compare (must be at least 2)
+        generation_service: Generation service instance
+        
+    Returns:
+        DocumentComparisonResponse with similarities and differences
+    """
+    if len(document_ids) < 2:
+        raise HTTPException(
+            status_code=400,
+            detail="At least 2 documents are required for comparison"
+        )
+    
+    # Check if all documents exist
+    missing_docs = [doc_id for doc_id in document_ids if doc_id not in documents_store]
+    if missing_docs:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Documents not found: {', '.join(missing_docs)}"
+        )
+    
+    # Check if all documents are ready
+    from app.workers.tasks import task_queue
+    not_ready_docs = []
+    for doc_id in document_ids:
+        doc = documents_store[doc_id]
+        task_id = f"doc_process_{doc_id}"
+        task = task_queue.get_task(task_id)
+        
+        if task:
+            task_status = task.get("status")
+            if task_status != "completed":
+                not_ready_docs.append(f"{doc.get('name', doc_id)} (status: {task_status})")
+        elif doc.get("status") != "ready":
+            not_ready_docs.append(f"{doc.get('name', doc_id)} (status: {doc.get('status')})")
+    
+    if not_ready_docs:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Some documents are not ready: {', '.join(not_ready_docs)}"
+        )
+    
+    try:
+        # Get collection name from settings
+        collection_name = getattr(settings, "VECTOR_STORE_COLLECTION_PREFIX", "documind_documents")
+        
+        # Build document name map
+        document_name_map = {}
+        for doc_id in document_ids:
+            if doc_id in documents_store:
+                document_name_map[doc_id] = documents_store[doc_id].get("name", doc_id)
+            else:
+                document_name_map[doc_id] = doc_id
+        
+        # Generate comparison
+        comparison_data = await generation_service.generate_comparison(
+            document_ids=document_ids,
+            collection_name=collection_name,
+            document_name_map=document_name_map
+        )
+        
+        # Format response
+        similarities = [
+            ComparisonSimilarityResponse(
+                aspect=s["aspect"],
+                description=s["description"],
+                documents=s["documents"],
+                examples=[
+                    ComparisonExampleResponse(
+                        documentId=ex["document_id"],
+                        documentName=ex["document_name"],
+                        text=ex["text"],
+                        page=ex.get("page")
+                    )
+                    for ex in s.get("examples", [])
+                ]
+            )
+            for s in comparison_data.get("similarities", [])
+        ]
+        
+        differences = [
+            ComparisonDifferenceResponse(
+                aspect=d["aspect"],
+                description=d["description"],
+                documents=[
+                    ComparisonDifferenceDocumentResponse(
+                        id=doc["id"],
+                        name=doc["name"],
+                        value=doc["value"],
+                        page=doc.get("page")
+                    )
+                    for doc in d.get("documents", [])
+                ]
+            )
+            for d in comparison_data.get("differences", [])
+        ]
+        
+        return DocumentComparisonResponse(
+            documentIds=document_ids,
+            similarities=similarities,
+            differences=differences,
+            generatedAt=datetime.utcnow()
+        )
+        
+    except GenerationError as e:
+        logger.warning("comparison_generation_failed", error=str(e), document_ids=document_ids)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate comparison: {str(e)}"
+        )
+    except Exception as e:
+        logger.exception("comparison_generation_failed", error=str(e), document_ids=document_ids)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate comparison: {str(e)}"
+        )
 

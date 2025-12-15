@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -55,34 +55,73 @@ export const CrossDocumentAnalysis = ({
   const [patterns, setPatterns] = useState<DocumentPattern[]>([]);
   const [contradictions, setContradictions] = useState<DocumentContradiction[]>([]);
   const [isLoadingComparison, setIsLoadingComparison] = useState(false);
+  const [comparisonError, setComparisonError] = useState<string | null>(null);
   const { toast } = useToast();
 
   const documentIds = documents.map((d) => d.id);
+  const documentIdsKey = documentIds.join(",");
+  const hasAttemptedLoad = useRef<string>(""); // Track which document set we've attempted
 
-  useEffect(() => {
-    if (documents.length >= 2 && !comparison) {
-      loadComparison();
+  const loadComparison = async (force: boolean = false) => {
+    // If not forcing, check guards
+    if (!force && (documents.length < 2 || isLoadingComparison || comparison || comparisonError)) {
+      return;
     }
-  }, [documents]);
-
-  const loadComparison = async () => {
-    if (documents.length < 2) return;
+    
+    // If forcing, clear previous state
+    if (force) {
+      setComparison(null);
+      setComparisonError(null);
+      hasAttemptedLoad.current = ""; // Reset attempt tracking to allow retry
+    }
     
     setIsLoadingComparison(true);
+    setComparisonError(null);
     try {
       const result = await crossDocumentApi.compare(documentIds);
       setComparison(result);
+      setComparisonError(null); // Clear any previous errors
+      hasAttemptedLoad.current = documentIdsKey; // Mark as attempted
     } catch (error) {
       console.error("Failed to load comparison:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to load document comparison";
+      setComparisonError(errorMessage);
+      hasAttemptedLoad.current = documentIdsKey; // Mark as attempted even on error
       toast({
         title: "Error",
-        description: "Failed to load document comparison",
+        description: errorMessage,
         variant: "destructive",
       });
+      // Don't retry on error - user can manually retry via button
     } finally {
       setIsLoadingComparison(false);
     }
   };
+
+  // Manual retry function for button clicks
+  const handleRetryComparison = () => {
+    loadComparison(true); // Force retry
+  };
+
+  useEffect(() => {
+    // Reset error and comparison when documents change
+    if (hasAttemptedLoad.current !== documentIdsKey) {
+      setComparisonError(null);
+      setComparison(null);
+      hasAttemptedLoad.current = ""; // Reset attempt tracking
+    }
+    
+    // Only load comparison if we have 2+ documents, haven't attempted yet, no comparison, no error, and not loading
+    if (
+      documents.length >= 2 && 
+      hasAttemptedLoad.current !== documentIdsKey &&
+      !comparison && 
+      !comparisonError && 
+      !isLoadingComparison
+    ) {
+      loadComparison();
+    }
+  }, [documentIdsKey]); // Only depend on documentIdsKey
 
   const handleSendMessage = async (message: string) => {
     if (documents.length < 2) {
@@ -293,7 +332,7 @@ export const CrossDocumentAnalysis = ({
             documents={documents}
             documentUrls={documentUrls}
             comparison={comparison || undefined}
-            onComparisonRequest={loadComparison}
+            onComparisonRequest={handleRetryComparison}
             isLoading={isLoadingComparison}
           />
         </TabsContent>

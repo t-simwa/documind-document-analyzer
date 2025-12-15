@@ -1515,4 +1515,130 @@ List all significant contradictions you find."""
         confidence = min(normalized_score + citation_boost, 1.0)
         
         return round(confidence, 2)
+    
+    async def generate_comparison(
+        self,
+        document_ids: List[str],
+        collection_name: str,
+        document_name_map: Optional[Dict[str, str]] = None,
+        retrieval_config: Optional[RetrievalConfig] = None,
+        tenant_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Generate comparison analysis (similarities and differences) for multiple documents
+        
+        Args:
+            document_ids: List of document IDs to compare
+            collection_name: Collection name to search
+            document_name_map: Map of document_id to document_name
+            retrieval_config: Retrieval configuration
+            tenant_id: Optional tenant ID
+            
+        Returns:
+            Dictionary with 'similarities' and 'differences' lists
+        """
+        if not document_ids or len(document_ids) < 2:
+            raise GenerationValidationError("At least 2 documents are required for comparison")
+        
+        logger.info("Generating comparison", document_ids=document_ids, collection=collection_name)
+        
+        try:
+            # Configure retrieval
+            if not retrieval_config:
+                retrieval_config = RetrievalConfig()
+                retrieval_config.top_k = 50  # Get more chunks per document for comprehensive comparison
+                retrieval_config.search_type = SearchType.HYBRID
+                retrieval_config.query_expansion_enabled = True
+            
+            # Use a broad query similar to summary generation (this works well for retrieving document content)
+            comparison_query = "document content information details topics themes sections key points findings conclusions data facts"
+            
+            # Retrieve chunks for each document (same pattern as generate_summary)
+            chunks_by_document: Dict[str, List[ContextChunk]] = {}
+            
+            for doc_id in document_ids:
+                logger.debug("Retrieving chunks for comparison", document_id=doc_id)
+                
+                # Try with metadata filter first (same as generate_summary)
+                retrieval_config.metadata_filter = {"document_id": doc_id}
+                
+                # Retrieve chunks
+                retrieval_result = await self.retrieval_service.retrieve(
+                    query=comparison_query,
+                    collection_name=collection_name,
+                    config=retrieval_config,
+                    tenant_id=tenant_id
+                )
+                
+                # Always filter by document_id in memory (fallback if metadata filter didn't work)
+                # This is the same pattern used in generate_summary which works
+                if retrieval_result and retrieval_result.documents:
+                    filtered_docs = []
+                    filtered_metadata = []
+                    filtered_scores = []
+                    filtered_ids = []
+                    filtered_distances = []
+                    
+                    for i, metadata in enumerate(retrieval_result.metadata):
+                        doc_id_from_metadata = metadata.get("document_id")
+                        if doc_id_from_metadata == doc_id:
+                            filtered_docs.append(retrieval_result.documents[i])
+                            filtered_metadata.append(metadata)
+                            filtered_scores.append(retrieval_result.scores[i])
+                            filtered_ids.append(retrieval_result.ids[i])
+                            if retrieval_result.distances:
+                                filtered_distances.append(retrieval_result.distances[i])
+                    
+                    # If we found filtered results, use them
+                    if filtered_docs:
+                        filtered_result = RetrievalResult(
+                            ids=filtered_ids,
+                            documents=filtered_docs,
+                            metadata=filtered_metadata,
+                            scores=filtered_scores,
+                            distances=filtered_distances if filtered_distances else [1.0 - s for s in filtered_scores],
+                            search_type=retrieval_result.search_type,
+                            vector_scores=retrieval_result.vector_scores[:len(filtered_docs)] if retrieval_result.vector_scores else None,
+                            keyword_scores=retrieval_result.keyword_scores[:len(filtered_docs)] if retrieval_result.keyword_scores else None
+                        )
+                        chunks_by_document[doc_id] = self._convert_to_context_chunks(filtered_result)
+                        logger.debug(
+                            "Retrieved chunks for document",
+                            document_id=doc_id,
+                            chunk_count=len(chunks_by_document[doc_id]),
+                            original_count=len(retrieval_result.documents),
+                            filtered_count=len(filtered_docs)
+                        )
+                    else:
+                        logger.warning(
+                            "No chunks found for document after filtering",
+                            document_id=doc_id,
+                            retrieved_count=len(retrieval_result.documents),
+                            sample_metadata=retrieval_result.metadata[0] if retrieval_result.metadata else None
+                        )
+                        chunks_by_document[doc_id] = []
+                else:
+                    logger.warning(
+                        "No retrieval result for document",
+                        document_id=doc_id
+                    )
+                    chunks_by_document[doc_id] = []
+            
+            # Ensure we have chunks for all documents
+            if not any(chunks_by_document.values()):
+                raise GenerationError("No content found for comparison")
+            
+            # Generate comparison using insights generator
+            comparison_data = await self.insights_generator.generate_comparison(
+                chunks_by_document=chunks_by_document,
+                document_name_map=document_name_map or {doc_id: doc_id for doc_id in document_ids},
+                max_similarities=5,
+                max_differences=5
+            )
+            
+            return comparison_data
+            
+        except Exception as e:
+            logger.error("Failed to generate comparison", error=str(e), document_ids=document_ids)
+            raise GenerationError(f"Failed to generate comparison: {str(e)}")
 

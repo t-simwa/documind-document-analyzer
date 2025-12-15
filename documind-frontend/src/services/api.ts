@@ -796,64 +796,52 @@ export const crossDocumentApi = {
   },
 
   async compare(documentIds: string[]): Promise<DocumentComparison> {
-    await delay(1200); // Simulate API call delay
-    
-    // Mock document comparison
-    // In production: POST /api/v1/documents/compare
-    const docs = documentIds.map((id) => mockDocuments.find((d) => d.id === id)).filter(Boolean) as Document[];
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/documents/compare`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(documentIds),
+      });
 
-    const mockComparison: DocumentComparison = {
-      documentIds,
-      similarities: [
-        {
-          aspect: "Strategic Focus",
-          description: "Both documents emphasize digital transformation and innovation as core strategic priorities",
-          documents: documentIds,
-          examples: docs.slice(0, 2).map((doc, idx) => ({
-            documentId: doc.id,
-            documentName: doc.name,
-            text: "Example text about strategic focus",
-            page: idx + 1,
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: "Unknown error" }));
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      // Map backend response to frontend format
+      return {
+        documentIds: data.documentIds,
+        similarities: data.similarities.map((s: any) => ({
+          aspect: s.aspect,
+          description: s.description,
+          documents: s.documents,
+          examples: s.examples.map((ex: any) => ({
+            documentId: ex.documentId,
+            documentName: ex.documentName,
+            text: ex.text,
+            page: ex.page,
           })),
-        },
-        {
-          aspect: "Key Stakeholders",
-          description: "Similar organizational structures and key personnel mentioned across documents",
-          documents: documentIds,
-          examples: docs.slice(0, 2).map((doc, idx) => ({
-            documentId: doc.id,
-            documentName: doc.name,
-            text: "Example stakeholder reference",
-            page: idx + 2,
-          })),
-        },
-      ],
-      differences: [
-        {
-          aspect: "Timeline",
-          description: "Different project timelines and deadlines",
-          documents: docs.map((doc, idx) => ({
+        })),
+        differences: data.differences.map((d: any) => ({
+          aspect: d.aspect,
+          description: d.description,
+          documents: d.documents.map((doc: any) => ({
             id: doc.id,
             name: doc.name,
-            value: `Q${idx + 1} 2024 - Q${idx + 2} 2025`,
-            page: idx + 3,
+            value: doc.value,
+            page: doc.page,
           })),
-        },
-        {
-          aspect: "Budget Allocation",
-          description: "Varying budget figures and allocation strategies",
-          documents: docs.map((doc, idx) => ({
-            id: doc.id,
-            name: doc.name,
-            value: `$${(idx + 1) * 500}K`,
-            page: idx + 4,
-          })),
-        },
-      ],
-      generatedAt: new Date(),
-    };
-
-    return mockComparison;
+        })),
+        generatedAt: new Date(data.generatedAt),
+      };
+    } catch (error) {
+      console.error("Failed to compare documents:", error);
+      throw error;
+    }
   },
 };
 

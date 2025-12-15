@@ -502,4 +502,333 @@ List each question on a separate line, numbered 1-{max_questions}."""
                 questions.append(line + "?")
         
         return questions
+    
+    async def generate_comparison(
+        self,
+        chunks_by_document: Dict[str, List[ContextChunk]],
+        document_name_map: Dict[str, str],
+        max_similarities: int = 5,
+        max_differences: int = 5
+    ) -> Dict[str, Any]:
+        """
+        Generate comparison analysis (similarities and differences) across multiple documents
+        
+        Args:
+            chunks_by_document: Dictionary mapping document IDs to their chunks
+            document_name_map: Dictionary mapping document IDs to document names
+            max_similarities: Maximum number of similarities to generate
+            max_differences: Maximum number of differences to generate
+            
+        Returns:
+            Dictionary with 'similarities' and 'differences' lists
+        """
+        # Combine all chunks with document context
+        all_chunks_with_doc = []
+        for doc_id, chunks in chunks_by_document.items():
+            for chunk in chunks:
+                all_chunks_with_doc.append({
+                    "document_id": doc_id,
+                    "document_name": document_name_map.get(doc_id, doc_id),
+                    "chunk": chunk
+                })
+        
+        # Generate similarities
+        similarities = await self._generate_similarities(
+            chunks_by_document,
+            document_name_map,
+            max_similarities
+        )
+        
+        # Generate differences
+        differences = await self._generate_differences(
+            chunks_by_document,
+            document_name_map,
+            max_differences
+        )
+        
+        return {
+            "similarities": similarities,
+            "differences": differences
+        }
+    
+    async def _generate_similarities(
+        self,
+        chunks_by_document: Dict[str, List[ContextChunk]],
+        document_name_map: Dict[str, str],
+        max_similarities: int
+    ) -> List[Dict[str, Any]]:
+        """Generate similarities across documents"""
+        # Prepare content for each document
+        doc_contents = {}
+        for doc_id, chunks in chunks_by_document.items():
+            doc_name = document_name_map.get(doc_id, doc_id)
+            content = "\n\n".join([chunk.content for chunk in chunks])
+            doc_contents[doc_id] = {
+                "name": doc_name,
+                "content": content[:15000]  # Limit content size
+            }
+        
+        # Build prompt
+        system_prompt = """You are an expert at analyzing documents and identifying similarities across multiple documents. Focus on common themes, shared concepts, similar approaches, and overlapping information."""
+        
+        content_sections = []
+        for doc_id, doc_data in doc_contents.items():
+            content_sections.append(f"Document: {doc_data['name']} (ID: {doc_id})\n{doc_data['content']}\n")
+        
+        user_prompt = f"""Analyze the following documents and identify {max_similarities} key similarities across them.
+
+{''.join(content_sections)}
+
+For each similarity, provide:
+1. Aspect: A brief name for the similarity (e.g., "Strategic Focus", "Key Stakeholders")
+2. Description: A detailed description of the similarity
+3. Documents: List of document IDs where this similarity appears
+4. Examples: Specific examples from each document with page numbers if available
+
+Format your response as:
+SIMILARITY 1:
+Aspect: [aspect name]
+Description: [description]
+Documents: [comma-separated document IDs]
+Examples:
+- Document [name]: [example text] (Page: [page number if available])
+- Document [name]: [example text] (Page: [page number if available])
+
+SIMILARITY 2:
+...
+
+Generate {max_similarities} similarities."""
+        
+        try:
+            config = LLMConfig(
+                temperature=0.3,
+                max_tokens=4000
+            )
+            
+            response = await self.llm_service.generate(
+                prompt=user_prompt,
+                system_prompt=system_prompt,
+                config=config
+            )
+            
+            return self._parse_similarities_from_response(
+                response.content,
+                list(chunks_by_document.keys()),
+                document_name_map,
+                chunks_by_document
+            )
+        except Exception as e:
+            logger.error("Error generating similarities", error=str(e))
+            return []
+    
+    async def _generate_differences(
+        self,
+        chunks_by_document: Dict[str, List[ContextChunk]],
+        document_name_map: Dict[str, str],
+        max_differences: int
+    ) -> List[Dict[str, Any]]:
+        """Generate differences across documents"""
+        # Prepare content for each document
+        doc_contents = {}
+        for doc_id, chunks in chunks_by_document.items():
+            doc_name = document_name_map.get(doc_id, doc_id)
+            content = "\n\n".join([chunk.content for chunk in chunks])
+            doc_contents[doc_id] = {
+                "name": doc_name,
+                "content": content[:15000]  # Limit content size
+            }
+        
+        # Build prompt
+        system_prompt = """You are an expert at analyzing documents and identifying differences across multiple documents. Focus on contrasting information, different approaches, varying values, and conflicting details."""
+        
+        content_sections = []
+        for doc_id, doc_data in doc_contents.items():
+            content_sections.append(f"Document: {doc_data['name']} (ID: {doc_id})\n{doc_data['content']}\n")
+        
+        user_prompt = f"""Analyze the following documents and identify {max_differences} key differences between them.
+
+{''.join(content_sections)}
+
+For each difference, provide:
+1. Aspect: A brief name for the difference (e.g., "Timeline", "Budget Allocation")
+2. Description: A detailed description of the difference
+3. Documents: For each document, provide the specific value or claim with page number if available
+
+Format your response as:
+DIFFERENCE 1:
+Aspect: [aspect name]
+Description: [description]
+Documents:
+- Document [name] (ID: [id]): [specific value/claim] (Page: [page number if available])
+- Document [name] (ID: [id]): [specific value/claim] (Page: [page number if available])
+
+DIFFERENCE 2:
+...
+
+Generate {max_differences} differences."""
+        
+        try:
+            config = LLMConfig(
+                temperature=0.3,
+                max_tokens=4000
+            )
+            
+            response = await self.llm_service.generate(
+                prompt=user_prompt,
+                system_prompt=system_prompt,
+                config=config
+            )
+            
+            return self._parse_differences_from_response(
+                response.content,
+                list(chunks_by_document.keys()),
+                document_name_map,
+                chunks_by_document
+            )
+        except Exception as e:
+            logger.error("Error generating differences", error=str(e))
+            return []
+    
+    def _parse_similarities_from_response(
+        self,
+        response_text: str,
+        document_ids: List[str],
+        document_name_map: Dict[str, str],
+        chunks_by_document: Dict[str, List[ContextChunk]]
+    ) -> List[Dict[str, Any]]:
+        """Parse similarities from LLM response"""
+        similarities = []
+        
+        # Split by "SIMILARITY" markers
+        similarity_sections = re.split(r'SIMILARITY\s+\d+:', response_text, flags=re.IGNORECASE)
+        
+        for section in similarity_sections[1:]:  # Skip first empty section
+            aspect_match = re.search(r'Aspect:\s*(.+?)(?:\n|$)', section, re.IGNORECASE)
+            description_match = re.search(r'Description:\s*(.+?)(?:\n(?:Documents|Examples):|$)', section, re.IGNORECASE | re.DOTALL)
+            documents_match = re.search(r'Documents:\s*(.+?)(?:\nExamples:|$)', section, re.IGNORECASE)
+            
+            if not aspect_match or not description_match:
+                continue
+            
+            aspect = aspect_match.group(1).strip()
+            description = description_match.group(1).strip()
+            
+            # Extract document IDs
+            doc_ids_found = []
+            if documents_match:
+                doc_ids_str = documents_match.group(1).strip()
+                # Try to find document IDs in the string
+                for doc_id in document_ids:
+                    if doc_id in doc_ids_str:
+                        doc_ids_found.append(doc_id)
+            
+            # If no specific IDs found, use all documents
+            if not doc_ids_found:
+                doc_ids_found = document_ids.copy()
+            
+            # Extract examples
+            examples = []
+            example_lines = re.findall(r'-\s*Document\s+([^:]+):\s*(.+?)(?:\s*\(Page:\s*(\d+)\)|$)', section, re.IGNORECASE)
+            for doc_name, text, page in example_lines:
+                # Find document ID by name
+                doc_id = None
+                for d_id, d_name in document_name_map.items():
+                    if d_name.strip() == doc_name.strip():
+                        doc_id = d_id
+                        break
+                
+                if not doc_id:
+                    # Try to match by partial name
+                    for d_id, d_name in document_name_map.items():
+                        if doc_name.strip() in d_name or d_name in doc_name.strip():
+                            doc_id = d_id
+                            break
+                
+                if doc_id:
+                    examples.append({
+                        "document_id": doc_id,
+                        "document_name": document_name_map.get(doc_id, doc_id),
+                        "text": text.strip(),
+                        "page": int(page) if page else None
+                    })
+            
+            similarities.append({
+                "aspect": aspect,
+                "description": description,
+                "documents": doc_ids_found,
+                "examples": examples[:3]  # Limit to 3 examples
+            })
+        
+        return similarities[:max(len(similarities), 5)]
+    
+    def _parse_differences_from_response(
+        self,
+        response_text: str,
+        document_ids: List[str],
+        document_name_map: Dict[str, str],
+        chunks_by_document: Dict[str, List[ContextChunk]]
+    ) -> List[Dict[str, Any]]:
+        """Parse differences from LLM response"""
+        differences = []
+        
+        # Split by "DIFFERENCE" markers
+        difference_sections = re.split(r'DIFFERENCE\s+\d+:', response_text, flags=re.IGNORECASE)
+        
+        for section in difference_sections[1:]:  # Skip first empty section
+            aspect_match = re.search(r'Aspect:\s*(.+?)(?:\n|$)', section, re.IGNORECASE)
+            description_match = re.search(r'Description:\s*(.+?)(?:\nDocuments:|$)', section, re.IGNORECASE | re.DOTALL)
+            
+            if not aspect_match or not description_match:
+                continue
+            
+            aspect = aspect_match.group(1).strip()
+            description = description_match.group(1).strip()
+            
+            # Extract document-specific values
+            doc_values = []
+            doc_lines = re.findall(
+                r'-\s*Document\s+([^(]+?)\s*\(ID:\s*([^)]+)\):\s*(.+?)(?:\s*\(Page:\s*(\d+)\)|$)',
+                section,
+                re.IGNORECASE
+            )
+            
+            for doc_name, doc_id, value, page in doc_lines:
+                doc_values.append({
+                    "id": doc_id.strip(),
+                    "name": document_name_map.get(doc_id.strip(), doc_name.strip()),
+                    "value": value.strip(),
+                    "page": int(page) if page else None
+                })
+            
+            # If no structured format found, try simpler pattern
+            if not doc_values:
+                doc_lines_simple = re.findall(
+                    r'-\s*Document\s+([^:]+):\s*(.+?)(?:\s*\(Page:\s*(\d+)\)|$)',
+                    section,
+                    re.IGNORECASE
+                )
+                for doc_name, value, page in doc_lines_simple:
+                    # Find document ID by name
+                    doc_id = None
+                    for d_id, d_name in document_name_map.items():
+                        if d_name.strip() == doc_name.strip():
+                            doc_id = d_id
+                            break
+                    
+                    if doc_id:
+                        doc_values.append({
+                            "id": doc_id,
+                            "name": document_name_map.get(doc_id, doc_id),
+                            "value": value.strip(),
+                            "page": int(page) if page else None
+                        })
+            
+            if doc_values:
+                differences.append({
+                    "aspect": aspect,
+                    "description": description,
+                    "documents": doc_values
+                })
+        
+        return differences[:max(len(differences), 5)]
 

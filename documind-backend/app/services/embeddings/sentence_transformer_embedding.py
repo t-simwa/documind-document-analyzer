@@ -2,8 +2,9 @@
 Sentence Transformers embedding service (Free, Local)
 """
 
-from typing import List
+from typing import List, Dict, Optional
 import structlog
+import threading
 
 from .base import BaseEmbeddingService, EmbeddingResult
 from .exceptions import EmbeddingError, EmbeddingProviderError
@@ -16,6 +17,10 @@ try:
 except ImportError:
     SENTENCE_TRANSFORMERS_AVAILABLE = False
     logger.warning("sentence-transformers not installed, SentenceTransformerEmbeddingService will not be available")
+
+# Global model cache to prevent multiple loads of the same model
+_model_cache: Dict[str, SentenceTransformer] = {}
+_model_lock = threading.Lock()
 
 
 class SentenceTransformerEmbeddingService(BaseEmbeddingService):
@@ -57,23 +62,70 @@ class SentenceTransformerEmbeddingService(BaseEmbeddingService):
         self.provider_name = "sentence-transformers"
         self.model_name = model_name
         
-        try:
-            logger.info(
-                "loading_sentence_transformer_model",
-                model=model_name,
-                provider="sentence-transformers"
-            )
-            self.model = SentenceTransformer(model_name)
-            logger.info(
-                "sentence_transformer_model_loaded",
-                model=model_name,
-                dimension=self.get_embedding_dimension()
-            )
-        except Exception as e:
-            raise EmbeddingError(
-                f"Failed to load Sentence Transformer model '{model_name}': {str(e)}",
-                provider="sentence-transformers"
-            ) from e
+        # Check if model is already cached
+        with _model_lock:
+            if model_name in _model_cache:
+                logger.debug(
+                    "using_cached_sentence_transformer_model",
+                    model=model_name,
+                    provider="sentence-transformers"
+                )
+                self.model = _model_cache[model_name]
+            else:
+                try:
+                    logger.info(
+                        "loading_sentence_transformer_model",
+                        model=model_name,
+                        provider="sentence-transformers"
+                    )
+                    
+                    # Try to load the model with workaround for PyTorch meta tensor issue
+                    try:
+                        self.model = SentenceTransformer(model_name)
+                    except NotImplementedError as e:
+                        if "meta tensor" in str(e).lower() or "to_empty" in str(e).lower():
+                            # PyTorch compatibility issue - try loading with device explicitly set
+                            import torch
+                            logger.warning(
+                                "meta_tensor_error_detected",
+                                error=str(e),
+                                attempting_workaround=True
+                            )
+                            # Try loading with explicit device handling
+                            try:
+                                # Force CPU device to avoid meta tensor issues
+                                self.model = SentenceTransformer(model_name, device='cpu')
+                            except Exception as e2:
+                                logger.error(
+                                    "workaround_failed",
+                                    error=str(e2),
+                                    original_error=str(e)
+                                )
+                                raise EmbeddingError(
+                                    f"Failed to load Sentence Transformer model '{model_name}' due to PyTorch compatibility issue. "
+                                    f"Original error: {str(e)}. Workaround error: {str(e2)}. "
+                                    f"Try updating PyTorch: pip install --upgrade torch",
+                                    provider="sentence-transformers"
+                                ) from e2
+                        else:
+                            raise
+                    
+                    # Cache the model for reuse
+                    _model_cache[model_name] = self.model
+                    
+                    logger.info(
+                        "sentence_transformer_model_loaded",
+                        model=model_name,
+                        dimension=self.get_embedding_dimension()
+                    )
+                except EmbeddingError:
+                    # Re-raise EmbeddingError as-is
+                    raise
+                except Exception as e:
+                    raise EmbeddingError(
+                        f"Failed to load Sentence Transformer model '{model_name}': {str(e)}",
+                        provider="sentence-transformers"
+                    ) from e
     
     async def embed_texts(
         self,

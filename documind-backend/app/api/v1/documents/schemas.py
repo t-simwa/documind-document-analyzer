@@ -71,3 +71,43 @@ class DocumentInsightsResponse(BaseModel):
     entities: DocumentEntitiesResponse
     suggestedQuestions: List[str] = []
 
+
+# Comparison schemas
+class ComparisonExampleResponse(BaseModel):
+    """Comparison example response schema"""
+    documentId: str
+    documentName: str
+    text: str
+    page: Optional[int] = None
+
+
+class ComparisonSimilarityResponse(BaseModel):
+    """Comparison similarity response schema"""
+    aspect: str
+    description: str
+    documents: List[str]  # document IDs
+    examples: List[ComparisonExampleResponse] = []
+
+
+class ComparisonDifferenceDocumentResponse(BaseModel):
+    """Comparison difference document response schema"""
+    id: str
+    name: str
+    value: str
+    page: Optional[int] = None
+
+
+class ComparisonDifferenceResponse(BaseModel):
+    """Comparison difference response schema"""
+    aspect: str
+    description: str
+    documents: List[ComparisonDifferenceDocumentResponse]
+
+
+class DocumentComparisonResponse(BaseModel):
+    """Document comparison response schema"""
+    documentIds: List[str]
+    similarities: List[ComparisonSimilarityResponse] = []
+    differences: List[ComparisonDifferenceResponse] = []
+    generatedAt: datetime
+

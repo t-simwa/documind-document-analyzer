@@ -2,6 +2,8 @@
 Query API schemas
 """
 
+from __future__ import annotations
+
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 from datetime import datetime
@@ -57,8 +59,8 @@ class QueryResponse(BaseModel):
     confidence: float
     key_points: List[KeyPointResponse] = []
     entities: List[EntityResponse] = []
-    patterns: Optional[List[DocumentPatternResponse]] = None  # For cross-document queries
-    contradictions: Optional[List[DocumentContradictionResponse]] = None  # For cross-document queries
+    patterns: Optional[List["DocumentPatternResponse"]] = None  # For cross-document queries
+    contradictions: Optional[List["DocumentContradictionResponse"]] = None  # For cross-document queries
     model: str
     provider: str
     usage: Dict[str, Any] = {}
