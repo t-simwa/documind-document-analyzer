@@ -1,10 +1,12 @@
 import { useRef, useEffect, useState } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
+import { QueryHistory } from "./QueryHistory";
 import { Button } from "@/components/ui/button";
 import { RotateCcw, Download, FileSearch } from "lucide-react";
 import { SuggestedQuestions } from "@/components/analysis/SuggestedQuestions";
 import { ExportDialog } from "@/components/sharing/ExportDialog";
+import { DEFAULT_COLLECTION_NAME } from "@/config/api";
 import type { DocumentSummary } from "@/types/api";
 
 interface Message {
@@ -153,6 +155,13 @@ export const ChatInterface = ({
       <div className="border-t border-border/50 bg-card/30 backdrop-blur-sm">
         <ChatInput onSendMessage={onSendMessage} isLoading={isLoading} />
       </div>
+
+      {/* Query History */}
+      <QueryHistory
+        onSelectQuery={onSendMessage}
+        documentId={documentId}
+        collectionName={DEFAULT_COLLECTION_NAME}
+      />
 
       {/* Export Dialog */}
       <ExportDialog
