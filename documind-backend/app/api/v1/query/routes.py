@@ -5,6 +5,7 @@ Query API routes
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from typing import List, Optional
+from datetime import datetime
 import structlog
 import json
 
@@ -19,7 +20,11 @@ from .schemas import (
     KeyPointResponse,
     EntityResponse,
     QueryHistoryItem,
-    QueryHistoryResponse
+    QueryHistoryResponse,
+    DocumentPatternResponse,
+    DocumentContradictionResponse,
+    PatternExampleResponse,
+    ContradictionDocumentResponse
 )
 
 logger = structlog.get_logger(__name__)
@@ -95,6 +100,77 @@ async def query_documents(
             generate_insights=request.generate_insights
         )
         
+        # Generate patterns and contradictions for cross-document queries
+        patterns = None
+        contradictions = None
+        
+        # Only generate patterns/contradictions if multiple documents are queried
+        if request.document_ids and len(request.document_ids) > 1:
+            try:
+                # Get document names for mapping
+                from app.api.v1.documents.routes import documents_store
+                doc_name_map = {}
+                for doc_id in request.document_ids:
+                    if doc_id in documents_store:
+                        doc_name_map[doc_id] = documents_store[doc_id].get("name", doc_id)
+                    else:
+                        doc_name_map[doc_id] = doc_id
+                
+                # Generate patterns and contradictions (will retrieve chunks internally)
+                patterns_data, contradictions_data = await generation_service.generate_patterns_and_contradictions(
+                    query=request.query,
+                    collection_name=request.collection_name,
+                    document_ids=request.document_ids,
+                    context_chunks=None,  # Will retrieve internally
+                    document_name_map=doc_name_map,
+                    retrieval_config=retrieval_config
+                )
+                
+                if patterns_data:
+                    patterns = [
+                        DocumentPatternResponse(
+                            type=p["type"],
+                            description=p["description"],
+                            documents=p["documents"],
+                            occurrences=p["occurrences"],
+                            examples=[
+                                PatternExampleResponse(
+                                    document_id=ex["document_id"],
+                                    document_name=ex["document_name"],
+                                    text=ex["text"],
+                                    page=ex.get("page")
+                                )
+                                for ex in p.get("examples", [])
+                            ],
+                            confidence=p["confidence"]
+                        )
+                        for p in patterns_data
+                    ]
+                
+                if contradictions_data:
+                    contradictions = [
+                        DocumentContradictionResponse(
+                            type=c["type"],
+                            description=c["description"],
+                            documents=[
+                                ContradictionDocumentResponse(
+                                    id=d["id"],
+                                    name=d["name"],
+                                    claim=d["claim"],
+                                    page=d.get("page"),
+                                    section=d.get("section")
+                                )
+                                for d in c["documents"]
+                            ],
+                            severity=c["severity"],
+                            confidence=c["confidence"]
+                        )
+                        for c in contradictions_data
+                    ]
+            except Exception as e:
+                logger.warning("Failed to generate patterns/contradictions", error=str(e))
+                # Continue without patterns/contradictions if generation fails
+        
         # Convert to response schema
         query_response = QueryResponse(
             answer=response.answer,
@@ -127,6 +203,8 @@ async def query_documents(
                 )
                 for e in response.entities
             ],
+            patterns=patterns,
+            contradictions=contradictions,
             model=response.model,
             provider=response.provider,
             usage=response.usage,

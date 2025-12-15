@@ -2,7 +2,7 @@
 Main generation service that orchestrates retrieval, prompt engineering, LLM calls, and response formatting
 """
 
-from typing import List, Dict, Any, Optional, AsyncIterator
+from typing import List, Dict, Any, Optional, AsyncIterator, Tuple
 import structlog
 import re
 
@@ -1035,6 +1035,454 @@ KEY_POINTS:
             })
         
         return formatted
+    
+    async def generate_patterns_and_contradictions(
+        self,
+        query: str,
+        collection_name: str,
+        document_ids: List[str],
+        context_chunks: Optional[List[ContextChunk]] = None,
+        document_name_map: Optional[Dict[str, str]] = None,
+        retrieval_config: Optional[RetrievalConfig] = None,
+        tenant_id: Optional[str] = None
+    ) -> Tuple[Optional[List[Dict[str, Any]]], Optional[List[Dict[str, Any]]]]:
+        """
+        Generate patterns and contradictions for cross-document queries
+        
+        Args:
+            query: Original query
+            collection_name: Collection name
+            document_ids: List of document IDs being queried
+            context_chunks: Optional pre-retrieved context chunks
+            document_name_map: Map of document_id to document_name
+            retrieval_config: Retrieval configuration
+            tenant_id: Optional tenant ID
+            
+        Returns:
+            Tuple of (patterns_list, contradictions_list)
+        """
+        if not document_ids or len(document_ids) < 2:
+            return None, None
+        
+        try:
+            # If context chunks not provided, retrieve them
+            if not context_chunks:
+                if not retrieval_config:
+                    retrieval_config = RetrievalConfig()
+                    retrieval_config.top_k = 20  # Get more chunks for pattern detection
+                    retrieval_config.search_type = SearchType.HYBRID
+                
+                # Retrieve chunks from all documents
+                retrieval_result = await self.retrieval_service.retrieve(
+                    query=query,
+                    collection_name=collection_name,
+                    config=retrieval_config,
+                    tenant_id=tenant_id
+                )
+                
+                # Filter by document_ids
+                if retrieval_result and retrieval_result.documents:
+                    filtered_docs = []
+                    filtered_metadata = []
+                    filtered_scores = []
+                    filtered_ids = []
+                    
+                    for i, metadata in enumerate(retrieval_result.metadata):
+                        doc_id = metadata.get("document_id")
+                        if doc_id in document_ids:
+                            filtered_docs.append(retrieval_result.documents[i])
+                            filtered_metadata.append(metadata)
+                            filtered_scores.append(retrieval_result.scores[i])
+                            filtered_ids.append(retrieval_result.ids[i])
+                    
+                    if filtered_docs:
+                        filtered_result = RetrievalResult(
+                            ids=filtered_ids,
+                            documents=filtered_docs,
+                            metadata=filtered_metadata,
+                            scores=filtered_scores,
+                            distances=[1.0 - s for s in filtered_scores],
+                            search_type=retrieval_result.search_type,
+                            vector_scores=None,
+                            keyword_scores=None
+                        )
+                        context_chunks = self._convert_to_context_chunks(filtered_result)
+                    else:
+                        context_chunks = []
+            
+            if not context_chunks:
+                return None, None
+            
+            # Group chunks by document_id
+            chunks_by_doc: Dict[str, List[ContextChunk]] = {}
+            for chunk in context_chunks:
+                doc_id = chunk.metadata.get("document_id", "unknown")
+                if doc_id not in chunks_by_doc:
+                    chunks_by_doc[doc_id] = []
+                chunks_by_doc[doc_id].append(chunk)
+            
+            # Generate patterns
+            patterns = await self._generate_patterns(
+                context_chunks=context_chunks,
+                chunks_by_doc=chunks_by_doc,
+                document_ids=document_ids,
+                document_name_map=document_name_map or {}
+            )
+            
+            # Generate contradictions
+            contradictions = await self._generate_contradictions(
+                context_chunks=context_chunks,
+                chunks_by_doc=chunks_by_doc,
+                document_ids=document_ids,
+                document_name_map=document_name_map or {}
+            )
+            
+            return patterns, contradictions
+            
+        except Exception as e:
+            logger.error("Failed to generate patterns/contradictions", error=str(e))
+            return None, None
+    
+    async def _generate_patterns(
+        self,
+        context_chunks: List[ContextChunk],
+        chunks_by_doc: Dict[str, List[ContextChunk]],
+        document_ids: List[str],
+        document_name_map: Dict[str, str]
+    ) -> Optional[List[Dict[str, Any]]]:
+        """Generate patterns across documents"""
+        try:
+            # Combine content from all documents
+            content_parts = []
+            for doc_id in document_ids:
+                doc_chunks = chunks_by_doc.get(doc_id, [])
+                if doc_chunks:
+                    doc_content = "\n\n".join([chunk.content for chunk in doc_chunks[:10]])  # Limit per doc
+                    content_parts.append(f"[Document: {document_name_map.get(doc_id, doc_id)}]\n{doc_content}")
+            
+            combined_content = "\n\n---\n\n".join(content_parts)
+            
+            system_prompt = """You are an expert at identifying patterns across multiple documents. Analyze the content and identify:
+1. Common themes and topics
+2. Shared entities (organizations, people, locations)
+3. Trends and patterns over time
+4. Relationships and connections
+
+For each pattern, provide:
+- Type (theme, entity, trend, or relationship)
+- Description
+- Which documents it appears in
+- Number of occurrences
+- Example passages with page numbers
+- Confidence score (0-1)"""
+            
+            user_prompt = f"""Analyze the following content from {len(document_ids)} documents and identify patterns:
+
+{combined_content[:15000]}
+
+Identify and list patterns in this format:
+[PATTERN]
+Type: [theme/entity/trend/relationship]
+Description: [clear description]
+Documents: [comma-separated document IDs]
+Occurrences: [number]
+Examples:
+- Document: [name], Text: "[example]", Page: [number]
+Confidence: [0.0-1.0]
+
+List all significant patterns you find."""
+            
+            config = LLMConfig(temperature=0.3, max_tokens=3000)
+            response = await self.llm_service.generate(
+                prompt=user_prompt,
+                system_prompt=system_prompt,
+                config=config
+            )
+            
+            # Parse patterns from response
+            patterns = self._parse_patterns_from_response(
+                response.content,
+                document_ids,
+                document_name_map,
+                chunks_by_doc
+            )
+            
+            return patterns[:10]  # Limit to top 10 patterns
+            
+        except Exception as e:
+            logger.error("Pattern generation failed", error=str(e))
+            return None
+    
+    async def _generate_contradictions(
+        self,
+        context_chunks: List[ContextChunk],
+        chunks_by_doc: Dict[str, List[ContextChunk]],
+        document_ids: List[str],
+        document_name_map: Dict[str, str]
+    ) -> Optional[List[Dict[str, Any]]]:
+        """Generate contradictions across documents"""
+        try:
+            # Combine content from all documents
+            content_parts = []
+            for doc_id in document_ids:
+                doc_chunks = chunks_by_doc.get(doc_id, [])
+                if doc_chunks:
+                    doc_content = "\n\n".join([chunk.content for chunk in doc_chunks[:10]])
+                    content_parts.append(f"[Document: {document_name_map.get(doc_id, doc_id)}]\n{doc_content}")
+            
+            combined_content = "\n\n---\n\n".join(content_parts)
+            
+            system_prompt = """You are an expert at identifying contradictions between documents. Analyze the content and identify:
+1. Factual contradictions (different facts about the same topic)
+2. Temporal contradictions (conflicting dates/timelines)
+3. Quantitative contradictions (different numbers/metrics)
+4. Categorical contradictions (different classifications)
+
+For each contradiction, provide:
+- Type (factual, temporal, quantitative, or categorical)
+- Description
+- Claims from each document with page numbers
+- Severity (low, medium, or high)
+- Confidence score (0-1)"""
+            
+            user_prompt = f"""Analyze the following content from {len(document_ids)} documents and identify contradictions:
+
+{combined_content[:15000]}
+
+Identify and list contradictions in this format:
+[CONTRADICTION]
+Type: [factual/temporal/quantitative/categorical]
+Description: [clear description]
+Documents:
+- Document: [name], Claim: "[claim text]", Page: [number]
+- Document: [name], Claim: "[contradictory claim]", Page: [number]
+Severity: [low/medium/high]
+Confidence: [0.0-1.0]
+
+List all significant contradictions you find."""
+            
+            config = LLMConfig(temperature=0.2, max_tokens=3000)
+            response = await self.llm_service.generate(
+                prompt=user_prompt,
+                system_prompt=system_prompt,
+                config=config
+            )
+            
+            # Parse contradictions from response
+            contradictions = self._parse_contradictions_from_response(
+                response.content,
+                document_ids,
+                document_name_map,
+                chunks_by_doc
+            )
+            
+            return contradictions[:10]  # Limit to top 10 contradictions
+            
+        except Exception as e:
+            logger.error("Contradiction generation failed", error=str(e))
+            return None
+    
+    def _parse_patterns_from_response(
+        self,
+        response_text: str,
+        document_ids: List[str],
+        document_name_map: Dict[str, str],
+        chunks_by_doc: Dict[str, List[ContextChunk]]
+    ) -> List[Dict[str, Any]]:
+        """Parse patterns from LLM response"""
+        patterns = []
+        lines = response_text.split("\n")
+        
+        current_pattern = None
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            
+            # Start of new pattern
+            if "[PATTERN]" in line.upper() or line.upper().startswith("PATTERN"):
+                if current_pattern:
+                    patterns.append(current_pattern)
+                current_pattern = {
+                    "type": "theme",
+                    "description": "",
+                    "documents": [],
+                    "occurrences": 0,
+                    "examples": [],
+                    "confidence": 0.7
+                }
+                continue
+            
+            if not current_pattern:
+                continue
+            
+            # Parse pattern fields
+            if line.lower().startswith("type:"):
+                pattern_type = line.split(":", 1)[1].strip().lower()
+                if pattern_type in ["theme", "entity", "trend", "relationship"]:
+                    current_pattern["type"] = pattern_type
+            
+            elif line.lower().startswith("description:"):
+                current_pattern["description"] = line.split(":", 1)[1].strip()
+            
+            elif line.lower().startswith("documents:"):
+                doc_ids_str = line.split(":", 1)[1].strip()
+                # Try to extract document IDs
+                for doc_id in document_ids:
+                    if doc_id in doc_ids_str or document_name_map.get(doc_id, "") in doc_ids_str:
+                        if doc_id not in current_pattern["documents"]:
+                            current_pattern["documents"].append(doc_id)
+            
+            elif line.lower().startswith("occurrences:"):
+                try:
+                    current_pattern["occurrences"] = int(line.split(":", 1)[1].strip())
+                except ValueError:
+                    pass
+            
+            elif line.lower().startswith("confidence:"):
+                try:
+                    current_pattern["confidence"] = float(line.split(":", 1)[1].strip())
+                except ValueError:
+                    pass
+            
+            elif "document:" in line.lower() and "text:" in line.lower():
+                # Parse example
+                try:
+                    parts = line.split("Text:")
+                    doc_part = parts[0].split("Document:")[1].strip() if "Document:" in parts[0] else ""
+                    text_part = parts[1].split("Page:")[0].strip().strip('"') if len(parts) > 1 else ""
+                    page_part = parts[1].split("Page:")[1].strip() if len(parts) > 1 and "Page:" in parts[1] else None
+                    
+                    # Find matching document ID
+                    doc_id = None
+                    for did in document_ids:
+                        if document_name_map.get(did, did) in doc_part or did in doc_part:
+                            doc_id = did
+                            break
+                    
+                    if doc_id and text_part:
+                        page_num = None
+                        if page_part:
+                            try:
+                                page_num = int(page_part.strip())
+                            except ValueError:
+                                pass
+                        
+                        current_pattern["examples"].append({
+                            "document_id": doc_id,
+                            "document_name": document_name_map.get(doc_id, doc_id),
+                            "text": text_part[:200],  # Limit text length
+                            "page": page_num
+                        })
+                except Exception:
+                    pass
+        
+        if current_pattern:
+            patterns.append(current_pattern)
+        
+        # Ensure we have at least document IDs
+        for pattern in patterns:
+            if not pattern["documents"]:
+                pattern["documents"] = document_ids[:2]  # Default to first 2 docs
+            if pattern["occurrences"] == 0:
+                pattern["occurrences"] = len(pattern["documents"])
+        
+        return patterns
+    
+    def _parse_contradictions_from_response(
+        self,
+        response_text: str,
+        document_ids: List[str],
+        document_name_map: Dict[str, str],
+        chunks_by_doc: Dict[str, List[ContextChunk]]
+    ) -> List[Dict[str, Any]]:
+        """Parse contradictions from LLM response"""
+        contradictions = []
+        lines = response_text.split("\n")
+        
+        current_contradiction = None
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            
+            # Start of new contradiction
+            if "[CONTRADICTION]" in line.upper() or line.upper().startswith("CONTRADICTION"):
+                if current_contradiction:
+                    contradictions.append(current_contradiction)
+                current_contradiction = {
+                    "type": "factual",
+                    "description": "",
+                    "documents": [],
+                    "severity": "medium",
+                    "confidence": 0.7
+                }
+                continue
+            
+            if not current_contradiction:
+                continue
+            
+            # Parse contradiction fields
+            if line.lower().startswith("type:"):
+                contra_type = line.split(":", 1)[1].strip().lower()
+                if contra_type in ["factual", "temporal", "quantitative", "categorical"]:
+                    current_contradiction["type"] = contra_type
+            
+            elif line.lower().startswith("description:"):
+                current_contradiction["description"] = line.split(":", 1)[1].strip()
+            
+            elif line.lower().startswith("severity:"):
+                severity = line.split(":", 1)[1].strip().lower()
+                if severity in ["low", "medium", "high"]:
+                    current_contradiction["severity"] = severity
+            
+            elif line.lower().startswith("confidence:"):
+                try:
+                    current_contradiction["confidence"] = float(line.split(":", 1)[1].strip())
+                except ValueError:
+                    pass
+            
+            elif "document:" in line.lower() and "claim:" in line.lower():
+                # Parse document claim
+                try:
+                    parts = line.split("Claim:")
+                    doc_part = parts[0].split("Document:")[1].strip() if "Document:" in parts[0] else ""
+                    claim_part = parts[1].split("Page:")[0].strip().strip('"') if len(parts) > 1 else ""
+                    page_part = parts[1].split("Page:")[1].strip() if len(parts) > 1 and "Page:" in parts[1] else None
+                    
+                    # Find matching document ID
+                    doc_id = None
+                    for did in document_ids:
+                        if document_name_map.get(did, did) in doc_part or did in doc_part:
+                            doc_id = did
+                            break
+                    
+                    if doc_id and claim_part:
+                        page_num = None
+                        if page_part:
+                            try:
+                                page_num = int(page_part.strip())
+                            except ValueError:
+                                pass
+                        
+                        current_contradiction["documents"].append({
+                            "id": doc_id,
+                            "name": document_name_map.get(doc_id, doc_id),
+                            "claim": claim_part[:300],  # Limit claim length
+                            "page": page_num
+                        })
+                except Exception:
+                    pass
+        
+        if current_contradiction:
+            contradictions.append(current_contradiction)
+        
+        # Ensure we have at least 2 documents for contradictions
+        contradictions = [c for c in contradictions if len(c["documents"]) >= 2]
+        
+        return contradictions
     
     def _calculate_confidence(
         self,

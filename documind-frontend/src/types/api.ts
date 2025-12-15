@@ -313,6 +313,32 @@ export interface QueryResponse {
   confidence: number;
   key_points?: KeyPointResponse[];
   entities?: EntityResponse[];
+  patterns?: Array<{
+    type: string;
+    description: string;
+    documents: string[];
+    occurrences: number;
+    examples: Array<{
+      document_id: string;
+      document_name: string;
+      text: string;
+      page?: number;
+    }>;
+    confidence: number;
+  }>;
+  contradictions?: Array<{
+    type: string;
+    description: string;
+    documents: Array<{
+      id: string;
+      name: string;
+      claim: string;
+      page?: number;
+      section?: string;
+    }>;
+    severity: string;
+    confidence: number;
+  }>;
   model: string;
   provider: string;
   usage?: {
