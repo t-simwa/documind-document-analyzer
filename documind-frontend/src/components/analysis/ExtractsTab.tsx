@@ -1,14 +1,83 @@
-import { Building2, Users, Calendar, DollarSign, MapPin, FileText, AlertCircle, Hash } from "lucide-react";
+import { Building2, Users, Calendar, DollarSign, MapPin, FileText, AlertCircle, Hash, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { DocumentEntities } from "@/types/api";
+import React from "react";
 
 interface ExtractsTabProps {
   entities: DocumentEntities | null;
   isLoading?: boolean;
   error?: string | null;
+  onRetry?: () => void;
 }
+
+// Helper function to format text with markdown-like syntax
+const formatEntityText = (text: string): React.ReactNode => {
+  // Split by ** for bold text
+  const parts = text.split(/(\*\*.*?\*\*)/g);
+  return parts.map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      const boldText = part.slice(2, -2);
+      return <strong key={index} className="font-semibold text-foreground">{boldText}</strong>;
+    }
+    return <span key={index}>{part}</span>;
+  });
+};
+
+// Helper function to format context with structured content
+const formatContext = (context?: string): React.ReactNode => {
+  if (!context) return null;
+  
+  // Split by lines and format
+  const lines = context.split('\n').filter(line => line.trim());
+  
+  return (
+    <div className="space-y-1.5 mt-2">
+      {lines.map((line, index) => {
+        const trimmed = line.trim();
+        
+        // Check for bullet points (•, *, -)
+        if (/^[•\-\*]\s/.test(trimmed)) {
+          const content = trimmed.replace(/^[•\-\*]\s/, '');
+          return (
+            <div key={index} className="flex items-start gap-2">
+              <span className="text-muted-foreground mt-0.5">•</span>
+              <span className="text-xs text-muted-foreground leading-relaxed flex-1">
+                {formatEntityText(content)}
+              </span>
+            </div>
+          );
+        }
+        
+        // Check for numbered lists
+        if (/^\d+\.\s/.test(trimmed)) {
+          const match = trimmed.match(/^(\d+)\.\s(.+)/);
+          if (match) {
+            return (
+              <div key={index} className="flex items-start gap-2">
+                <span className="text-[10px] font-medium text-muted-foreground mt-0.5 min-w-[16px]">
+                  {match[1]}.
+                </span>
+                <span className="text-xs text-muted-foreground leading-relaxed flex-1">
+                  {formatEntityText(match[2])}
+                </span>
+              </div>
+            );
+          }
+        }
+        
+        // Regular text
+        return (
+          <p key={index} className="text-xs text-muted-foreground leading-relaxed">
+            {formatEntityText(trimmed)}
+          </p>
+        );
+      })}
+    </div>
+  );
+};
 
 const EntityCard = ({ 
   text, 
@@ -21,22 +90,28 @@ const EntityCard = ({
   page?: number; 
   count?: number;
 }) => (
-  <div className="group p-3 rounded-lg border border-border/50 bg-card/50 hover:bg-card hover:border-border hover:shadow-sm transition-all duration-200">
-    <div className="flex items-start justify-between gap-3">
-      <div className="flex-1 min-w-0 space-y-1">
-        <p className="text-sm font-semibold text-foreground leading-tight">{text}</p>
+  <div className="group p-4 rounded-lg border border-border/50 bg-card/50 hover:bg-card hover:border-border hover:shadow-md transition-all duration-200">
+    <div className="flex items-start justify-between gap-4">
+      <div className="flex-1 min-w-0 space-y-2">
+        <div className="flex items-start gap-2">
+          <h3 className="text-sm font-semibold text-foreground leading-snug flex-1">
+            {formatEntityText(text)}
+          </h3>
+        </div>
         {context && (
-          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{context}</p>
+          <div className="text-xs text-muted-foreground leading-relaxed">
+            {formatContext(context)}
+          </div>
         )}
       </div>
-      <div className="flex items-center gap-1.5 flex-shrink-0">
+      <div className="flex items-center gap-1.5 flex-shrink-0 pt-0.5">
         {page && (
-          <div className="px-2 py-0.5 rounded-md bg-muted/60 border border-border/50 text-[10px] font-medium text-foreground/70">
+          <div className="px-2 py-1 rounded-md bg-muted/60 border border-border/50 text-[10px] font-medium text-foreground/70 whitespace-nowrap">
             p.{page}
           </div>
         )}
         {count && count > 1 && (
-          <div className="px-2 py-0.5 rounded-md bg-background border border-border/60 text-[10px] font-medium text-foreground/60 flex items-center gap-1">
+          <div className="px-2 py-1 rounded-md bg-background border border-border/60 text-[10px] font-medium text-foreground/60 flex items-center gap-1 whitespace-nowrap">
             <Hash className="h-2.5 w-2.5" />
             {count}
           </div>
@@ -61,27 +136,29 @@ const MonetaryEntityCard = ({
   page?: number; 
   count?: number;
 }) => (
-  <div className="group p-3 rounded-lg border border-border/50 bg-card/50 hover:bg-card hover:border-border hover:shadow-sm transition-all duration-200">
-    <div className="flex items-start justify-between gap-3">
-      <div className="flex-1 min-w-0 space-y-1">
-        <div className="flex items-baseline gap-2">
-          <p className="text-sm font-semibold text-foreground leading-tight">{formatted}</p>
-          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium text-foreground/60 bg-muted/60 border border-border/50 uppercase tracking-wide">
+  <div className="group p-4 rounded-lg border border-border/50 bg-card/50 hover:bg-card hover:border-border hover:shadow-md transition-all duration-200">
+    <div className="flex items-start justify-between gap-4">
+      <div className="flex-1 min-w-0 space-y-2">
+        <div className="flex items-baseline gap-2 flex-wrap">
+          <p className="text-sm font-semibold text-foreground leading-tight font-mono">{formatted}</p>
+          <span className="px-2 py-0.5 rounded-md text-[10px] font-medium text-foreground/70 bg-muted/60 border border-border/50 uppercase tracking-wide">
             {currency}
           </span>
         </div>
         {context && (
-          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{context}</p>
+          <div className="text-xs text-muted-foreground leading-relaxed">
+            {formatContext(context)}
+          </div>
         )}
       </div>
-      <div className="flex items-center gap-1.5 flex-shrink-0">
+      <div className="flex items-center gap-1.5 flex-shrink-0 pt-0.5">
         {page && (
-          <div className="px-2 py-0.5 rounded-md bg-muted/60 border border-border/50 text-[10px] font-medium text-foreground/70">
+          <div className="px-2 py-1 rounded-md bg-muted/60 border border-border/50 text-[10px] font-medium text-foreground/70 whitespace-nowrap">
             p.{page}
           </div>
         )}
         {count && count > 1 && (
-          <div className="px-2 py-0.5 rounded-md bg-background border border-border/60 text-[10px] font-medium text-foreground/60 flex items-center gap-1">
+          <div className="px-2 py-1 rounded-md bg-background border border-border/60 text-[10px] font-medium text-foreground/60 flex items-center gap-1 whitespace-nowrap">
             <Hash className="h-2.5 w-2.5" />
             {count}
           </div>
@@ -91,7 +168,7 @@ const MonetaryEntityCard = ({
   </div>
 );
 
-export const ExtractsTab = ({ entities, isLoading, error }: ExtractsTabProps) => {
+export const ExtractsTab = ({ entities, isLoading, error, onRetry }: ExtractsTabProps) => {
   if (isLoading) {
     return (
       <div className="flex flex-col h-full overflow-y-auto">
@@ -113,7 +190,18 @@ export const ExtractsTab = ({ entities, isLoading, error }: ExtractsTabProps) =>
           <AlertCircle className="h-4 w-4 text-muted-foreground" />
         </div>
         <h3 className="text-sm font-semibold text-foreground mb-1.5">Unable to load extracts</h3>
-        <p className="text-xs text-muted-foreground text-center max-w-sm">{error}</p>
+        <p className="text-xs text-muted-foreground text-center max-w-sm mb-4">{error}</p>
+        {onRetry && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onRetry}
+            className="gap-2"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Retry
+          </Button>
+        )}
       </div>
     );
   }
@@ -231,7 +319,7 @@ export const ExtractsTab = ({ entities, isLoading, error }: ExtractsTabProps) =>
             </TabsList>
           </div>
 
-          <TabsContent value="organizations" className="space-y-2.5 mt-0">
+          <TabsContent value="organizations" className="space-y-3 mt-0">
             {entities.organizations && entities.organizations.length > 0 ? (
               entities.organizations.map((entity, index) => (
                 <EntityCard key={index} {...entity} />
@@ -243,7 +331,7 @@ export const ExtractsTab = ({ entities, isLoading, error }: ExtractsTabProps) =>
             )}
           </TabsContent>
 
-          <TabsContent value="people" className="space-y-2.5 mt-0">
+          <TabsContent value="people" className="space-y-3 mt-0">
             {entities.people && entities.people.length > 0 ? (
               entities.people.map((entity, index) => (
                 <EntityCard key={index} {...entity} />
@@ -255,7 +343,7 @@ export const ExtractsTab = ({ entities, isLoading, error }: ExtractsTabProps) =>
             )}
           </TabsContent>
 
-          <TabsContent value="dates" className="space-y-2.5 mt-0">
+          <TabsContent value="dates" className="space-y-3 mt-0">
             {entities.dates && entities.dates.length > 0 ? (
               entities.dates.map((entity, index) => (
                 <EntityCard key={index} {...entity} />
@@ -267,7 +355,7 @@ export const ExtractsTab = ({ entities, isLoading, error }: ExtractsTabProps) =>
             )}
           </TabsContent>
 
-          <TabsContent value="monetary" className="space-y-2.5 mt-0">
+          <TabsContent value="monetary" className="space-y-3 mt-0">
             {entities.monetaryValues && entities.monetaryValues.length > 0 ? (
               entities.monetaryValues.map((entity, index) => (
                 <MonetaryEntityCard key={index} {...entity} />
@@ -279,7 +367,7 @@ export const ExtractsTab = ({ entities, isLoading, error }: ExtractsTabProps) =>
             )}
           </TabsContent>
 
-          <TabsContent value="locations" className="space-y-2.5 mt-0">
+          <TabsContent value="locations" className="space-y-3 mt-0">
             {entities.locations && entities.locations.length > 0 ? (
               entities.locations.map((entity, index) => (
                 <EntityCard key={index} {...entity} />

@@ -681,6 +681,361 @@ KEY_POINTS:
             logger.error("Summary generation failed", error=str(e), document_id=document_id)
             raise GenerationError(f"Failed to generate summary: {str(e)}")
     
+    async def generate_entities(
+        self,
+        document_id: str,
+        collection_name: str,
+        top_k: int = 100,  # Increased default to retrieve more chunks
+        tenant_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Generate document entities using RAG pipeline
+        
+        Args:
+            document_id: Document ID to extract entities from
+            collection_name: Collection name to search
+            top_k: Number of chunks to retrieve (default: 100 for comprehensive extraction)
+            tenant_id: Optional tenant ID
+            
+        Returns:
+            Dictionary with organizations, people, dates, monetaryValues, and locations
+        """
+        logger.info("Generating entities", document_id=document_id, collection=collection_name)
+        
+        # Use multiple broad queries to retrieve diverse content from different parts of the document
+        # This helps ensure we get comprehensive coverage
+        entity_queries = [
+            "organizations companies institutions corporations",
+            "people names individuals persons",
+            "dates time periods deadlines schedules",
+            "monetary values amounts money currency financial",
+            "locations places addresses cities countries regions"
+        ]
+        
+        # Configure retrieval for comprehensive entity extraction
+        retrieval_config = RetrievalConfig()
+        retrieval_config.top_k = top_k * 3  # Retrieve significantly more chunks (300 by default)
+        retrieval_config.search_type = SearchType.HYBRID  # Use hybrid search for better coverage
+        retrieval_config.query_expansion_enabled = True
+        
+        # Try with metadata filter first
+        retrieval_config.metadata_filter = {"document_id": document_id}
+        logger.debug("Starting retrieval for entities with document_id filter", document_id=document_id)
+        
+        # Step 1: Retrieve chunks using multiple queries to get comprehensive coverage
+        all_chunks = {}
+        all_metadata = {}
+        all_scores = {}
+        all_ids = {}
+        all_distances = {}
+        
+        for query in entity_queries:
+            retrieval_result = await self.retrieval_service.retrieve(
+                query=query,
+                collection_name=collection_name,
+                config=retrieval_config,
+                tenant_id=tenant_id
+            )
+            
+            if retrieval_result and retrieval_result.documents:
+                # Collect unique chunks by ID
+                for i, chunk_id in enumerate(retrieval_result.ids):
+                    if chunk_id not in all_chunks:
+                        all_chunks[chunk_id] = retrieval_result.documents[i]
+                        all_metadata[chunk_id] = retrieval_result.metadata[i]
+                        all_scores[chunk_id] = retrieval_result.scores[i]
+                        all_ids[chunk_id] = chunk_id
+                        if retrieval_result.distances:
+                            all_distances[chunk_id] = retrieval_result.distances[i]
+        
+        # Create combined retrieval result
+        if all_chunks:
+            retrieval_result = RetrievalResult(
+                ids=list(all_ids.values()),
+                documents=list(all_chunks.values()),
+                metadata=list(all_metadata.values()),
+                scores=list(all_scores.values()),
+                distances=list(all_distances.values()) if all_distances else [1.0 - s for s in all_scores.values()],
+                search_type=SearchType.HYBRID,
+                vector_scores=None,
+                keyword_scores=None
+            )
+        else:
+            # Fallback: single query retrieval
+            entities_query = "document content information details names organizations people dates monetary values locations places"
+            retrieval_result = await self.retrieval_service.retrieve(
+                query=entities_query,
+                collection_name=collection_name,
+                config=retrieval_config,
+                tenant_id=tenant_id
+            )
+        
+        # Filter by document_id in memory (fallback if metadata filter didn't work)
+        if retrieval_result and retrieval_result.documents:
+            filtered_docs = []
+            filtered_metadata = []
+            filtered_scores = []
+            filtered_ids = []
+            filtered_distances = []
+            
+            for i, metadata in enumerate(retrieval_result.metadata):
+                doc_id = metadata.get("document_id")
+                if doc_id == document_id:
+                    filtered_docs.append(retrieval_result.documents[i])
+                    filtered_metadata.append(metadata)
+                    filtered_scores.append(retrieval_result.scores[i])
+                    filtered_ids.append(retrieval_result.ids[i])
+                    if retrieval_result.distances:
+                        filtered_distances.append(retrieval_result.distances[i])
+            
+            # If we found filtered results, use them
+            if filtered_docs:
+                original_count = len(retrieval_result.documents)
+                retrieval_result = RetrievalResult(
+                    ids=filtered_ids,
+                    documents=filtered_docs,
+                    metadata=filtered_metadata,
+                    scores=filtered_scores,
+                    distances=filtered_distances if filtered_distances else [1.0 - s for s in filtered_scores],
+                    search_type=retrieval_result.search_type,
+                    vector_scores=retrieval_result.vector_scores[:len(filtered_docs)] if retrieval_result.vector_scores else None,
+                    keyword_scores=retrieval_result.keyword_scores[:len(filtered_docs)] if retrieval_result.keyword_scores else None
+                )
+                logger.debug("Filtered results by document_id for entities", original_count=original_count, filtered_count=len(filtered_docs))
+                
+                # Try to retrieve additional chunks if we have a limited set
+                # Use a very broad query with high top_k to get more chunks
+                if len(filtered_docs) < 100:  # If we have fewer than 100 chunks, try to get more
+                    logger.debug("Attempting to retrieve more chunks for comprehensive entity extraction", current_count=len(filtered_docs))
+                    broad_config = RetrievalConfig()
+                    broad_config.top_k = 500  # Very high limit to get all chunks
+                    broad_config.search_type = SearchType.HYBRID
+                    broad_config.metadata_filter = {"document_id": document_id}
+                    
+                    broad_result = await self.retrieval_service.retrieve(
+                        query="all content document text information",
+                        collection_name=collection_name,
+                        config=broad_config,
+                        tenant_id=tenant_id
+                    )
+                    
+                    if broad_result and broad_result.documents:
+                        # Merge additional chunks
+                        existing_ids = set(filtered_ids)
+                        for i, chunk_id in enumerate(broad_result.ids):
+                            if chunk_id not in existing_ids:
+                                doc_id = broad_result.metadata[i].get("document_id")
+                                if doc_id == document_id:
+                                    filtered_docs.append(broad_result.documents[i])
+                                    filtered_metadata.append(broad_result.metadata[i])
+                                    filtered_scores.append(broad_result.scores[i])
+                                    filtered_ids.append(chunk_id)
+                                    if broad_result.distances:
+                                        filtered_distances.append(broad_result.distances[i])
+                                    existing_ids.add(chunk_id)
+                        
+                        # Update retrieval result with merged chunks
+                        if len(filtered_docs) > original_count:
+                            retrieval_result = RetrievalResult(
+                                ids=filtered_ids,
+                                documents=filtered_docs,
+                                metadata=filtered_metadata,
+                                scores=filtered_scores,
+                                distances=filtered_distances if filtered_distances else [1.0 - s for s in filtered_scores],
+                                search_type=SearchType.HYBRID,
+                                vector_scores=None,
+                                keyword_scores=None
+                            )
+                            logger.debug("Merged additional chunks", final_count=len(filtered_docs))
+            else:
+                logger.warning(
+                    "No content found for document after filtering (entities)",
+                    document_id=document_id,
+                    collection=collection_name,
+                    retrieved_count=len(retrieval_result.documents)
+                )
+                retrieval_result = None
+        
+        if not retrieval_result or not retrieval_result.documents:
+            logger.warning(
+                "No content found for document (entities)",
+                document_id=document_id,
+                collection=collection_name,
+                retrieved_count=len(retrieval_result.documents) if retrieval_result else 0
+            )
+            raise GenerationError(
+                f"No content found for document {document_id}. "
+                f"The document may not be indexed yet, or indexing may still be in progress. "
+                f"Please ensure the document processing is complete (status: 'ready')."
+            )
+        
+        # Step 2: Convert to context chunks
+        context_chunks = self._convert_to_context_chunks(retrieval_result)
+        
+        # Step 3: Extract entities using insights generator
+        try:
+            entities = await self.insights_generator.extract_entities(context_chunks)
+            
+            # Step 4: Format entities according to API schema
+            formatted_entities = self._format_entities_for_api(entities, context_chunks)
+            
+            return formatted_entities
+            
+        except Exception as e:
+            logger.error("Entity extraction failed", error=str(e), document_id=document_id)
+            raise GenerationError(f"Failed to generate entities: {str(e)}")
+    
+    def _format_entities_for_api(
+        self,
+        entities: List[Entity],
+        context_chunks: List[ContextChunk]
+    ) -> Dict[str, Any]:
+        """
+        Format extracted entities according to API schema
+        
+        Args:
+            entities: List of extracted entities
+            context_chunks: Context chunks with metadata
+            
+        Returns:
+            Dictionary with formatted entities grouped by type
+        """
+        # Group entities by type and track occurrences
+        entity_groups = {
+            "organizations": {},
+            "people": {},
+            "dates": {},
+            "monetaryValues": {},
+            "locations": {}
+        }
+        
+        # Map entity types to groups
+        type_mapping = {
+            "organization": "organizations",
+            "person": "people",
+            "date": "dates",
+            "monetary": "monetaryValues",
+            "location": "locations"
+        }
+        
+        # Process each entity
+        for entity in entities:
+            entity_type = type_mapping.get(entity.type, None)
+            if not entity_type:
+                continue
+            
+            # Normalize entity text for grouping (case-insensitive)
+            entity_key = entity.text.lower().strip()
+            
+            # Get page number from citations if available
+            page = None
+            context_text = None
+            
+            if entity.citations and len(entity.citations) > 0:
+                # Get page from first citation's chunk metadata
+                citation_idx = entity.citations[0] - 1  # Citations are 1-indexed
+                if 0 <= citation_idx < len(context_chunks):
+                    chunk_metadata = context_chunks[citation_idx].metadata
+                    page = chunk_metadata.get("page_number") or chunk_metadata.get("page")
+                    # Get context from chunk content
+                    chunk_content = context_chunks[citation_idx].content
+                    # Extract more comprehensive context around entity (100 chars before and after for better context)
+                    entity_pos = chunk_content.lower().find(entity.text.lower())
+                    if entity_pos >= 0:
+                        start = max(0, entity_pos - 100)
+                        end = min(len(chunk_content), entity_pos + len(entity.text) + 200)
+                        context_text = chunk_content[start:end].strip()
+                        # Clean up context but preserve structure
+                        if context_text:
+                            # Preserve line breaks and structure
+                            context_text = re.sub(r'[ \t]+', ' ', context_text)  # Only collapse spaces/tabs, not newlines
+                            # Limit length but preserve important structure
+                            if len(context_text) > 400:
+                                # Try to cut at sentence boundary
+                                sentences = re.split(r'([.!?]\s+)', context_text[:400])
+                                if len(sentences) > 2:
+                                    context_text = ''.join(sentences[:-2]) + "..."
+                                else:
+                                    context_text = context_text[:400] + "..."
+            
+            # Group entities by normalized key
+            if entity_key not in entity_groups[entity_type]:
+                entity_groups[entity_type][entity_key] = {
+                    "text": entity.text,
+                    "context": context_text,
+                    "page": page,
+                    "count": 1,
+                    "value": entity.value,
+                    "citations": entity.citations
+                }
+            else:
+                # Increment count
+                entity_groups[entity_type][entity_key]["count"] += 1
+                # Update page if we found a different page
+                if page and entity_groups[entity_type][entity_key]["page"] != page:
+                    # Keep the first page found, or could use a list
+                    pass
+                # Merge citations
+                if entity.citations:
+                    existing_citations = entity_groups[entity_type][entity_key]["citations"]
+                    entity_groups[entity_type][entity_key]["citations"] = list(set(existing_citations + entity.citations))
+        
+        # Format entities for API response
+        formatted = {
+            "organizations": [],
+            "people": [],
+            "dates": [],
+            "monetaryValues": [],
+            "locations": []
+        }
+        
+        # Format regular entities
+        for entity_type in ["organizations", "people", "dates", "locations"]:
+            for entity_data in entity_groups[entity_type].values():
+                formatted[entity_type].append({
+                    "text": entity_data["text"],
+                    "context": entity_data["context"],
+                    "page": entity_data["page"],
+                    "count": entity_data["count"] if entity_data["count"] > 1 else None
+                })
+        
+        # Format monetary entities (special handling)
+        for entity_data in entity_groups["monetaryValues"].values():
+            # Parse monetary value
+            value_str = str(entity_data["value"]) if entity_data["value"] else entity_data["text"]
+            
+            # Extract numeric value
+            numeric_value = 0.0
+            currency = "USD"  # Default currency
+            
+            # Try to extract number and currency
+            money_match = re.search(r'[\d,]+\.?\d*', value_str.replace(',', ''))
+            if money_match:
+                try:
+                    numeric_value = float(money_match.group(0).replace(',', ''))
+                except ValueError:
+                    pass
+            
+            # Try to extract currency
+            currency_match = re.search(r'\b(USD|EUR|GBP|JPY|CAD|AUD|CHF|CNY|INR|BRL)\b', value_str.upper())
+            if currency_match:
+                currency = currency_match.group(1)
+            
+            # Format monetary value
+            formatted_value = f"${numeric_value:,.2f}" if currency == "USD" else f"{currency} {numeric_value:,.2f}"
+            
+            formatted["monetaryValues"].append({
+                "text": entity_data["text"],
+                "value": numeric_value,
+                "currency": currency,
+                "formatted": formatted_value,
+                "context": entity_data["context"],
+                "page": entity_data["page"],
+                "count": entity_data["count"] if entity_data["count"] > 1 else None
+            })
+        
+        return formatted
+    
     def _calculate_confidence(
         self,
         scores: List[float],

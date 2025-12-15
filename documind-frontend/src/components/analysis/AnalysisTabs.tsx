@@ -137,6 +137,7 @@ export const AnalysisTabs = ({
               entities={insights?.entities || null}
               isLoading={insightsLoading}
               error={insightsError}
+              onRetry={onRetryInsights}
             />
           </TabsContent>
 

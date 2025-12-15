@@ -219,21 +219,38 @@ async def get_document_insights(
             top_k=20  # Retrieve more chunks for comprehensive summary
         )
         
-        # Generate entities and suggested questions
-        # For now, return empty entities and suggested questions
-        # These can be enhanced later with dedicated generation methods
+        # Generate entities using RAG pipeline
+        entities_data = await generation_service.generate_entities(
+            document_id=document_id,
+            collection_name=collection_name,
+            top_k=100  # Increased to retrieve more chunks for comprehensive entity extraction
+        )
+        
         summary_response = DocumentSummaryResponse(
             executiveSummary=summary_data["executiveSummary"],
             keyPoints=summary_data["keyPoints"],
             generatedAt=summary_data["generatedAt"]
         )
         
+        # Format entities response
+        from app.api.v1.documents.schemas import EntityResponse, MonetaryEntityResponse
+        
         entities_response = DocumentEntitiesResponse(
-            organizations=[],
-            people=[],
-            dates=[],
-            monetaryValues=[],
-            locations=[]
+            organizations=[
+                EntityResponse(**org) for org in entities_data.get("organizations", [])
+            ],
+            people=[
+                EntityResponse(**person) for person in entities_data.get("people", [])
+            ],
+            dates=[
+                EntityResponse(**date) for date in entities_data.get("dates", [])
+            ],
+            monetaryValues=[
+                MonetaryEntityResponse(**monetary) for monetary in entities_data.get("monetaryValues", [])
+            ],
+            locations=[
+                EntityResponse(**location) for location in entities_data.get("locations", [])
+            ]
         )
         
         # Generate suggested questions (can be enhanced later)

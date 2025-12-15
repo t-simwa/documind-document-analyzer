@@ -84,7 +84,12 @@ Summary:"""
         Returns:
             List of extracted entities
         """
-        content = "\n\n".join([chunk.content for chunk in chunks])
+        # Build content with chunk markers for citation tracking
+        content_parts = []
+        for i, chunk in enumerate(chunks):
+            content_parts.append(f"[Chunk {i+1}]\n{chunk.content}")
+        
+        content = "\n\n".join(content_parts)
         
         system_prompt = """You are an expert at extracting named entities from documents. Extract all important entities including:
 - Organizations and companies
@@ -92,28 +97,41 @@ Summary:"""
 - Dates and time periods
 - Monetary values and amounts
 - Locations and places
-- Technical terms and concepts
 
-Return the entities in a structured format."""
+For each entity, identify which chunk(s) it appears in. Return entities in a structured format."""
         
-        user_prompt = f"""Extract all important entities from the following document content:
+        # Increase content limit significantly for comprehensive extraction
+        # Process in batches if content is very long
+        content_limit = 50000  # Increased from 12000 to capture more content
+        content_to_process = content[:content_limit] if len(content) <= content_limit else content
+        
+        # If content is very long, we'll process it but the LLM will still get a substantial amount
+        user_prompt = f"""Extract ALL entities from the following document content. Each section is marked with [Chunk N] to indicate its source.
 
-{content[:8000]}
+IMPORTANT: Extract EVERY entity you find, not just a few. Be thorough and comprehensive.
 
-Please identify and list:
-1. Organizations/Companies
-2. People/Names
-3. Dates
-4. Monetary values
-5. Locations
-6. Other important entities
+{content_to_process}
 
-Format: For each entity, provide: [TYPE] Entity Name (Value if applicable)"""
+Please identify and list ALL entities in this format:
+[ORGANIZATION] Entity Name (appears in Chunk N)
+[PERSON] Person Name (appears in Chunk N)
+[DATE] Date Value (appears in Chunk N)
+[MONETARY] Amount Value (appears in Chunk N)
+[LOCATION] Location Name (appears in Chunk N)
+
+Extract ALL unique entities found throughout the entire document. Include:
+- All organization names, companies, institutions
+- All person names, individuals mentioned
+- All dates, deadlines, time periods
+- All monetary values, amounts, financial figures
+- All locations, places, addresses, cities, countries
+
+List every entity you can find, even if it appears multiple times."""
         
         try:
             config = LLMConfig(
                 temperature=0.2,  # Very low temperature for factual extraction
-                max_tokens=2000
+                max_tokens=8000  # Significantly increased to capture all entities
             )
             
             response = await self.llm_service.generate(
@@ -122,83 +140,156 @@ Format: For each entity, provide: [TYPE] Entity Name (Value if applicable)"""
                 config=config
             )
             
-            # Parse entities from response
+            # Parse entities from response and map to chunks
             entities = self._parse_entities_from_response(response.content, chunks)
             return entities
         except Exception as e:
             logger.error("Error extracting entities", error=str(e))
             # Fallback: simple regex-based extraction
-            return self._extract_entities_simple(content, chunks)
+            content_plain = "\n\n".join([chunk.content for chunk in chunks])
+            return self._extract_entities_simple(content_plain, chunks)
     
     def _parse_entities_from_response(
         self,
         response_text: str,
         chunks: List[ContextChunk]
     ) -> List[Entity]:
-        """Parse entities from LLM response"""
+        """Parse entities from LLM response and map to chunks"""
         entities = []
-        entity_types = {
-            "organization": ["organization", "company", "org"],
-            "person": ["person", "people", "name"],
-            "date": ["date", "time"],
-            "monetary": ["monetary", "money", "amount", "currency"],
-            "location": ["location", "place"],
+        entity_type_map = {
+            "organization": "organization",
+            "person": "person",
+            "people": "person",
+            "date": "date",
+            "monetary": "monetary",
+            "money": "monetary",
+            "location": "location",
+            "place": "location"
         }
         
         lines = response_text.split("\n")
-        current_type = None
         
         for line in lines:
-            line_lower = line.lower()
+            line = line.strip()
+            if not line:
+                continue
             
-            # Detect entity type
-            for entity_type, keywords in entity_types.items():
-                if any(keyword in line_lower for keyword in keywords):
-                    current_type = entity_type
-                    break
+            # Try to match format: [TYPE] Entity Name (appears in Chunk N) or [TYPE] Entity Name (Value)
+            # Pattern 1: [TYPE] Entity Name (appears in Chunk N)
+            chunk_match = re.search(r'\[([A-Z]+)\]\s*(.+?)\s*\(appears?\s+in\s+Chunk\s+(\d+)\)', line, re.IGNORECASE)
+            if chunk_match:
+                entity_type_str = chunk_match.group(1).lower()
+                entity_text = chunk_match.group(2).strip()
+                chunk_num = int(chunk_match.group(3))
+                
+                # Map entity type
+                entity_type = entity_type_map.get(entity_type_str, "other")
+                
+                # Find which chunks contain this entity
+                citations = []
+                if 1 <= chunk_num <= len(chunks):
+                    citations.append(chunk_num)
+                    # Also search other chunks for the same entity
+                    entity_lower = entity_text.lower()
+                    for i, chunk in enumerate(chunks):
+                        if i + 1 != chunk_num and entity_lower in chunk.content.lower():
+                            citations.append(i + 1)
+                
+                entities.append(Entity(
+                    text=entity_text,
+                    type=entity_type,
+                    value=self._parse_value(entity_text, entity_type),
+                    citations=citations if citations else [chunk_num] if 1 <= chunk_num <= len(chunks) else []
+                ))
+                continue
             
-            # Extract entity text
-            if "]" in line and "(" in line:
-                # Format: [TYPE] Entity Name (Value)
-                match = re.search(r'\[.*?\]\s*(.+?)\s*\((.+?)\)', line)
-                if match:
-                    text = match.group(1).strip()
-                    value = match.group(2).strip()
+            # Pattern 2: [TYPE] Entity Name (Value)
+            value_match = re.search(r'\[([A-Z]+)\]\s*(.+?)\s*\((.+?)\)', line)
+            if value_match:
+                entity_type_str = value_match.group(1).lower()
+                entity_text = value_match.group(2).strip()
+                value_str = value_match.group(3).strip()
+                
+                entity_type = entity_type_map.get(entity_type_str, "other")
+                
+                # Find chunks containing this entity
+                citations = []
+                entity_lower = entity_text.lower()
+                for i, chunk in enumerate(chunks):
+                    if entity_lower in chunk.content.lower():
+                        citations.append(i + 1)
+                
+                entities.append(Entity(
+                    text=entity_text,
+                    type=entity_type,
+                    value=self._parse_value(value_str, entity_type),
+                    citations=citations if citations else []
+                ))
+                continue
+            
+            # Pattern 3: [TYPE] Entity Name (simple format)
+            simple_match = re.search(r'\[([A-Z]+)\]\s*(.+?)(?:\s*$|\s*\()', line)
+            if simple_match:
+                entity_type_str = simple_match.group(1).lower()
+                entity_text = simple_match.group(2).strip()
+                
+                entity_type = entity_type_map.get(entity_type_str, "other")
+                
+                # Find chunks containing this entity
+                citations = []
+                entity_lower = entity_text.lower()
+                for i, chunk in enumerate(chunks):
+                    if entity_lower in chunk.content.lower():
+                        citations.append(i + 1)
+                
+                entities.append(Entity(
+                    text=entity_text,
+                    type=entity_type,
+                    value=self._parse_value(entity_text, entity_type),
+                    citations=citations if citations else []
+                ))
+                continue
+            
+            # Pattern 4: TYPE: Entity Name
+            colon_match = re.search(r'^([A-Z]+):\s*(.+?)$', line)
+            if colon_match:
+                entity_type_str = colon_match.group(1).lower()
+                entity_text = colon_match.group(2).strip()
+                
+                entity_type = entity_type_map.get(entity_type_str, "other")
+                
+                # Find chunks containing this entity
+                citations = []
+                entity_lower = entity_text.lower()
+                for i, chunk in enumerate(chunks):
+                    if entity_lower in chunk.content.lower():
+                        citations.append(i + 1)
+                
+                if entity_text:
                     entities.append(Entity(
-                        text=text,
-                        type=current_type or "other",
-                        value=self._parse_value(value, current_type),
-                        citations=[]
+                        text=entity_text,
+                        type=entity_type,
+                        value=None,
+                        citations=citations if citations else []
                     ))
-            elif ":" in line:
-                # Format: TYPE: Entity Name
-                parts = line.split(":", 1)
-                if len(parts) == 2:
-                    text = parts[1].strip()
-                    if text:
-                        entities.append(Entity(
-                            text=text,
-                            type=current_type or "other",
-                            value=None,
-                            citations=[]
-                        ))
         
         return entities
     
     def _parse_value(self, value_str: str, entity_type: Optional[str]) -> Any:
         """Parse entity value based on type"""
         if entity_type == "date":
-            # Try to parse date
-            try:
-                # Simple date parsing (can be enhanced)
-                return value_str
-            except:
-                return value_str
+            # Return date string as-is
+            return value_str
         elif entity_type == "monetary":
-            # Try to parse monetary value
-            match = re.search(r'[\d,]+\.?\d*', value_str)
+            # Try to parse monetary value - extract number and currency
+            # Remove currency symbols and commas, extract numeric value
+            cleaned = value_str.replace(',', '').replace('$', '').replace('€', '').replace('£', '').strip()
+            match = re.search(r'[\d]+\.?\d*', cleaned)
             if match:
-                return match.group(0)
+                try:
+                    return float(match.group(0))
+                except ValueError:
+                    return value_str
             return value_str
         else:
             return value_str
@@ -215,22 +306,44 @@ Format: For each entity, provide: [TYPE] Entity Name (Value if applicable)"""
         date_pattern = r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b'
         dates = re.findall(date_pattern, content)
         for date in set(dates):
+            # Find chunks containing this date
+            citations = []
+            for i, chunk in enumerate(chunks):
+                if date in chunk.content:
+                    citations.append(i + 1)
+            
             entities.append(Entity(
                 text=date,
                 type="date",
                 value=date,
-                citations=[]
+                citations=citations if citations else []
             ))
         
         # Extract monetary values
         money_pattern = r'\$[\d,]+\.?\d*'
         money_values = re.findall(money_pattern, content)
         for money in set(money_values):
+            # Find chunks containing this monetary value
+            citations = []
+            for i, chunk in enumerate(chunks):
+                if money in chunk.content:
+                    citations.append(i + 1)
+            
+            # Parse numeric value
+            numeric_value = 0.0
+            cleaned = money.replace(',', '').replace('$', '').strip()
+            match = re.search(r'[\d]+\.?\d*', cleaned)
+            if match:
+                try:
+                    numeric_value = float(match.group(0))
+                except ValueError:
+                    pass
+            
             entities.append(Entity(
                 text=money,
                 type="monetary",
-                value=money,
-                citations=[]
+                value=numeric_value if numeric_value > 0 else money,
+                citations=citations if citations else []
             ))
         
         return entities
