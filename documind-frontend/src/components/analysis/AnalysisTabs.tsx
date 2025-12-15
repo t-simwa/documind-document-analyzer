@@ -32,6 +32,7 @@ interface AnalysisTabsProps {
   insights: DocumentInsights | null;
   insightsLoading?: boolean;
   insightsError?: string | null;
+  onRetryInsights?: () => void;
 }
 
 export const AnalysisTabs = ({
@@ -45,6 +46,7 @@ export const AnalysisTabs = ({
   insights,
   insightsLoading,
   insightsError,
+  onRetryInsights,
 }: AnalysisTabsProps) => {
   const [activeTab, setActiveTab] = useState<string>("chat");
   const [shareAnalysisDialogOpen, setShareAnalysisDialogOpen] = useState(false);
@@ -126,6 +128,7 @@ export const AnalysisTabs = ({
               summary={insights?.summary || null}
               isLoading={insightsLoading}
               error={insightsError}
+              onRetry={onRetryInsights}
             />
           </TabsContent>
 

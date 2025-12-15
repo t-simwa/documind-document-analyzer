@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileText, AlertCircle, Clock, Download } from "lucide-react";
+import { FileText, AlertCircle, Clock, Download, RefreshCw } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { ExportDialog } from "@/components/sharing/ExportDialog";
@@ -11,9 +11,10 @@ interface SummaryTabProps {
   summary: DocumentSummary | null;
   isLoading?: boolean;
   error?: string | null;
+  onRetry?: () => void;
 }
 
-export const SummaryTab = ({ documentId, documentName, summary, isLoading, error }: SummaryTabProps) => {
+export const SummaryTab = ({ documentId, documentName, summary, isLoading, error, onRetry }: SummaryTabProps) => {
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   if (isLoading) {
     return (
@@ -53,7 +54,18 @@ export const SummaryTab = ({ documentId, documentName, summary, isLoading, error
           <AlertCircle className="h-4 w-4 text-muted-foreground" />
         </div>
         <h3 className="text-sm font-semibold text-foreground mb-1.5">Unable to load summary</h3>
-        <p className="text-xs text-muted-foreground text-center max-w-sm">{error}</p>
+        <p className="text-xs text-muted-foreground text-center max-w-sm mb-4">{error}</p>
+        {onRetry && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onRetry}
+            className="gap-2"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Retry
+          </Button>
+        )}
       </div>
     );
   }

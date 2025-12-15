@@ -654,61 +654,51 @@ export const usersApi = {
 // Insights API
 export const insightsApi = {
   async getInsights(documentId: string): Promise<DocumentInsights> {
-    await delay(800); // Simulate API call delay
-    
-    // Mock insights data - in production, this would be a real API call
-    // GET /api/v1/documents/{document_id}/insights
-    const mockInsights: DocumentInsights = {
-      summary: {
-        executiveSummary: `This document provides a comprehensive overview of the key topics and findings. The content covers multiple important areas including strategic planning, operational considerations, and future outlook. Key themes emerge around innovation, efficiency, and growth opportunities. The document presents detailed analysis and recommendations that are critical for decision-making processes.`,
-        keyPoints: [
-          "Strategic initiatives focus on digital transformation and market expansion",
-          "Operational efficiency improvements target cost reduction of 15-20%",
-          "Key partnerships and collaborations are identified as growth drivers",
-          "Risk management strategies address emerging market challenges",
-          "Technology investments prioritize scalability and innovation",
-        ],
-        generatedAt: new Date(),
-      },
-      entities: {
-        organizations: [
-          { text: "Acme Corporation", context: "Primary partner organization", page: 1, count: 5 },
-          { text: "Tech Solutions Inc.", context: "Technology vendor", page: 3, count: 3 },
-          { text: "Global Industries Ltd.", context: "Strategic alliance partner", page: 5, count: 2 },
-        ],
-        people: [
-          { text: "John Smith", context: "Chief Executive Officer", page: 2, count: 4 },
-          { text: "Sarah Johnson", context: "Director of Operations", page: 4, count: 3 },
-          { text: "Michael Chen", context: "Head of Technology", page: 6, count: 2 },
-        ],
-        dates: [
-          { text: "Q1 2024", context: "Project launch timeline", page: 1, count: 2 },
-          { text: "December 2024", context: "Target completion date", page: 3, count: 1 },
-          { text: "2025-2027", context: "Long-term strategic period", page: 5, count: 1 },
-        ],
-        monetaryValues: [
-          { text: "$2.5 million", value: 2500000, currency: "USD", formatted: "$2,500,000", context: "Initial investment", page: 2, count: 1 },
-          { text: "$500,000", value: 500000, currency: "USD", formatted: "$500,000", context: "Annual budget allocation", page: 4, count: 1 },
-          { text: "$1.2 million", value: 1200000, currency: "USD", formatted: "$1,200,000", context: "Expected revenue", page: 6, count: 1 },
-        ],
-        locations: [
-          { text: "New York", context: "Headquarters location", page: 1, count: 2 },
-          { text: "San Francisco", context: "Regional office", page: 3, count: 1 },
-        ],
-      },
-      suggestedQuestions: [
-        "What are the main strategic objectives outlined in this document?",
-        "What are the key financial figures and budget allocations?",
-        "Who are the primary stakeholders and decision-makers mentioned?",
-        "What are the major risks and how are they being addressed?",
-        "What is the timeline for implementation of key initiatives?",
-        "What partnerships or collaborations are discussed?",
-        "What technology investments are planned?",
-        "What are the expected outcomes and success metrics?",
-      ],
-    };
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/documents/${documentId}/insights`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          // Add authentication headers if needed
+        },
+      });
 
-    return mockInsights;
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: `HTTP ${response.status}: ${response.statusText}` }));
+        throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      // Map backend response to frontend DocumentInsights format
+      // Backend returns: { summary: { executiveSummary, keyPoints, generatedAt }, entities: {...}, suggestedQuestions: [...] }
+      // Frontend expects: DocumentInsights with same structure
+      return {
+        summary: {
+          executiveSummary: data.summary.executiveSummary,
+          keyPoints: data.summary.keyPoints,
+          generatedAt: new Date(data.summary.generatedAt),
+        },
+        entities: {
+          organizations: data.entities.organizations || [],
+          people: data.entities.people || [],
+          dates: data.entities.dates || [],
+          monetaryValues: data.entities.monetaryValues || [],
+          locations: data.entities.locations || [],
+        },
+        suggestedQuestions: data.suggestedQuestions || [],
+      };
+    } catch (error) {
+      // Handle network errors (CORS, connection refused, etc.)
+      if (error instanceof TypeError && error.message === "Failed to fetch") {
+        throw new Error(
+          `Failed to connect to backend server at ${API_BASE_URL}. ` +
+          `Please ensure the backend server is running. ` +
+          `If using a different port, set VITE_API_BASE_URL in your .env file.`
+        );
+      }
+      throw error;
+    }
   },
 };
 

@@ -80,29 +80,37 @@ export const SplitScreenAnalysis = ({
     setActiveCitations(allCitations);
   }, [messages]);
 
+  // Function to fetch insights
+  const fetchInsights = useCallback(async () => {
+    if (!document || document.status !== "ready" || !document.id) {
+      return;
+    }
+    
+    setInsightsLoading(true);
+    setInsightsError(null);
+    
+    try {
+      const data = await insightsApi.getInsights(document.id);
+      setInsights(data);
+      setInsightsLoading(false);
+    } catch (error) {
+      console.error("Error fetching insights:", error);
+      setInsightsError(error instanceof Error ? error.message : "Failed to load insights");
+      setInsightsLoading(false);
+    }
+  }, [document?.id, document?.status]);
+
   // Fetch insights when document is ready
   useEffect(() => {
     if (document && document.status === "ready" && document.id) {
-      setInsightsLoading(true);
-      setInsightsError(null);
-      insightsApi
-        .getInsights(document.id)
-        .then((data) => {
-          setInsights(data);
-          setInsightsLoading(false);
-        })
-        .catch((error) => {
-          console.error("Error fetching insights:", error);
-          setInsightsError(error.message || "Failed to load insights");
-          setInsightsLoading(false);
-        });
+      fetchInsights();
     } else {
       // Reset insights when document changes or is not ready
       setInsights(null);
       setInsightsLoading(false);
       setInsightsError(null);
     }
-  }, [document?.id, document?.status]);
+  }, [document?.id, document?.status, fetchInsights]);
 
   // Handle citation click from chat
   const handleCitationClick = useCallback(
@@ -204,6 +212,7 @@ export const SplitScreenAnalysis = ({
                 insights={insights}
                 insightsLoading={insightsLoading}
                 insightsError={insightsError}
+                onRetryInsights={fetchInsights}
               />
             </div>
           )}
@@ -331,6 +340,7 @@ export const SplitScreenAnalysis = ({
                   insights={insights}
                   insightsLoading={insightsLoading}
                   insightsError={insightsError}
+                  onRetryInsights={fetchInsights}
                 />
               </div>
             </div>

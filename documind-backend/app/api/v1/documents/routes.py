@@ -2,7 +2,7 @@
 Document upload and management API routes
 """
 
-from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Form
+from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Form, Depends
 from fastapi.responses import JSONResponse
 from typing import Optional
 import os
@@ -13,7 +13,17 @@ from datetime import datetime
 
 from app.core.config import settings
 from app.workers.tasks import process_document_async, security_scan_async
-from .schemas import DocumentUploadResponse, DocumentResponse
+from .schemas import (
+    DocumentUploadResponse, 
+    DocumentResponse,
+    DocumentInsightsResponse,
+    DocumentSummaryResponse,
+    DocumentEntitiesResponse
+)
+from app.services.retrieval import RetrievalService
+from app.services.llm import LLMService
+from app.services.generation import GenerationService
+from app.services.generation.exceptions import GenerationError
 
 logger = structlog.get_logger(__name__)
 
@@ -141,6 +151,127 @@ async def upload_document(
     except Exception as e:
         logger.exception("document_upload_failed", error=str(e), filename=file.filename if file else None)
         raise HTTPException(status_code=500, detail=f"Failed to upload document: {str(e)}")
+
+
+def get_generation_service() -> GenerationService:
+    """Dependency to get generation service instance"""
+    retrieval_service = RetrievalService()
+    llm_service = LLMService()
+    generation_service = GenerationService(
+        retrieval_service=retrieval_service,
+        llm_service=llm_service
+    )
+    return generation_service
+
+
+@router.get(
+    "/{document_id}/insights",
+    response_model=DocumentInsightsResponse,
+    summary="Get document insights",
+    description="Get AI-generated insights (summary, entities, suggested questions) for a document using RAG pipeline"
+)
+async def get_document_insights(
+    document_id: str,
+    generation_service: GenerationService = Depends(get_generation_service)
+):
+    """
+    Get AI-generated insights for a document
+    
+    Args:
+        document_id: Document ID
+        generation_service: Generation service instance
+        
+    Returns:
+        DocumentInsightsResponse with summary, entities, and suggested questions
+    """
+    # Check if document exists
+    if document_id not in documents_store:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    doc = documents_store[document_id]
+    
+    # Check if document is ready
+    from app.workers.tasks import task_queue
+    task_id = f"doc_process_{document_id}"
+    task = task_queue.get_task(task_id)
+    
+    if task:
+        task_status = task.get("status")
+        if task_status != "completed":
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Document is not ready. Current status: {task_status}"
+            )
+    elif doc.get("status") != "ready":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Document is not ready. Current status: {doc.get('status')}"
+        )
+    
+    try:
+        # Get collection name from settings (use the same pattern as query endpoint)
+        collection_name = getattr(settings, "VECTOR_STORE_COLLECTION_PREFIX", "documind_documents")
+        
+        # Generate summary using RAG pipeline
+        summary_data = await generation_service.generate_summary(
+            document_id=document_id,
+            collection_name=collection_name,
+            top_k=20  # Retrieve more chunks for comprehensive summary
+        )
+        
+        # Generate entities and suggested questions
+        # For now, return empty entities and suggested questions
+        # These can be enhanced later with dedicated generation methods
+        summary_response = DocumentSummaryResponse(
+            executiveSummary=summary_data["executiveSummary"],
+            keyPoints=summary_data["keyPoints"],
+            generatedAt=summary_data["generatedAt"]
+        )
+        
+        entities_response = DocumentEntitiesResponse(
+            organizations=[],
+            people=[],
+            dates=[],
+            monetaryValues=[],
+            locations=[]
+        )
+        
+        # Generate suggested questions (can be enhanced later)
+        suggested_questions = [
+            "What are the main topics discussed in this document?",
+            "What are the key findings or conclusions?",
+            "What recommendations are provided?",
+            "What are the most important points to remember?"
+        ]
+        
+        return DocumentInsightsResponse(
+            summary=summary_response,
+            entities=entities_response,
+            suggestedQuestions=suggested_questions
+        )
+        
+    except GenerationError as e:
+        # Handle generation-specific errors (e.g., document not indexed)
+        logger.warning("insights_generation_failed", error=str(e), document_id=document_id)
+        error_message = str(e)
+        if "No content found" in error_message:
+            # Document not indexed yet
+            raise HTTPException(
+                status_code=404,
+                detail=f"Document content not found. The document may not be indexed yet. "
+                       f"Please wait for document processing to complete (status should be 'ready')."
+            )
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to generate insights: {error_message}"
+            )
+    except Exception as e:
+        logger.exception("insights_generation_failed", error=str(e), document_id=document_id)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate insights: {str(e)}"
+        )
 
 
 @router.get(

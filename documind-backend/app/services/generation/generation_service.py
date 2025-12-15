@@ -4,8 +4,9 @@ Main generation service that orchestrates retrieval, prompt engineering, LLM cal
 
 from typing import List, Dict, Any, Optional, AsyncIterator
 import structlog
+import re
 
-from app.services.retrieval import RetrievalService, RetrievalConfig, RetrievalResult
+from app.services.retrieval import RetrievalService, RetrievalConfig, RetrievalResult, SearchType
 from app.services.llm import LLMService, LLMConfig
 from .prompt_engine import PromptEngine, ContextChunk
 from .structured_output import GenerationResponse, Citation, KeyPoint, Entity
@@ -465,6 +466,220 @@ class GenerationService:
             chunks.append(chunk)
         
         return chunks
+    
+    async def generate_summary(
+        self,
+        document_id: str,
+        collection_name: str,
+        top_k: int = 20,
+        tenant_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Generate document summary using RAG pipeline
+        
+        Args:
+            document_id: Document ID to summarize
+            collection_name: Collection name to search
+            top_k: Number of chunks to retrieve (default: 20 for comprehensive summary)
+            tenant_id: Optional tenant ID
+            
+        Returns:
+            Dictionary with executiveSummary, keyPoints, and generatedAt
+        """
+        logger.info("Generating summary", document_id=document_id, collection=collection_name)
+        
+        # Use a very broad query to retrieve diverse content from the document
+        # A generic query helps retrieve chunks from different parts of the document
+        summary_query = "document content information details topics themes findings conclusions recommendations"
+        
+        # Configure retrieval for comprehensive summary
+        retrieval_config = RetrievalConfig()
+        retrieval_config.top_k = top_k * 2  # Retrieve more chunks, we'll filter after
+        retrieval_config.search_type = SearchType.HYBRID  # Use hybrid search for better coverage
+        retrieval_config.query_expansion_enabled = True
+        
+        # Try with metadata filter first
+        retrieval_config.metadata_filter = {"document_id": document_id}
+        logger.debug("Starting retrieval with document_id filter", document_id=document_id, filter=retrieval_config.metadata_filter)
+        
+        # Step 1: Retrieve relevant chunks
+        retrieval_result = await self.retrieval_service.retrieve(
+            query=summary_query,
+            collection_name=collection_name,
+            config=retrieval_config,
+            tenant_id=tenant_id
+        )
+        
+        # Filter by document_id in memory (fallback if metadata filter didn't work)
+        if retrieval_result and retrieval_result.documents:
+            filtered_docs = []
+            filtered_metadata = []
+            filtered_scores = []
+            filtered_ids = []
+            filtered_distances = []
+            
+            for i, metadata in enumerate(retrieval_result.metadata):
+                doc_id = metadata.get("document_id")
+                if doc_id == document_id:
+                    filtered_docs.append(retrieval_result.documents[i])
+                    filtered_metadata.append(metadata)
+                    filtered_scores.append(retrieval_result.scores[i])
+                    filtered_ids.append(retrieval_result.ids[i])
+                    if retrieval_result.distances:
+                        filtered_distances.append(retrieval_result.distances[i])
+            
+            # If we found filtered results, use them
+            if filtered_docs:
+                original_count = len(retrieval_result.documents)
+                retrieval_result = RetrievalResult(
+                    ids=filtered_ids,
+                    documents=filtered_docs,
+                    metadata=filtered_metadata,
+                    scores=filtered_scores,
+                    distances=filtered_distances if filtered_distances else [1.0 - s for s in filtered_scores],
+                    search_type=retrieval_result.search_type,
+                    vector_scores=retrieval_result.vector_scores[:len(filtered_docs)] if retrieval_result.vector_scores else None,
+                    keyword_scores=retrieval_result.keyword_scores[:len(filtered_docs)] if retrieval_result.keyword_scores else None
+                )
+                logger.debug("Filtered results by document_id", original_count=original_count, filtered_count=len(filtered_docs))
+            else:
+                # No matches after filtering - document might not be indexed
+                logger.warning(
+                    "No content found for document after filtering",
+                    document_id=document_id,
+                    collection=collection_name,
+                    retrieved_count=len(retrieval_result.documents),
+                    sample_metadata=retrieval_result.metadata[0] if retrieval_result.metadata else None
+                )
+                retrieval_result = None
+        
+        if not retrieval_result or not retrieval_result.documents:
+            logger.warning(
+                "No content found for document",
+                document_id=document_id,
+                collection=collection_name,
+                retrieved_count=len(retrieval_result.documents) if retrieval_result else 0
+            )
+            raise GenerationError(
+                f"No content found for document {document_id}. "
+                f"The document may not be indexed yet, or indexing may still be in progress. "
+                f"Please ensure the document processing is complete (status: 'ready'). "
+                f"If the document was recently uploaded, please wait a few moments for indexing to complete."
+            )
+        
+        # Step 2: Convert to context chunks
+        context_chunks = self._convert_to_context_chunks(retrieval_result)
+        
+        # Step 3: Build summary-specific prompt
+        summary_prompt = """Based on the following document content, generate a comprehensive summary in the following format:
+
+1. **Executive Summary**: Write 2-3 paragraphs that provide a high-level overview of the document. Include the main purpose, key themes, and most important findings.
+
+2. **Key Points**: Extract and list 5-7 most important key points from the document. Each point should be a concise sentence that captures a significant finding, recommendation, or insight.
+
+Format your response as:
+EXECUTIVE_SUMMARY:
+[Your executive summary here]
+
+KEY_POINTS:
+1. [First key point]
+2. [Second key point]
+..."""
+
+        # Build messages with summary prompt
+        system_prompt = self.prompt_engine.build_system_prompt(
+            custom_instructions="You are an expert document analyst. Generate clear, comprehensive summaries that capture the essence of the document."
+        )
+        
+        context_string = self.prompt_engine.build_context_string(context_chunks, include_metadata=True)
+        user_prompt = f"{context_string}\n\n{summary_prompt}"
+        
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ]
+        
+        # Step 4: Generate summary using LLM
+        llm_config = LLMConfig(temperature=0.3, max_tokens=1500)  # Lower temperature for more consistent summaries
+        
+        try:
+            llm_response = await self.llm_service.generate_chat(
+                messages=messages,
+                config=llm_config
+            )
+            
+            summary_text = llm_response.content
+            
+            # Parse the response to extract executive summary and key points
+            executive_summary = ""
+            key_points = []
+            
+            # Try to parse structured format
+            if "EXECUTIVE_SUMMARY:" in summary_text:
+                parts = summary_text.split("KEY_POINTS:")
+                if len(parts) == 2:
+                    executive_summary = parts[0].replace("EXECUTIVE_SUMMARY:", "").strip()
+                    key_points_text = parts[1].strip()
+                    
+                    # Extract numbered key points
+                    point_pattern = r'\d+\.\s*(.+?)(?=\d+\.|$)'
+                    matches = re.findall(point_pattern, key_points_text, re.DOTALL)
+                    key_points = [match.strip() for match in matches if match.strip()]
+            else:
+                # Fallback: use entire response as executive summary, try to extract key points
+                lines = summary_text.split('\n')
+                summary_lines = []
+                in_key_points = False
+                
+                for line in lines:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    
+                    # Check if this looks like a key point (starts with number or bullet)
+                    if re.match(r'^[\d\-•*]\s+', line) or in_key_points:
+                        in_key_points = True
+                        # Clean up the line
+                        cleaned = re.sub(r'^[\d\-•*]\s+', '', line)
+                        if cleaned:
+                            key_points.append(cleaned)
+                    else:
+                        summary_lines.append(line)
+                
+                executive_summary = '\n\n'.join(summary_lines)
+                
+                # If no key points found, generate them from the summary
+                if not key_points:
+                    # Use insights generator to extract key points
+                    try:
+                        key_points = await self.insights_generator.generate_key_points(context_chunks)
+                        key_points = [kp.text for kp in key_points] if key_points else []
+                    except Exception as e:
+                        logger.warning("Failed to generate key points", error=str(e))
+                        key_points = []
+            
+            # Ensure we have at least something
+            if not executive_summary:
+                executive_summary = summary_text[:500] + "..." if len(summary_text) > 500 else summary_text
+            
+            if not key_points:
+                # Fallback: create key points from summary
+                sentences = executive_summary.split('. ')
+                key_points = [s.strip() + '.' for s in sentences[:7] if s.strip() and len(s.strip()) > 20]
+            
+            # Limit key points to 7
+            key_points = key_points[:7]
+            
+            from datetime import datetime
+            return {
+                "executiveSummary": executive_summary,
+                "keyPoints": key_points,
+                "generatedAt": datetime.utcnow()
+            }
+            
+        except Exception as e:
+            logger.error("Summary generation failed", error=str(e), document_id=document_id)
+            raise GenerationError(f"Failed to generate summary: {str(e)}")
     
     def _calculate_confidence(
         self,
