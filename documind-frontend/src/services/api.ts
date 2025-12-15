@@ -705,91 +705,94 @@ export const insightsApi = {
 // Cross-Document Analysis API
 export const crossDocumentApi = {
   async query(request: CrossDocumentQueryRequest): Promise<CrossDocumentQueryResponse> {
-    await delay(1500); // Simulate API call delay
-    
-    // Mock cross-document query response
-    // In production: POST /api/v1/query/cross-document
-    const docNames = request.documentIds
-      .map((id) => mockDocuments.find((d) => d.id === id)?.name || id)
-      .join(", ");
+    try {
+      // Use the real query API endpoint with multiple document_ids
+      const queryRequest: QueryRequest = {
+        query: request.query,
+        collection_name: DEFAULT_COLLECTION_NAME,
+        document_ids: request.documentIds, // Multiple documents for cross-doc analysis
+        generate_insights: false, // We'll get patterns/contradictions from the response
+        search_type: "hybrid",
+        top_k: 10, // Retrieve more chunks for cross-document analysis
+      };
 
-    const mockResponse: CrossDocumentQueryResponse = {
-      answer: `Based on my analysis of ${request.documentIds.length} document(s) (${docNames}), I found relevant information regarding your query: "${request.query}".\n\nThe documents collectively address this topic across multiple sections. Key insights include:\n\n1. Common themes and patterns emerge across the selected documents\n2. Different perspectives and approaches are presented\n3. Complementary information provides a comprehensive view\n\nI've identified specific passages from each document that relate to your question and cited them below.`,
-      citations: request.documentIds.map((docId, index) => {
-        const doc = mockDocuments.find((d) => d.id === docId);
+      const response = await queryApi.query(queryRequest);
+
+      // Get document names for citation mapping
+      const docNameMap = new Map<string, string>();
+      for (const docId of request.documentIds) {
+        try {
+          const doc = await documentsApi.get(docId);
+          docNameMap.set(docId, doc.name);
+        } catch {
+          docNameMap.set(docId, docId);
+        }
+      }
+
+      // Map backend citations to CrossDocumentCitation format
+      const citations: CrossDocumentCitation[] = response.citations.map((c) => {
+        const docName = docNameMap.get(c.document_id) || c.document_id;
         return {
-          documentId: docId,
-          documentName: doc?.name || `Document ${index + 1}`,
-          text: `Relevant passage from ${doc?.name || "document"} addressing the query`,
-          page: (index + 1) * 3,
-          section: `Section ${index + 1}.${index + 2}`,
-          relevanceScore: 0.85 - index * 0.1,
+          documentId: c.document_id,
+          documentName: docName,
+          text: c.metadata?.text || `Chunk ${c.chunk_id}`,
+          page: c.page,
+          section: c.metadata?.section,
+          relevanceScore: c.score,
         };
-      }),
-      patterns: request.includePatterns
-        ? [
-            {
-              type: "theme" as const,
-              description: "Common strategic themes across documents",
-              documents: request.documentIds,
-              occurrences: 5,
-              examples: request.documentIds.slice(0, 2).map((docId) => {
-                const doc = mockDocuments.find((d) => d.id === docId);
-                return {
-                  documentId: docId,
-                  documentName: doc?.name || "Document",
-                  text: "Example of strategic theme",
-                  page: 2,
-                };
-              }),
-              confidence: 0.8,
-            },
-            {
-              type: "entity" as const,
-              description: "Shared entities and organizations mentioned",
-              documents: request.documentIds,
-              occurrences: 3,
-              examples: request.documentIds.slice(0, 2).map((docId) => {
-                const doc = mockDocuments.find((d) => d.id === docId);
-                return {
-                  documentId: docId,
-                  documentName: doc?.name || "Document",
-                  text: "Example entity reference",
-                  page: 4,
-                };
-              }),
-              confidence: 0.75,
-            },
-          ]
-        : undefined,
-      contradictions: request.includeContradictions
-        ? [
-            {
-              type: "factual" as const,
-              description: "Different factual claims about the same topic",
-              documents: [
-                {
-                  id: request.documentIds[0],
-                  name: mockDocuments.find((d) => d.id === request.documentIds[0])?.name || "Document 1",
-                  claim: "Claim A from first document",
-                  page: 5,
-                },
-                {
-                  id: request.documentIds[1] || request.documentIds[0],
-                  name: mockDocuments.find((d) => d.id === request.documentIds[1])?.name || "Document 2",
-                  claim: "Contradictory claim B from second document",
-                  page: 7,
-                },
-              ],
-              severity: "medium" as const,
-              confidence: 0.7,
-            },
-          ]
-        : undefined,
-      generatedAt: new Date(),
-    };
+      });
 
-    return mockResponse;
+      // Map patterns from backend response (if available)
+      const patterns = response.patterns && response.patterns.length > 0
+        ? response.patterns.map((p: any) => ({
+            type: p.type as "theme" | "entity" | "trend" | "relationship",
+            description: p.description,
+            documents: p.documents || [],
+            occurrences: p.occurrences || 0,
+            examples: (p.examples || []).map((ex: any) => ({
+              documentId: ex.document_id,
+              documentName: ex.document_name,
+              text: ex.text,
+              page: ex.page,
+            })),
+            confidence: p.confidence || 0.7,
+          }))
+        : undefined;
+
+      // Map contradictions from backend response (if available)
+      const contradictions = response.contradictions && response.contradictions.length > 0
+        ? response.contradictions.map((c: any) => ({
+            type: c.type as "factual" | "temporal" | "quantitative" | "categorical",
+            description: c.description,
+            documents: (c.documents || []).map((d: any) => ({
+              id: d.id,
+              name: d.name,
+              claim: d.claim,
+              page: d.page,
+              section: d.section,
+            })),
+            severity: c.severity as "low" | "medium" | "high",
+            confidence: c.confidence || 0.7,
+          }))
+        : undefined;
+
+      return {
+        answer: response.answer,
+        citations,
+        patterns: (request.includePatterns && patterns && patterns.length > 0) ? patterns : undefined,
+        contradictions: (request.includeContradictions && contradictions && contradictions.length > 0) ? contradictions : undefined,
+        generatedAt: new Date(response.generated_at),
+      };
+    } catch (error) {
+      // Handle network errors
+      if (error instanceof TypeError && error.message === "Failed to fetch") {
+        throw new Error(
+          `Failed to connect to backend server at ${API_BASE_URL}. ` +
+          `Please ensure the backend server is running.`
+        );
+      }
+      throw error;
+    }
   },
 
   async compare(documentIds: string[]): Promise<DocumentComparison> {

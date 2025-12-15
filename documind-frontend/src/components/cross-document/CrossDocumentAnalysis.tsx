@@ -19,6 +19,7 @@ import { DocumentComparisonView } from "./DocumentComparisonView";
 import { crossDocumentApi } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { formatResponse } from "@/utils/formatResponse";
 import type { 
   Document, 
   CrossDocumentQueryResponse,
@@ -111,12 +112,21 @@ export const CrossDocumentAnalysis = ({
         includeContradictions: true,
       });
 
+      // Format the response to match chat tab formatting
+      // Remove markdown symbols and improve readability
+      let formattedAnswer = formatResponse(response.answer);
+      
+      // Final safety check: remove any remaining ** symbols
+      if (formattedAnswer.includes('**')) {
+        formattedAnswer = formattedAnswer.replace(/\*\*/g, '');
+      }
+
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: response.answer,
+        content: formattedAnswer,
         citations: response.citations,
-        timestamp: new Date(),
+        timestamp: new Date(response.generatedAt),
       };
 
       setMessages((prev) => [...prev, aiMessage]);

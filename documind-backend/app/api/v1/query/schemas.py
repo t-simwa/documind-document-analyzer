@@ -57,6 +57,8 @@ class QueryResponse(BaseModel):
     confidence: float
     key_points: List[KeyPointResponse] = []
     entities: List[EntityResponse] = []
+    patterns: Optional[List[DocumentPatternResponse]] = None  # For cross-document queries
+    contradictions: Optional[List[DocumentContradictionResponse]] = None  # For cross-document queries
     model: str
     provider: str
     usage: Dict[str, Any] = {}
@@ -80,3 +82,39 @@ class QueryHistoryResponse(BaseModel):
     items: List[QueryHistoryItem]
     total: int
 
+
+# Cross-Document Analysis Schemas
+class PatternExampleResponse(BaseModel):
+    """Pattern example response schema"""
+    document_id: str
+    document_name: str
+    text: str
+    page: Optional[int] = None
+
+
+class DocumentPatternResponse(BaseModel):
+    """Document pattern response schema"""
+    type: str  # "theme", "entity", "trend", "relationship"
+    description: str
+    documents: List[str]  # document IDs
+    occurrences: int
+    examples: List[PatternExampleResponse] = []
+    confidence: float  # 0-1
+
+
+class ContradictionDocumentResponse(BaseModel):
+    """Contradiction document claim schema"""
+    id: str
+    name: str
+    claim: str
+    page: Optional[int] = None
+    section: Optional[str] = None
+
+
+class DocumentContradictionResponse(BaseModel):
+    """Document contradiction response schema"""
+    type: str  # "factual", "temporal", "quantitative", "categorical"
+    description: str
+    documents: List[ContradictionDocumentResponse]
+    severity: str  # "low", "medium", "high"
+    confidence: float  # 0-1
