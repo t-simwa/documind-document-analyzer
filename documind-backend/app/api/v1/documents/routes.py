@@ -26,6 +26,7 @@ from .schemas import (
     ComparisonExampleResponse,
     ComparisonDifferenceDocumentResponse
 )
+from app.api.v1.tags.schemas import TagAssignRequest
 from app.services.retrieval import RetrievalService
 from app.services.llm import LLMService
 from app.services.generation import GenerationService
@@ -119,6 +120,7 @@ async def upload_document(
             "type": file_ext,
             "project_id": project_id,
             "file_path": file_path,
+            "tags": [],  # Initialize empty tags list
             "metadata": {}
         }
         documents_store[document_id] = document_metadata
@@ -342,7 +344,7 @@ async def get_document(document_id: str):
         size=doc["size"],
         type=doc["type"],
         project_id=doc.get("project_id"),
-        tags=[],
+        tags=doc.get("tags", []),
         metadata=doc.get("metadata", {})
     )
 
@@ -400,7 +402,7 @@ async def list_documents(
                 size=d["size"],
                 type=d["type"],
                 project_id=d.get("project_id"),
-                tags=[],
+                tags=d.get("tags", []),
                 metadata=d.get("metadata", {})
             )
             for d in documents
@@ -655,5 +657,147 @@ async def delete_document(document_id: str):
         raise HTTPException(
             status_code=500,
             detail=f"Failed to delete document: {str(e)}"
+        )
+
+
+@router.post(
+    "/{document_id}/tags",
+    summary="Assign tags to document",
+    description="Assign one or more tags to a document"
+)
+async def assign_tags_to_document(
+    document_id: str,
+    tag_request: TagAssignRequest
+):
+    """
+    Assign tags to a document
+    
+    Args:
+        document_id: Document ID
+        tag_request: Tag assignment request with list of tag IDs
+        
+    Returns:
+        Success message with assigned tags
+    """
+    # Check if document exists
+    if document_id not in documents_store:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    doc = documents_store[document_id]
+    
+    try:
+        # Validate that all tags exist
+        from app.api.v1.tags.routes import tags_store
+        
+        invalid_tags = []
+        for tag_id in tag_request.tag_ids:
+            if tag_id not in tags_store:
+                invalid_tags.append(tag_id)
+        
+        if invalid_tags:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Tags not found: {', '.join(invalid_tags)}"
+            )
+        
+        # Initialize tags list if it doesn't exist
+        if "tags" not in doc:
+            doc["tags"] = []
+        
+        # Add tags (avoid duplicates)
+        added_tags = []
+        for tag_id in tag_request.tag_ids:
+            if tag_id not in doc["tags"]:
+                doc["tags"].append(tag_id)
+                added_tags.append(tag_id)
+        
+        logger.info(
+            "tags_assigned_to_document",
+            document_id=document_id,
+            tag_ids=added_tags
+        )
+        
+        return JSONResponse(
+            status_code=200,
+            content={
+                "message": "Tags assigned successfully",
+                "document_id": document_id,
+                "assigned_tags": added_tags,
+                "all_tags": doc["tags"]
+            }
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("tag_assignment_failed", document_id=document_id, error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to assign tags: {str(e)}"
+        )
+
+
+@router.delete(
+    "/{document_id}/tags/{tag_id}",
+    summary="Remove tag from document",
+    description="Remove a tag from a document"
+)
+async def remove_tag_from_document(
+    document_id: str,
+    tag_id: str
+):
+    """
+    Remove a tag from a document
+    
+    Args:
+        document_id: Document ID
+        tag_id: Tag ID to remove
+        
+    Returns:
+        Success message
+    """
+    # Check if document exists
+    if document_id not in documents_store:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    doc = documents_store[document_id]
+    
+    try:
+        # Initialize tags list if it doesn't exist
+        if "tags" not in doc:
+            doc["tags"] = []
+        
+        # Check if tag is assigned to document
+        if tag_id not in doc["tags"]:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Tag '{tag_id}' is not assigned to this document"
+            )
+        
+        # Remove tag
+        doc["tags"].remove(tag_id)
+        
+        logger.info(
+            "tag_removed_from_document",
+            document_id=document_id,
+            tag_id=tag_id
+        )
+        
+        return JSONResponse(
+            status_code=200,
+            content={
+                "message": "Tag removed successfully",
+                "document_id": document_id,
+                "tag_id": tag_id
+            }
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("tag_removal_failed", document_id=document_id, tag_id=tag_id, error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to remove tag: {str(e)}"
         )
 

@@ -623,6 +623,48 @@ export const documentsApi = {
   },
 
   async get(id: string): Promise<Document> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/documents/${id}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          // Add authentication headers if needed
+        },
+      });
+
+      if (response.ok) {
+        const doc = await response.json();
+        // Convert backend document to frontend format
+        const document: Document = {
+          id: doc.id,
+          name: doc.name,
+          status: doc.status as "processing" | "ready" | "error",
+          uploadedAt: new Date(doc.uploaded_at),
+          uploadedBy: doc.uploaded_by,
+          size: doc.size,
+          type: doc.type,
+          projectId: doc.project_id || null,
+          tags: doc.tags || [],
+          metadata: doc.metadata || {},
+        };
+
+        // Update mock documents for compatibility
+        const index = mockDocuments.findIndex((d) => d.id === id);
+        if (index !== -1) {
+          mockDocuments[index] = document;
+        } else {
+          mockDocuments.push(document);
+        }
+
+        return document;
+      }
+      // If response is not ok, fall through to mock implementation
+    } catch (error) {
+      console.error("Failed to fetch document from backend, using mock data:", error);
+      // Fallback to mock implementation
+    }
+
+    // Fallback to mock implementation
     await delay(200);
     const doc = mockDocuments.find((d) => d.id === id);
     if (!doc) throw new Error("Document not found");
@@ -777,11 +819,81 @@ export const documentsApi = {
     id: string,
     data: { name?: string; projectId?: string | null; tags?: string[] }
   ): Promise<Document> {
-    await delay(300);
-    const doc = mockDocuments.find((d) => d.id === id);
-    if (!doc) throw new Error("Document not found");
-    Object.assign(doc, data);
-    return doc;
+    try {
+      // Handle tag updates separately using the tag assignment endpoints
+      if (data.tags !== undefined) {
+        // Get current document to compare tags
+        const currentDoc = await this.get(id);
+        const currentTags = new Set(currentDoc.tags);
+        const newTags = new Set(data.tags);
+        
+        // Find tags to add and remove
+        const tagsToAdd = Array.from(newTags).filter(tagId => !currentTags.has(tagId));
+        const tagsToRemove = Array.from(currentTags).filter(tagId => !newTags.has(tagId));
+        
+        // Add tags
+        if (tagsToAdd.length > 0) {
+          try {
+            const addResponse = await fetch(`${API_BASE_URL}/api/v1/documents/${id}/tags`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                // Add authentication headers if needed
+              },
+              body: JSON.stringify({ tag_ids: tagsToAdd }),
+            });
+            
+            if (!addResponse.ok) {
+              throw new Error("Failed to add tags");
+            }
+          } catch (error) {
+            console.error("Failed to add tags via backend:", error);
+            // Fall through to mock implementation
+          }
+        }
+        
+        // Remove tags
+        for (const tagId of tagsToRemove) {
+          try {
+            const removeResponse = await fetch(`${API_BASE_URL}/api/v1/documents/${id}/tags/${tagId}`, {
+              method: "DELETE",
+              headers: {
+                "Content-Type": "application/json",
+                // Add authentication headers if needed
+              },
+            });
+            
+            if (!removeResponse.ok) {
+              console.warn(`Failed to remove tag ${tagId} via backend`);
+            }
+          } catch (error) {
+            console.error(`Failed to remove tag ${tagId} via backend:`, error);
+            // Continue with other removals
+          }
+        }
+        
+        // Reload document to get updated tags
+        const updatedDoc = await this.get(id);
+        return updatedDoc;
+      }
+      
+      // For other updates (name, projectId), use mock for now
+      // TODO: Implement backend endpoints for these updates
+      await delay(300);
+      const doc = mockDocuments.find((d) => d.id === id);
+      if (!doc) throw new Error("Document not found");
+      if (data.name !== undefined) doc.name = data.name;
+      if (data.projectId !== undefined) doc.projectId = data.projectId;
+      return doc;
+    } catch (error) {
+      console.error("Failed to update document via backend, using mock:", error);
+      // Fallback to mock implementation
+      await delay(300);
+      const doc = mockDocuments.find((d) => d.id === id);
+      if (!doc) throw new Error("Document not found");
+      Object.assign(doc, data);
+      return doc;
+    }
   },
 
   async delete(id: string): Promise<void> {
@@ -825,43 +937,182 @@ export const documentsApi = {
   },
 
   async bulkAction(request: BulkActionRequest): Promise<void> {
-    await delay(500);
-    request.documentIds.forEach((docId) => {
-      const doc = mockDocuments.find((d) => d.id === docId);
-      if (!doc) return;
-
-      switch (request.action) {
-        case "delete":
-          mockDocuments = mockDocuments.filter((d) => d.id !== docId);
-          break;
-        case "tag":
-          if (request.payload?.tags) {
-            doc.tags = [...new Set([...doc.tags, ...request.payload.tags])];
+    try {
+      // Handle tag operations via backend
+      if (request.action === "tag" && request.payload?.tags) {
+        // Add tags to all documents
+        for (const docId of request.documentIds) {
+          try {
+            const response = await fetch(`${API_BASE_URL}/api/v1/documents/${docId}/tags`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                // Add authentication headers if needed
+              },
+              body: JSON.stringify({ tag_ids: request.payload.tags }),
+            });
+            
+            if (!response.ok) {
+              console.warn(`Failed to add tags to document ${docId}`);
+            }
+          } catch (error) {
+            console.error(`Failed to add tags to document ${docId}:`, error);
           }
-          break;
-        case "untag":
-          if (request.payload?.tags) {
-            doc.tags = doc.tags.filter((t) => !request.payload!.tags!.includes(t));
-          }
-          break;
-        case "move":
-          if (request.payload?.projectId !== undefined) {
-            doc.projectId = request.payload.projectId;
-          }
-          break;
+        }
+        return;
       }
-    });
+      
+      if (request.action === "untag" && request.payload?.tags) {
+        // Remove tags from all documents
+        for (const docId of request.documentIds) {
+          for (const tagId of request.payload.tags) {
+            try {
+              const response = await fetch(`${API_BASE_URL}/api/v1/documents/${docId}/tags/${tagId}`, {
+                method: "DELETE",
+                headers: {
+                  "Content-Type": "application/json",
+                  // Add authentication headers if needed
+                },
+              });
+              
+              if (!response.ok) {
+                console.warn(`Failed to remove tag ${tagId} from document ${docId}`);
+              }
+            } catch (error) {
+              console.error(`Failed to remove tag ${tagId} from document ${docId}:`, error);
+            }
+          }
+        }
+        return;
+      }
+      
+      // For other actions (delete, move), use mock for now
+      // TODO: Implement backend endpoints for these bulk operations
+      await delay(500);
+      request.documentIds.forEach((docId) => {
+        const doc = mockDocuments.find((d) => d.id === docId);
+        if (!doc) return;
+
+        switch (request.action) {
+          case "delete":
+            mockDocuments = mockDocuments.filter((d) => d.id !== docId);
+            break;
+          case "move":
+            if (request.payload?.projectId !== undefined) {
+              doc.projectId = request.payload.projectId;
+            }
+            break;
+        }
+      });
+    } catch (error) {
+      console.error("Failed to perform bulk action via backend, using mock:", error);
+      // Fallback to mock implementation
+      await delay(500);
+      request.documentIds.forEach((docId) => {
+        const doc = mockDocuments.find((d) => d.id === docId);
+        if (!doc) return;
+
+        switch (request.action) {
+          case "delete":
+            mockDocuments = mockDocuments.filter((d) => d.id !== docId);
+            break;
+          case "tag":
+            if (request.payload?.tags) {
+              doc.tags = [...new Set([...doc.tags, ...request.payload.tags])];
+            }
+            break;
+          case "untag":
+            if (request.payload?.tags) {
+              doc.tags = doc.tags.filter((t) => !request.payload!.tags!.includes(t));
+            }
+            break;
+          case "move":
+            if (request.payload?.projectId !== undefined) {
+              doc.projectId = request.payload.projectId;
+            }
+            break;
+        }
+      });
+    }
   },
 };
 
 // Tags API
 export const tagsApi = {
   async list(): Promise<DocumentTag[]> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/tags/`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          // Add authentication headers if needed
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Convert backend tags to frontend format
+        const tags: DocumentTag[] = data.map((tag: any) => ({
+          id: tag.id,
+          name: tag.name,
+          color: tag.color || "#6b7280",
+          createdAt: new Date(tag.created_at),
+        }));
+
+        // Update mock tags for compatibility
+        mockTags = tags;
+
+        return tags;
+      }
+      // If response is not ok, fall through to mock implementation
+    } catch (error) {
+      console.error("Failed to fetch tags from backend, using mock data:", error);
+      // Fallback to mock implementation
+    }
+
+    // Fallback to mock implementation
     await delay(200);
     return [...mockTags];
   },
 
   async create(name: string, color?: string): Promise<DocumentTag> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/tags/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          // Add authentication headers if needed
+        },
+        body: JSON.stringify({
+          name,
+          color: color || "#6b7280",
+        }),
+      });
+
+      if (response.ok) {
+        const tag = await response.json();
+        // Convert backend tag to frontend format
+        const newTag: DocumentTag = {
+          id: tag.id,
+          name: tag.name,
+          color: tag.color || "#6b7280",
+          createdAt: new Date(tag.created_at),
+        };
+
+        // Update mock tags for compatibility
+        mockTags.push(newTag);
+
+        return newTag;
+      } else {
+        const errorData = await response.json().catch(() => ({ detail: "Failed to create tag" }));
+        throw new Error(errorData.detail || "Failed to create tag");
+      }
+    } catch (error) {
+      console.error("Failed to create tag in backend, using mock data:", error);
+      // Fallback to mock implementation
+    }
+
+    // Fallback to mock implementation
     await delay(300);
     const newTag: DocumentTag = {
       id: Date.now().toString(),
@@ -873,7 +1124,86 @@ export const tagsApi = {
     return newTag;
   },
 
+  async update(id: string, name?: string, color?: string): Promise<DocumentTag> {
+    try {
+      const updateData: any = {};
+      if (name !== undefined) updateData.name = name;
+      if (color !== undefined) updateData.color = color;
+
+      const response = await fetch(`${API_BASE_URL}/api/v1/tags/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          // Add authentication headers if needed
+        },
+        body: JSON.stringify(updateData),
+      });
+
+      if (response.ok) {
+        const tag = await response.json();
+        // Convert backend tag to frontend format
+        const updatedTag: DocumentTag = {
+          id: tag.id,
+          name: tag.name,
+          color: tag.color || "#6b7280",
+          createdAt: new Date(tag.created_at),
+        };
+
+        // Update mock tags for compatibility
+        const index = mockTags.findIndex((t) => t.id === id);
+        if (index !== -1) {
+          mockTags[index] = updatedTag;
+        }
+
+        return updatedTag;
+      } else {
+        const errorData = await response.json().catch(() => ({ detail: "Failed to update tag" }));
+        throw new Error(errorData.detail || "Failed to update tag");
+      }
+    } catch (error) {
+      console.error("Failed to update tag in backend, using mock data:", error);
+      // Fallback to mock implementation
+    }
+
+    // Fallback to mock implementation
+    await delay(300);
+    const tag = mockTags.find((t) => t.id === id);
+    if (!tag) {
+      throw new Error("Tag not found");
+    }
+    if (name !== undefined) tag.name = name;
+    if (color !== undefined) tag.color = color;
+    return tag;
+  },
+
   async delete(id: string): Promise<void> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/tags/${id}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          // Add authentication headers if needed
+        },
+      });
+
+      if (response.ok) {
+        // Remove tag from mock tags
+        mockTags = mockTags.filter((t) => t.id !== id);
+        // Remove tag from all documents
+        mockDocuments.forEach((d) => {
+          d.tags = d.tags.filter((t) => t !== id);
+        });
+        return;
+      } else {
+        const errorData = await response.json().catch(() => ({ detail: "Failed to delete tag" }));
+        throw new Error(errorData.detail || "Failed to delete tag");
+      }
+    } catch (error) {
+      console.error("Failed to delete tag in backend, using mock data:", error);
+      // Fallback to mock implementation
+    }
+
+    // Fallback to mock implementation
     await delay(200);
     mockTags = mockTags.filter((t) => t.id !== id);
     // Remove tag from all documents

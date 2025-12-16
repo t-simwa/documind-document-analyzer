@@ -12,6 +12,7 @@ from app.api.v1.tasks import routes as tasks_routes
 from app.api.v1.query import routes as query_routes
 from app.api.v1.documents import routes as documents_routes
 from app.api.v1.projects import routes as projects_routes
+from app.api.v1.tags import routes as tags_routes
 from app.core.config import settings
 
 # Create main v1 router
@@ -62,6 +63,12 @@ api_router.include_router(
     projects_routes.router,
     prefix="/projects",
     tags=["Projects"]
+)
+
+api_router.include_router(
+    tags_routes.router,
+    prefix="/tags",
+    tags=["Tags"]
 )
 
 # Additional routers will be added here as they are implemented
