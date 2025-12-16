@@ -539,3 +539,121 @@ async def compare_documents(
             detail=f"Failed to generate comparison: {str(e)}"
         )
 
+
+@router.delete(
+    "/{document_id}",
+    summary="Delete document",
+    description="Delete a document and all its associated data (chunks, embeddings, file)"
+)
+async def delete_document(document_id: str):
+    """
+    Delete a document and all its associated data
+    
+    Args:
+        document_id: Document ID to delete
+        
+    Returns:
+        Success message
+    """
+    # Check if document exists
+    if document_id not in documents_store:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    doc = documents_store[document_id]
+    
+    try:
+        # Step 1: Delete file from disk
+        file_path = doc.get("file_path")
+        if file_path and os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+                logger.info("document_file_deleted", document_id=document_id, file_path=file_path)
+            except Exception as e:
+                logger.warning("document_file_deletion_failed", document_id=document_id, file_path=file_path, error=str(e))
+        
+        # Step 2: Delete chunks from vector store
+        try:
+            from app.services.vector_store import VectorStoreService
+            from app.services.embeddings import EmbeddingService
+            
+            # Initialize vector store service
+            embedding_service = EmbeddingService()
+            vector_store = VectorStoreService(dimension=embedding_service.get_embedding_dimension())
+            
+            # Get collection name
+            collection_name = getattr(settings, "VECTOR_STORE_COLLECTION_PREFIX", "documind_documents")
+            tenant_id = doc.get("metadata", {}).get("tenant_id") if doc.get("metadata") else None
+            
+            # Find all chunks for this document using a search with metadata filter
+            # We use a dummy embedding (all zeros) and a very high top_k to get all chunks
+            dummy_embedding = [0.0] * embedding_service.get_embedding_dimension()
+            
+            # Search with filter to find all chunks for this document
+            # Use a very high top_k to ensure we get all chunks
+            search_result = await vector_store.search(
+                query_embedding=dummy_embedding,
+                collection_name=collection_name,
+                top_k=10000,  # Very high limit to get all chunks
+                tenant_id=tenant_id,
+                filter={"document_id": document_id}
+            )
+            
+            # Extract chunk IDs from search results
+            chunk_ids = search_result.ids if search_result.ids else []
+            
+            # If we found chunks, delete them
+            if chunk_ids:
+                await vector_store.delete_documents(
+                    document_ids=chunk_ids,
+                    collection_name=collection_name,
+                    tenant_id=tenant_id
+                )
+                logger.info(
+                    "document_chunks_deleted",
+                    document_id=document_id,
+                    chunk_count=len(chunk_ids),
+                    collection_name=collection_name
+                )
+            else:
+                logger.info("no_chunks_found_for_document", document_id=document_id)
+                
+        except Exception as e:
+            # Log error but don't fail the deletion - document metadata will still be deleted
+            logger.warning(
+                "document_chunks_deletion_failed",
+                document_id=document_id,
+                error=str(e)
+            )
+        
+        # Step 3: Clean up tasks
+        from app.workers.tasks import task_queue
+        task_id = f"doc_process_{document_id}"
+        security_task_id = f"security_scan_{document_id}"
+        
+        try:
+            if task_id in task_queue.tasks:
+                del task_queue.tasks[task_id]
+            if security_task_id in task_queue.tasks:
+                del task_queue.tasks[security_task_id]
+        except Exception as e:
+            logger.warning("task_cleanup_failed", document_id=document_id, error=str(e))
+        
+        # Step 4: Remove from documents store
+        del documents_store[document_id]
+        
+        logger.info("document_deleted", document_id=document_id)
+        
+        return JSONResponse(
+            status_code=200,
+            content={"message": "Document deleted successfully", "document_id": document_id}
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("document_deletion_failed", document_id=document_id, error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to delete document: {str(e)}"
+        )
+

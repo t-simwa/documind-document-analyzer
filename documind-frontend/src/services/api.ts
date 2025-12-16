@@ -113,88 +113,303 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 // Projects API
 export const projectsApi = {
   async list(params?: PaginationParams): Promise<ProjectListResponse> {
-    await delay(300);
-    const page = params?.page || 1;
-    const limit = params?.limit || 50;
-    const start = (page - 1) * limit;
-    const end = start + limit;
+    try {
+      const page = params?.page || 1;
+      const limit = params?.limit || 50;
+      const queryParams = new URLSearchParams();
+      queryParams.append("page", page.toString());
+      queryParams.append("limit", limit.toString());
 
-    return {
-      projects: mockProjects.slice(start, end),
-      pagination: {
-        page,
-        limit,
-        total: mockProjects.length,
-        totalPages: Math.ceil(mockProjects.length / limit),
-        hasNext: end < mockProjects.length,
-        hasPrev: page > 1,
-      },
-    };
+      const response = await fetch(`${API_BASE_URL}/api/v1/projects/?${queryParams.toString()}`, {
+        method: "GET",
+        headers: {
+          // Add authentication headers if needed
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: "Failed to fetch projects" }));
+        throw new Error(error.detail || `HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      // Convert backend projects to frontend format
+      const projects: Project[] = data.projects.map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        description: p.description,
+        parentId: p.parent_id || null,
+        createdAt: new Date(p.created_at),
+        updatedAt: new Date(p.updated_at),
+        createdBy: p.created_by,
+        documentCount: p.document_count || 0,
+        children: [],
+      }));
+
+      // Update mock projects for compatibility
+      mockProjects = projects;
+
+      return {
+        projects,
+        pagination: data.pagination,
+      };
+    } catch (error) {
+      console.error("Failed to fetch projects from backend, using mock data:", error);
+      // Fallback to mock data
+      await delay(300);
+      const page = params?.page || 1;
+      const limit = params?.limit || 50;
+      const start = (page - 1) * limit;
+      const end = start + limit;
+
+      return {
+        projects: mockProjects.slice(start, end),
+        pagination: {
+          page,
+          limit,
+          total: mockProjects.length,
+          totalPages: Math.ceil(mockProjects.length / limit),
+          hasNext: end < mockProjects.length,
+          hasPrev: page > 1,
+        },
+      };
+    }
   },
 
   async get(id: string): Promise<Project> {
-    await delay(200);
-    const project = mockProjects.find((p) => p.id === id);
-    if (!project) throw new Error("Project not found");
-    return project;
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/projects/${id}`, {
+        method: "GET",
+        headers: {
+          // Add authentication headers if needed
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: "Project not found" }));
+        throw new Error(error.detail || `HTTP ${response.status}`);
+      }
+
+      const p = await response.json();
+      
+      return {
+        id: p.id,
+        name: p.name,
+        description: p.description,
+        parentId: p.parent_id || null,
+        createdAt: new Date(p.created_at),
+        updatedAt: new Date(p.updated_at),
+        createdBy: p.created_by,
+        documentCount: p.document_count || 0,
+        children: [],
+      };
+    } catch (error) {
+      console.error("Failed to fetch project from backend, using mock data:", error);
+      // Fallback to mock data
+      await delay(200);
+      const project = mockProjects.find((p) => p.id === id);
+      if (!project) throw new Error("Project not found");
+      return project;
+    }
   },
 
   async create(data: { name: string; description?: string; parentId?: string | null }): Promise<Project> {
-    await delay(400);
-    const newProject: Project = {
-      id: Date.now().toString(),
-      name: data.name,
-      description: data.description,
-      parentId: data.parentId || null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      createdBy: "user1",
-      documentCount: 0,
-      children: [],
-    };
-    mockProjects.push(newProject);
-    return newProject;
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/projects/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          // Add authentication headers if needed
+        },
+        body: JSON.stringify({
+          name: data.name,
+          description: data.description,
+          parent_id: data.parentId || null,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: "Failed to create project" }));
+        throw new Error(error.detail || `HTTP ${response.status}`);
+      }
+
+      const p = await response.json();
+      
+      const newProject: Project = {
+        id: p.id,
+        name: p.name,
+        description: p.description,
+        parentId: p.parent_id || null,
+        createdAt: new Date(p.created_at),
+        updatedAt: new Date(p.updated_at),
+        createdBy: p.created_by,
+        documentCount: p.document_count || 0,
+        children: [],
+      };
+
+      // Update mock projects for compatibility
+      mockProjects.push(newProject);
+
+      return newProject;
+    } catch (error) {
+      console.error("Failed to create project in backend, using mock data:", error);
+      // Fallback to mock data
+      await delay(400);
+      const newProject: Project = {
+        id: Date.now().toString(),
+        name: data.name,
+        description: data.description,
+        parentId: data.parentId || null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        createdBy: "user1",
+        documentCount: 0,
+        children: [],
+      };
+      mockProjects.push(newProject);
+      return newProject;
+    }
   },
 
   async update(id: string, data: { name?: string; description?: string }): Promise<Project> {
-    await delay(300);
-    const project = mockProjects.find((p) => p.id === id);
-    if (!project) throw new Error("Project not found");
-    Object.assign(project, { ...data, updatedAt: new Date() });
-    return project;
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/projects/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          // Add authentication headers if needed
+        },
+        body: JSON.stringify({
+          name: data.name,
+          description: data.description,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: "Failed to update project" }));
+        throw new Error(error.detail || `HTTP ${response.status}`);
+      }
+
+      const p = await response.json();
+      
+      const updatedProject: Project = {
+        id: p.id,
+        name: p.name,
+        description: p.description,
+        parentId: p.parent_id || null,
+        createdAt: new Date(p.created_at),
+        updatedAt: new Date(p.updated_at),
+        createdBy: p.created_by,
+        documentCount: p.document_count || 0,
+        children: [],
+      };
+
+      // Update mock projects for compatibility
+      const index = mockProjects.findIndex((p) => p.id === id);
+      if (index !== -1) {
+        mockProjects[index] = updatedProject;
+      }
+
+      return updatedProject;
+    } catch (error) {
+      console.error("Failed to update project in backend, using mock data:", error);
+      // Fallback to mock data
+      await delay(300);
+      const project = mockProjects.find((p) => p.id === id);
+      if (!project) throw new Error("Project not found");
+      Object.assign(project, { ...data, updatedAt: new Date() });
+      return project;
+    }
   },
 
   async delete(id: string): Promise<void> {
-    await delay(300);
-    mockProjects = mockProjects.filter((p) => p.id !== id);
-    // Move documents to default project
-    mockDocuments = mockDocuments.map((d) =>
-      d.projectId === id ? { ...d, projectId: "1" } : d
-    );
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/projects/${id}`, {
+        method: "DELETE",
+        headers: {
+          // Add authentication headers if needed
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: "Failed to delete project" }));
+        throw new Error(error.detail || `HTTP ${response.status}`);
+      }
+
+      // Remove from mock projects for compatibility
+      mockProjects = mockProjects.filter((p) => p.id !== id);
+      // Move documents to default project
+      mockDocuments = mockDocuments.map((d) =>
+        d.projectId === id ? { ...d, projectId: "1" } : d
+      );
+    } catch (error) {
+      console.error("Failed to delete project in backend, using mock data:", error);
+      // Fallback to mock data
+      await delay(300);
+      mockProjects = mockProjects.filter((p) => p.id !== id);
+      // Move documents to default project
+      mockDocuments = mockDocuments.map((d) =>
+        d.projectId === id ? { ...d, projectId: "1" } : d
+      );
+    }
   },
 
   async getHierarchy(): Promise<Project[]> {
-    await delay(200);
-    // Build hierarchical structure
-    const projectMap = new Map<string, Project>();
-    mockProjects.forEach((p) => {
-      projectMap.set(p.id, { ...p, children: [] });
-    });
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/projects/hierarchy`, {
+        method: "GET",
+        headers: {
+          // Add authentication headers if needed
+        },
+      });
 
-    const roots: Project[] = [];
-    projectMap.forEach((project) => {
-      if (!project.parentId) {
-        roots.push(project);
-      } else {
-        const parent = projectMap.get(project.parentId);
-        if (parent) {
-          if (!parent.children) parent.children = [];
-          parent.children.push(project);
-        }
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: "Failed to fetch project hierarchy" }));
+        throw new Error(error.detail || `HTTP ${response.status}`);
       }
-    });
 
-    return roots;
+      const projects = await response.json();
+      
+      // Convert backend projects to frontend format recursively
+      const convertProject = (p: any): Project => ({
+        id: p.id,
+        name: p.name,
+        description: p.description,
+        parentId: p.parent_id || null,
+        createdAt: new Date(p.created_at),
+        updatedAt: new Date(p.updated_at),
+        createdBy: p.created_by,
+        documentCount: p.document_count || 0,
+        children: p.children ? p.children.map(convertProject) : [],
+      });
+
+      return projects.map(convertProject);
+    } catch (error) {
+      console.error("Failed to fetch project hierarchy from backend, using mock data:", error);
+      // Fallback to mock data
+      await delay(200);
+      // Build hierarchical structure
+      const projectMap = new Map<string, Project>();
+      mockProjects.forEach((p) => {
+        projectMap.set(p.id, { ...p, children: [] });
+      });
+
+      const roots: Project[] = [];
+      projectMap.forEach((project) => {
+        if (!project.parentId) {
+          roots.push(project);
+        } else {
+          const parent = projectMap.get(project.parentId);
+          if (parent) {
+            if (!parent.children) parent.children = [];
+            parent.children.push(project);
+          }
+        }
+      });
+
+      return roots;
+    }
   },
 };
 

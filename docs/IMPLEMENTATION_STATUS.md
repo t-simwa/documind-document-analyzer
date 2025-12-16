@@ -742,7 +742,7 @@ The project now has a **complete backend architecture** with FastAPI, middleware
    - [ ] Implement document list endpoint (`GET /api/v1/documents`)
    - [ ] Implement document detail endpoint (`GET /api/v1/documents/{id}`)
    - [ ] Implement document update endpoint (`PATCH /api/v1/documents/{id}`)
-   - [ ] Implement document delete endpoint (`DELETE /api/v1/documents/{id}`)
+   - [x] Implement document delete endpoint (`DELETE /api/v1/documents/{id}`) ✅ COMPLETE
    - [ ] Add document search and filtering
    - [ ] Implement pagination for document lists
 
@@ -1133,7 +1133,7 @@ The project now has a **complete backend architecture** with FastAPI, middleware
   - No error logging with context
   - No security event alerting
 
-### X. Backend API (0% Complete)
+### X. Backend API (~17% Complete)
 
 #### ❌ Authentication Endpoints - NOT IMPLEMENTED
 
@@ -1162,25 +1162,27 @@ The project now has a **complete backend architecture** with FastAPI, middleware
 - ❌ `GET /api/v1/organizations/{org_id}/settings` - Get settings
 - ❌ `PUT /api/v1/organizations/{org_id}/settings` - Update settings
 
-#### ❌ Project Management Endpoints - NOT IMPLEMENTED
+#### ✅ Project Management Endpoints - IMPLEMENTED (100%)
 
-- ❌ `POST /api/v1/projects` - Create project
-- ❌ `GET /api/v1/projects` - List projects
-- ❌ `GET /api/v1/projects/{project_id}` - Get project
-- ❌ `PUT /api/v1/projects/{project_id}` - Update project
-- ❌ `DELETE /api/v1/projects/{project_id}` - Delete project
+- ✅ `POST /api/v1/projects` - Create project (with hierarchical support and circular reference prevention)
+- ✅ `GET /api/v1/projects` - List projects (with pagination)
+- ✅ `GET /api/v1/projects/{project_id}` - Get project (with document count)
+- ✅ `PUT /api/v1/projects/{project_id}` - Update project
+- ✅ `DELETE /api/v1/projects/{project_id}` - Delete project (with document reassignment and child project validation)
+- ✅ `GET /api/v1/projects/hierarchy` - Get project hierarchy (recursive tree structure)
 
-#### ❌ Document Management Endpoints - NOT IMPLEMENTED
+#### ⚠️ Document Management Endpoints - PARTIALLY IMPLEMENTED (~56%)
 
-- ❌ `POST /api/v1/documents/upload` - Upload document
-- ❌ `GET /api/v1/documents` - List documents
-- ❌ `GET /api/v1/documents/{document_id}` - Get document
-- ❌ `DELETE /api/v1/documents/{document_id}` - Delete document
+- ✅ `POST /api/v1/documents/upload` - Upload document
+- ✅ `GET /api/v1/documents` - List documents
+- ✅ `GET /api/v1/documents/{document_id}` - Get document
+- ✅ `DELETE /api/v1/documents/{document_id}` - Delete document (deletes file, chunks, embeddings, and tasks)
+- ✅ `GET /api/v1/documents/{document_id}/insights` - Get pre-built insights
+- ✅ `POST /api/v1/documents/compare` - Compare multiple documents
 - ❌ `GET /api/v1/documents/{document_id}/status` - Get processing status
 - ❌ `POST /api/v1/documents/{document_id}/reindex` - Reindex document
 - ❌ `GET /api/v1/documents/{document_id}/download` - Download document
 - ❌ `POST /api/v1/documents/{document_id}/share` - Share document
-- ❌ `GET /api/v1/documents/{document_id}/insights` - Get pre-built insights
 
 #### ❌ Cloud Storage Connector Endpoints - NOT IMPLEMENTED
 
@@ -1684,7 +1686,7 @@ The project now has a **complete backend architecture** with FastAPI, middleware
    - [ ] Implement `POST /api/v1/documents/upload` - Upload document
    - [ ] Implement `GET /api/v1/documents/{document_id}` - Get document
    - [ ] Implement `PUT /api/v1/documents/{document_id}` - Update document (tags, project)
-   - [ ] Implement `DELETE /api/v1/documents/{document_id}` - Delete document
+   - [x] Implement `DELETE /api/v1/documents/{document_id}` - Delete document ✅ COMPLETE
    - [ ] Implement `POST /api/v1/documents/bulk` - Bulk actions (delete, tag, move)
    - [ ] Implement `GET /api/v1/tags` - List tags
    - [ ] Implement `POST /api/v1/tags` - Create tag
@@ -1775,7 +1777,7 @@ The project now has a **complete backend architecture** with FastAPI, middleware
 | **Backend Architecture** | 0/10 | 10/10 | 0% |
 | **RAG Pipeline** | 0/5 | 5/5 | 0% |
 | **Security & Compliance** | 0/8 | 8/8 | 0% |
-| **Backend API** | 0/12 | 12/12 | 0% |
+| **Backend API** | 3/12 | 9/12 | ~25% |
 | **Storage & Database** | 0/3 | 3/3 | 0% |
 | **Frontend API Integration** | 0/2 | 2/2 | 0% |
 | **Testing** | 0/4 | 4/4 | 0% |
@@ -2078,6 +2080,23 @@ Based on the current status and comprehensive requirements:
 ## 🔄 Next Steps
 
 ### ✅ Recently Completed
+- ✅ **Projects API Endpoints** (100% Complete)
+  - `POST /api/v1/projects` - Create project with hierarchical support
+  - `GET /api/v1/projects` - List projects with pagination
+  - `GET /api/v1/projects/{id}` - Get project with document count
+  - `PUT /api/v1/projects/{id}` - Update project
+  - `DELETE /api/v1/projects/{id}` - Delete project with document reassignment
+  - `GET /api/v1/projects/hierarchy` - Get hierarchical project structure
+  - Frontend integrated with real API endpoints (with fallback to mocks)
+  - Default project initialization on backend startup
+- ✅ **Document Delete Endpoint** (100% Complete)
+  - `DELETE /api/v1/documents/{document_id}` endpoint implemented
+  - Deletes document file from disk
+  - Deletes all associated chunks and embeddings from vector store
+  - Cleans up background tasks (processing and security scan)
+  - Removes document from in-memory store
+  - Comprehensive error handling and logging
+  - Frontend already integrated and calling this endpoint
 - ✅ **User Profile Settings** (100% Complete)
   - User Profile Settings page with tabbed interface
   - Personal information editing (name, email, phone, bio)
@@ -2094,9 +2113,14 @@ Based on the current status and comprehensive requirements:
 
 ### 🎯 Immediate Next Steps (Priority Order)
 
-1. **Backend API Integration for Document Management** (HIGH PRIORITY)
-   - [ ] Implement backend API endpoints for projects (`POST /api/v1/projects`, `GET /api/v1/projects`, etc.)
-   - [ ] Implement backend API endpoints for documents (`GET /api/v1/documents`, `POST /api/v1/documents/upload`, etc.)
+1. **Backend API Integration for Document Management** (HIGH PRIORITY - IN PROGRESS)
+   - [x] Implement document delete endpoint (`DELETE /api/v1/documents/{document_id}`) ✅ COMPLETE
+   - [x] Implement document upload endpoint (`POST /api/v1/documents/upload`) ✅ COMPLETE
+   - [x] Implement document list endpoint (`GET /api/v1/documents`) ✅ COMPLETE
+   - [x] Implement document get endpoint (`GET /api/v1/documents/{document_id}`) ✅ COMPLETE
+   - [x] Implement document insights endpoint (`GET /api/v1/documents/{document_id}/insights`) ✅ COMPLETE
+   - [x] Implement document compare endpoint (`POST /api/v1/documents/compare`) ✅ COMPLETE
+   - [x] Implement backend API endpoints for projects (`POST /api/v1/projects`, `GET /api/v1/projects`, `GET /api/v1/projects/hierarchy`, etc.) ✅ COMPLETE
    - [ ] Implement backend API endpoints for tags (`GET /api/v1/tags`, `POST /api/v1/tags`, etc.)
    - [ ] Replace mock API service in frontend with real API calls
    - [ ] Add authentication/authorization to document management endpoints
@@ -2178,8 +2202,13 @@ Based on the current status and comprehensive requirements:
 
 ---
 
-**Document Version:** 2.4  
+**Document Version:** 2.6  
 **Last Updated:** December 2024  
-**Last Changes:** Generation features implementation completed (100%) - Added Ollama (FREE, local/cloud) and Hugging Face (FREE tier) LLM providers. Updated LLM abstraction layer to support 5 providers total. See `docs/FREE_LLM_SETUP.md` for free LLM setup guide.  
-**Next Review:** After Backend API Integration for User Profile Settings  
+**Last Changes:** 
+- Projects API Endpoints (100% Complete) - All CRUD endpoints implemented: create, list, get, update, delete, and hierarchy. Includes hierarchical project structure support, document count tracking, document reassignment on deletion, and child project validation. Frontend integrated with real API endpoints (with fallback to mocks).
+- Document Delete Endpoint (`DELETE /api/v1/documents/{document_id}`) implemented - Deletes document file, all associated chunks/embeddings from vector store, and cleans up background tasks. Frontend already integrated.
+- Document Management Endpoints now ~56% complete (6/9 endpoints implemented: upload, list, get, delete, insights, compare)
+- Backend API overall completion increased to ~25% (3/12 endpoint categories complete: Query endpoints 100%, Document endpoints 56%, Project endpoints 100%)
+- Generation features implementation completed (100%) - Added Ollama (FREE, local/cloud) and Hugging Face (FREE tier) LLM providers. Updated LLM abstraction layer to support 5 providers total. See `docs/FREE_LLM_SETUP.md` for free LLM setup guide.  
+**Next Review:** After Backend API Integration for Tags  
 **Project Name:** DocuMind AI - Secure Enterprise Document Analysis Platform
