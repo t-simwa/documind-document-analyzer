@@ -7,6 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronLeft, ChevronRight, FileText, Layers, AlertCircle, BarChart3, RefreshCw } from "lucide-react";
 import { DocumentViewer } from "@/components/document-viewer/DocumentViewer";
+import { StatusIndicator } from "@/components/ui/StatusIndicator";
 import { cn } from "@/lib/utils";
 import type { Document, DocumentComparison, ComparisonSimilarity, ComparisonDifference } from "@/types/api";
 
@@ -16,6 +17,7 @@ interface DocumentComparisonViewProps {
   comparison?: DocumentComparison;
   onComparisonRequest?: () => void;
   isLoading?: boolean;
+  error?: string | null;
 }
 
 export const DocumentComparisonView = ({
@@ -24,6 +26,7 @@ export const DocumentComparisonView = ({
   comparison,
   onComparisonRequest,
   isLoading = false,
+  error = null,
 }: DocumentComparisonViewProps) => {
   const [selectedTab, setSelectedTab] = useState<"viewer" | "comparison">("viewer");
   const [selectedDocIndex, setSelectedDocIndex] = useState(0);
@@ -204,12 +207,37 @@ export const DocumentComparisonView = ({
           <ScrollArea className="h-full">
             <div className="p-6 space-y-6 max-w-4xl mx-auto">
               {isLoading ? (
-                <div className="flex items-center justify-center py-16">
-                  <div className="text-center">
-                    <div className="w-12 h-12 rounded-lg bg-muted/40 flex items-center justify-center mx-auto mb-4 border border-border/50">
-                      <RefreshCw className="h-6 w-6 text-muted-foreground animate-spin" />
+                <div className="space-y-4">
+                  <StatusIndicator
+                    status="loading"
+                    message="Analyzing documents..."
+                    className="mb-4"
+                  />
+                  <div className="flex items-center justify-center py-8">
+                    <div className="text-center">
+                      <div className="w-12 h-12 rounded-lg bg-muted/40 flex items-center justify-center mx-auto mb-4 border border-border/50">
+                        <RefreshCw className="h-6 w-6 text-muted-foreground animate-spin" />
+                      </div>
+                      <p className="text-sm text-muted-foreground">Analyzing documents...</p>
                     </div>
-                    <p className="text-sm text-muted-foreground">Analyzing documents...</p>
+                  </div>
+                </div>
+              ) : error ? (
+                <div className="space-y-4">
+                  <StatusIndicator
+                    status="error"
+                    message="Unable to load comparison"
+                    onRetry={onComparisonRequest}
+                    className="mb-4"
+                  />
+                  <div className="text-center py-8">
+                    <p className="text-sm text-muted-foreground mb-4">{error}</p>
+                    {onComparisonRequest && (
+                      <Button onClick={onComparisonRequest} size="sm">
+                        <RefreshCw className="h-3.5 w-3.5 mr-2" />
+                        Retry
+                      </Button>
+                    )}
                   </div>
                 </div>
               ) : comparison ? (

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FileText, AlertCircle, Clock, Download, RefreshCw } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { StatusIndicator } from "@/components/ui/StatusIndicator";
 import { ExportDialog } from "@/components/sharing/ExportDialog";
 import type { DocumentSummary } from "@/types/api";
 
@@ -16,10 +17,20 @@ interface SummaryTabProps {
 
 export const SummaryTab = ({ documentId, documentName, summary, isLoading, error, onRetry }: SummaryTabProps) => {
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  
   if (isLoading) {
     return (
       <div className="flex flex-col h-full overflow-y-auto">
-        <div className="max-w-4xl mx-auto px-6 py-8 w-full">
+        <div className="max-w-4xl mx-auto px-6 py-8 w-full space-y-6">
+          {/* Status Indicator */}
+          <StatusIndicator
+            status="loading"
+            message="Generating summary..."
+            progress={undefined}
+            className="mb-2"
+          />
+          
+          {/* Loading Skeletons */}
           <div className="space-y-8">
             <div className="space-y-3">
               <Skeleton className="h-6 w-56" />
@@ -49,23 +60,29 @@ export const SummaryTab = ({ documentId, documentName, summary, isLoading, error
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-full px-6 py-16">
-        <div className="w-10 h-10 rounded-lg bg-muted/80 flex items-center justify-center mb-4">
-          <AlertCircle className="h-4 w-4 text-muted-foreground" />
+      <div className="flex flex-col h-full overflow-y-auto">
+        <div className="max-w-4xl mx-auto px-6 py-8 w-full">
+          <StatusIndicator
+            status="error"
+            message="Unable to load summary"
+            onRetry={onRetry}
+            className="mb-4"
+          />
+          <div className="text-center py-8">
+            <p className="text-sm text-muted-foreground mb-4">{error}</p>
+            {onRetry && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onRetry}
+                className="gap-2"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Retry
+              </Button>
+            )}
+          </div>
         </div>
-        <h3 className="text-sm font-semibold text-foreground mb-1.5">Unable to load summary</h3>
-        <p className="text-xs text-muted-foreground text-center max-w-sm mb-4">{error}</p>
-        {onRetry && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onRetry}
-            className="gap-2"
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            Retry
-          </Button>
-        )}
       </div>
     );
   }

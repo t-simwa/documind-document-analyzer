@@ -52,6 +52,11 @@ interface ChatInterfaceProps {
   suggestedQuestionsLoading?: boolean;
   queryConfig?: QueryConfig;
   onQueryConfigChange?: (config: QueryConfig) => void;
+  loadingProgress?: {
+    phase: "retrieving" | "generating";
+    progress: number;
+    estimatedTimeRemaining?: number;
+  } | null;
 }
 
 export const ChatInterface = ({
@@ -70,6 +75,7 @@ export const ChatInterface = ({
   suggestedQuestionsLoading = false,
   queryConfig = DEFAULT_QUERY_CONFIG,
   onQueryConfigChange,
+  loadingProgress,
 }: ChatInterfaceProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
@@ -137,6 +143,10 @@ export const ChatInterface = ({
                       <QueryStatusIndicator
                         status={message.status}
                         onCancel={message.status === "retrieving" || message.status === "generating" ? onCancelQuery : undefined}
+                        error={message.error}
+                        progress={loadingProgress?.phase === message.status ? loadingProgress.progress : undefined}
+                        estimatedTimeRemaining={loadingProgress?.phase === message.status ? loadingProgress.estimatedTimeRemaining : undefined}
+                        phase={loadingProgress?.phase === message.status ? loadingProgress.phase : undefined}
                       />
                     </div>
                   )}
@@ -163,6 +173,9 @@ export const ChatInterface = ({
                   <QueryStatusIndicator
                     status={queryStatus}
                     onCancel={onCancelQuery}
+                    progress={loadingProgress?.progress}
+                    estimatedTimeRemaining={loadingProgress?.estimatedTimeRemaining}
+                    phase={loadingProgress?.phase}
                   />
                 </div>
               )}

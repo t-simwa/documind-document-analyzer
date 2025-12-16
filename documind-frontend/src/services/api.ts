@@ -704,7 +704,7 @@ export const insightsApi = {
 
 // Cross-Document Analysis API
 export const crossDocumentApi = {
-  async query(request: CrossDocumentQueryRequest): Promise<CrossDocumentQueryResponse> {
+  async query(request: CrossDocumentQueryRequest, signal?: AbortSignal): Promise<CrossDocumentQueryResponse> {
     try {
       // Import caching functions
       const { getCachedQuery, cacheQuery } = await import("./queryCache");
@@ -738,7 +738,7 @@ export const crossDocumentApi = {
           max_tokens: config.max_tokens,
         };
 
-        response = await queryApi.query(queryRequest);
+        response = await queryApi.query(queryRequest, signal);
         
         // Cache the response
         cacheQuery(

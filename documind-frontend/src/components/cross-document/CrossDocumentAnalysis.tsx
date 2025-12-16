@@ -12,7 +12,8 @@ import {
   AlertCircle, 
   FileText,
   ArrowLeft,
-  RefreshCw
+  RefreshCw,
+  Clock
 } from "lucide-react";
 import { ChatInterface } from "@/components/chat/ChatInterface";
 import { DocumentComparisonView } from "./DocumentComparisonView";
@@ -20,13 +21,27 @@ import { crossDocumentApi } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { formatResponse } from "@/utils/formatResponse";
+import { categorizeError, ErrorType } from "@/utils/errorHandler";
+import { 
+  saveCrossDocumentHistory, 
+  loadCrossDocumentHistory, 
+  clearCrossDocumentHistory,
+  saveCrossDocumentComparison,
+  loadCrossDocumentComparison,
+  saveCrossDocumentPatterns,
+  loadCrossDocumentPatterns,
+  saveCrossDocumentContradictions,
+  loadCrossDocumentContradictions,
+  saveCrossDocumentAnalysisMetadata,
+} from "@/utils/crossDocumentStorage";
 import type { 
   Document, 
   CrossDocumentQueryResponse,
   DocumentPattern,
   DocumentContradiction,
   DocumentComparison,
-  CrossDocumentCitation
+  CrossDocumentCitation,
+  QueryStatus
 } from "@/types/api";
 
 interface Message {
@@ -35,18 +50,23 @@ interface Message {
   content: string;
   citations?: CrossDocumentCitation[];
   timestamp: Date;
+  status?: QueryStatus;
+  error?: string;
+  canRetry?: boolean;
 }
 
 interface CrossDocumentAnalysisProps {
   documents: Document[];
   documentUrls?: Map<string, string>;
   onBack?: () => void;
+  onLoadAnalysis?: (documentIds: string[]) => void;
 }
 
 export const CrossDocumentAnalysis = ({
   documents,
   documentUrls = new Map(),
   onBack,
+  onLoadAnalysis,
 }: CrossDocumentAnalysisProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -56,11 +76,144 @@ export const CrossDocumentAnalysis = ({
   const [contradictions, setContradictions] = useState<DocumentContradiction[]>([]);
   const [isLoadingComparison, setIsLoadingComparison] = useState(false);
   const [comparisonError, setComparisonError] = useState<string | null>(null);
+  const [queryStatus, setQueryStatus] = useState<QueryStatus>("idle");
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
+  const [loadingProgress, setLoadingProgress] = useState<{
+    phase: "retrieving" | "generating";
+    progress: number;
+    estimatedTimeRemaining?: number;
+  } | null>(null);
+  const [savedAnalysesDialogOpen, setSavedAnalysesDialogOpen] = useState(false);
   const { toast } = useToast();
 
   const documentIds = documents.map((d) => d.id);
   const documentIdsKey = documentIds.join(",");
   const hasAttemptedLoad = useRef<string>(""); // Track which document set we've attempted
+  const documentNames = documents.map((d) => d.name);
+  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const genProgressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Load cached comparison when document set changes
+  useEffect(() => {
+    if (documentIds.length >= 2) {
+      const cachedComparison = loadCrossDocumentComparison(documentIds);
+      if (cachedComparison) {
+        setComparison(cachedComparison);
+        setComparisonError(null);
+        hasAttemptedLoad.current = documentIdsKey; // Mark as attempted so we don't fetch
+      } else {
+        // No cached comparison, reset state to allow fetching
+        setComparison(null);
+        setComparisonError(null);
+        hasAttemptedLoad.current = ""; // Reset to allow fetch
+      }
+    } else {
+      // Not enough documents, clear comparison
+      setComparison(null);
+      setComparisonError(null);
+      hasAttemptedLoad.current = "";
+    }
+  }, [documentIdsKey]);
+
+  // Load cached data when document set changes
+  useEffect(() => {
+    if (documentIds.length >= 2) {
+      // Load conversation history
+      const storedMessages = loadCrossDocumentHistory(documentIds);
+      if (storedMessages.length > 0) {
+        const restoredMessages: Message[] = storedMessages.map((msg) => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp),
+          citations: msg.citations?.map((c) => ({
+            text: c.text,
+            page: c.page,
+            section: c.section,
+            documentId: c.documentId,
+            documentName: c.documentName,
+          })),
+        }));
+        setMessages(restoredMessages);
+      } else {
+        setMessages([]);
+      }
+
+      // Load cached comparison
+      const cachedComparison = loadCrossDocumentComparison(documentIds);
+      if (cachedComparison) {
+        setComparison(cachedComparison);
+        hasAttemptedLoad.current = documentIdsKey; // Mark as attempted so we don't fetch again
+      }
+
+      // Load cached patterns
+      const cachedPatterns = loadCrossDocumentPatterns(documentIds);
+      if (cachedPatterns.length > 0) {
+        setPatterns(cachedPatterns);
+      }
+
+      // Load cached contradictions
+      const cachedContradictions = loadCrossDocumentContradictions(documentIds);
+      if (cachedContradictions.length > 0) {
+        setContradictions(cachedContradictions);
+      }
+    } else {
+      setMessages([]);
+      setComparison(null);
+      setPatterns([]);
+      setContradictions([]);
+    }
+  }, [documentIdsKey]);
+
+  // Save conversation history and update metadata whenever messages change
+  useEffect(() => {
+    if (documentIds.length >= 2) {
+      if (messages.length > 0) {
+        const storableMessages = messages.map((msg) => ({
+          id: msg.id,
+          role: msg.role,
+          content: msg.content,
+          citations: msg.citations?.map((c) => ({
+            text: c.text,
+            page: c.page,
+            section: c.section,
+            documentId: c.documentId,
+            documentName: c.documentName,
+          })),
+          timestamp: msg.timestamp.toISOString(),
+          status: msg.status,
+          error: msg.error,
+          canRetry: msg.canRetry,
+        }));
+        saveCrossDocumentHistory(documentIds, storableMessages);
+      }
+
+      // Update metadata
+      saveCrossDocumentAnalysisMetadata(
+        documentIds,
+        documentNames,
+        comparison !== null,
+        patterns.length > 0,
+        contradictions.length > 0,
+        messages.length > 0
+      );
+    }
+  }, [messages, comparison, patterns, contradictions, documentIdsKey]);
+
+  // Cleanup abort controller and intervals on unmount
+  useEffect(() => {
+    return () => {
+      if (abortController) {
+        abortController.abort();
+      }
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
+      if (genProgressIntervalRef.current) {
+        clearInterval(genProgressIntervalRef.current);
+        genProgressIntervalRef.current = null;
+      }
+    };
+  }, [abortController]);
 
   const loadComparison = async (force: boolean = false) => {
     // If not forcing, check guards
@@ -82,6 +235,9 @@ export const CrossDocumentAnalysis = ({
       setComparison(result);
       setComparisonError(null); // Clear any previous errors
       hasAttemptedLoad.current = documentIdsKey; // Mark as attempted
+      
+      // Save to localStorage
+      saveCrossDocumentComparison(documentIds, result);
     } catch (error) {
       console.error("Failed to load comparison:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to load document comparison";
@@ -104,14 +260,8 @@ export const CrossDocumentAnalysis = ({
   };
 
   useEffect(() => {
-    // Reset error and comparison when documents change
-    if (hasAttemptedLoad.current !== documentIdsKey) {
-      setComparisonError(null);
-      setComparison(null);
-      hasAttemptedLoad.current = ""; // Reset attempt tracking
-    }
-    
     // Only load comparison if we have 2+ documents, haven't attempted yet, no comparison, no error, and not loading
+    // If cached comparison exists, it's already set in the cache loading effect, so we won't fetch
     if (
       documents.length >= 2 && 
       hasAttemptedLoad.current !== documentIdsKey &&
@@ -121,9 +271,9 @@ export const CrossDocumentAnalysis = ({
     ) {
       loadComparison();
     }
-  }, [documentIdsKey]); // Only depend on documentIdsKey
+  }, [documentIdsKey, comparison, comparisonError, isLoadingComparison]); // Depend on comparison state
 
-  const handleSendMessage = async (message: string) => {
+  const handleSendMessage = async (message: string, retryMessageId?: string) => {
     if (documents.length < 2) {
       toast({
         title: "Error",
@@ -133,15 +283,89 @@ export const CrossDocumentAnalysis = ({
       return;
     }
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: message,
-      timestamp: new Date(),
-    };
+    // Cancel any existing query
+    if (abortController) {
+      abortController.abort();
+    }
 
-    setMessages((prev) => [...prev, userMessage]);
+    // Create new AbortController for this query
+    const controller = new AbortController();
+    setAbortController(controller);
+    setQueryStatus("retrieving");
+
+    // Remove retry message if retrying
+    if (retryMessageId) {
+      setMessages((prev) => prev.filter((msg) => msg.id !== retryMessageId));
+    }
+
+    // Add user message to UI immediately (if not retrying)
+    if (!retryMessageId) {
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        role: "user",
+        content: message,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, userMessage]);
+    }
+
+    // Create placeholder assistant message with status
+    const assistantMessageId = (Date.now() + 1).toString();
+    const placeholderMessage: Message = {
+      id: assistantMessageId,
+      role: "assistant",
+      content: "",
+      timestamp: new Date(),
+      status: "retrieving",
+    };
+    setMessages((prev) => [...prev, placeholderMessage]);
     setIsLoading(true);
+
+    // Clear any existing intervals
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
+    if (genProgressIntervalRef.current) {
+      clearInterval(genProgressIntervalRef.current);
+      genProgressIntervalRef.current = null;
+    }
+
+    // Track loading progress
+    setLoadingProgress({ phase: "retrieving", progress: 0, estimatedTimeRemaining: 5 });
+    const retrievalStartTime = Date.now();
+    const retrievalDuration = 800;
+    progressIntervalRef.current = setInterval(() => {
+      const elapsed = Date.now() - retrievalStartTime;
+      const progress = Math.min((elapsed / retrievalDuration) * 100, 90);
+      const remaining = Math.max((retrievalDuration - elapsed) / 1000, 0);
+      setLoadingProgress({
+        phase: "retrieving",
+        progress: Math.round(progress),
+        estimatedTimeRemaining: Math.round(remaining),
+      });
+    }, 100);
+
+    await new Promise((resolve) => setTimeout(resolve, retrievalDuration));
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
+
+    setQueryStatus("generating");
+    setLoadingProgress({ phase: "generating", progress: 0, estimatedTimeRemaining: 10 });
+    const generationStartTime = Date.now();
+    genProgressIntervalRef.current = setInterval(() => {
+      const elapsed = Date.now() - generationStartTime;
+      const estimatedDuration = 10000;
+      const progress = Math.min((elapsed / estimatedDuration) * 100, 95);
+      const remaining = Math.max((estimatedDuration - elapsed) / 1000, 0);
+      setLoadingProgress({
+        phase: "generating",
+        progress: Math.round(progress),
+        estimatedTimeRemaining: Math.round(remaining),
+      });
+    }, 200);
 
     try {
       const response = await crossDocumentApi.query({
@@ -149,33 +373,54 @@ export const CrossDocumentAnalysis = ({
         query: message,
         includePatterns: true,
         includeContradictions: true,
-      });
+      }, controller.signal);
+      if (genProgressIntervalRef.current) {
+        clearInterval(genProgressIntervalRef.current);
+        genProgressIntervalRef.current = null;
+      }
 
       // Format the response to match chat tab formatting
-      // Remove markdown symbols and improve readability
       let formattedAnswer = formatResponse(response.answer);
       
-      // Final safety check: remove any remaining ** symbols
       if (formattedAnswer.includes('**')) {
         formattedAnswer = formattedAnswer.replace(/\*\*/g, '');
       }
 
       const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
+        id: assistantMessageId,
         role: "assistant",
         content: formattedAnswer,
         citations: response.citations,
         timestamp: new Date(response.generatedAt),
+        status: "completed",
       };
 
-      setMessages((prev) => [...prev, aiMessage]);
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === assistantMessageId ? aiMessage : msg))
+      );
+      setQueryStatus("completed");
+      setLoadingProgress({ phase: "generating", progress: 100 });
 
       if (response.patterns) {
-        setPatterns((prev) => [...prev, ...response.patterns!]);
+        const updatedPatterns = [...patterns, ...response.patterns];
+        setPatterns(updatedPatterns);
+        saveCrossDocumentPatterns(documentIds, updatedPatterns);
       }
       if (response.contradictions) {
-        setContradictions((prev) => [...prev, ...response.contradictions!]);
+        const updatedContradictions = [...contradictions, ...response.contradictions];
+        setContradictions(updatedContradictions);
+        saveCrossDocumentContradictions(documentIds, updatedContradictions);
       }
+
+      // Update metadata after successful query
+      saveCrossDocumentAnalysisMetadata(
+        documentIds,
+        documentNames,
+        comparison !== null,
+        patterns.length > 0 || (response.patterns && response.patterns.length > 0),
+        contradictions.length > 0 || (response.contradictions && response.contradictions.length > 0),
+        messages.length > 0
+      );
 
       if (response.contradictions && response.contradictions.length > 0) {
         setActiveTab("contradictions");
@@ -183,18 +428,85 @@ export const CrossDocumentAnalysis = ({
         setActiveTab("patterns");
       }
     } catch (error) {
+      // Clear all intervals on error
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
+      if (genProgressIntervalRef.current) {
+        clearInterval(genProgressIntervalRef.current);
+        genProgressIntervalRef.current = null;
+      }
       console.error("Failed to query documents:", error);
-      toast({
-        title: "Error",
-        description: "Failed to analyze documents. Please try again.",
-        variant: "destructive",
-      });
+      
+      const categorizedError = categorizeError(error);
+      
+      if (categorizedError.type !== ErrorType.CANCELLED) {
+        let toastTitle = "Query Failed";
+        if (categorizedError.type === ErrorType.NETWORK) {
+          toastTitle = "Connection Error";
+        } else if (categorizedError.type === ErrorType.TIMEOUT) {
+          toastTitle = "Request Timeout";
+        } else if (categorizedError.type === ErrorType.API) {
+          toastTitle = "Server Error";
+        }
+
+        toast({
+          title: toastTitle,
+          description: categorizedError.userMessage,
+          variant: "destructive",
+        });
+      }
+
+      const errorMessage: Message = {
+        id: assistantMessageId,
+        role: "assistant",
+        content: categorizedError.type === ErrorType.CANCELLED
+          ? "Query was cancelled."
+          : categorizedError.userMessage,
+        timestamp: new Date(),
+        status: categorizedError.type === ErrorType.CANCELLED ? "cancelled" : "error",
+        error: categorizedError.message,
+        canRetry: categorizedError.canRetry,
+      };
+      
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === assistantMessageId ? errorMessage : msg))
+      );
+      setQueryStatus(categorizedError.type === ErrorType.CANCELLED ? "cancelled" : "error");
+      setLoadingProgress(null);
     } finally {
       setIsLoading(false);
+      setAbortController(null);
+      setQueryStatus("idle");
+      setLoadingProgress(null);
+    }
+  };
+
+  const handleCancelQuery = () => {
+    if (abortController) {
+      abortController.abort();
+      setAbortController(null);
+      setQueryStatus("cancelled");
+      setIsLoading(false);
+      setLoadingProgress(null);
+    }
+  };
+
+  const handleRetryQuery = (messageId: string) => {
+    const errorIndex = messages.findIndex((msg) => msg.id === messageId);
+    if (errorIndex > 0) {
+      const userMessage = messages[errorIndex - 1];
+      if (userMessage.role === "user") {
+        handleSendMessage(userMessage.content, messageId);
+      }
     }
   };
 
   const handleClearHistory = () => {
+    if (documentIds.length > 0) {
+      clearCrossDocumentHistory(documentIds);
+    }
     setMessages([]);
     toast({
       title: "Chat Cleared",
@@ -311,10 +623,16 @@ export const CrossDocumentAnalysis = ({
                 section: c.section,
               })),
               timestamp: msg.timestamp,
+              status: msg.status,
+              error: msg.error,
+              canRetry: msg.canRetry,
             }))}
             onSendMessage={handleSendMessage}
             onClearHistory={handleClearHistory}
             isLoading={isLoading}
+            queryStatus={queryStatus}
+            onCancelQuery={handleCancelQuery}
+            onRetryQuery={handleRetryQuery}
             documentName={`${documents.length} Documents`}
             onCitationClick={handleCitationClick}
             suggestedQuestions={[
@@ -324,6 +642,7 @@ export const CrossDocumentAnalysis = ({
               "How do the documents differ in their approach?",
               "What are the key similarities and differences?",
             ]}
+            loadingProgress={loadingProgress}
           />
         </TabsContent>
 
@@ -334,6 +653,7 @@ export const CrossDocumentAnalysis = ({
             comparison={comparison || undefined}
             onComparisonRequest={handleRetryComparison}
             isLoading={isLoadingComparison}
+            error={comparisonError}
           />
         </TabsContent>
 

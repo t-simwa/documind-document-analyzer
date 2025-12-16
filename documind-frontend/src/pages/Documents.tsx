@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { GlobalNavBar } from "@/components/layout/GlobalNavBar";
@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/empty/EmptyState";
 import { DocumentListView } from "@/components/documents/DocumentListView";
 import { MultiDocumentSelector } from "@/components/cross-document/MultiDocumentSelector";
 import { CrossDocumentAnalysis } from "@/components/cross-document/CrossDocumentAnalysis";
+import { SavedAnalysesDialog } from "@/components/cross-document/SavedAnalysesDialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { GitCompare } from "lucide-react";
@@ -19,6 +20,8 @@ import { getProcessingStatus } from "@/services/processingQueueService";
 import { getCachedQuery, cacheQuery } from "@/services/queryCache";
 import { DEFAULT_COLLECTION_NAME } from "@/config/api";
 import { formatResponse } from "@/utils/formatResponse";
+import { categorizeError, ErrorType } from "@/utils/errorHandler";
+import { saveConversationHistory, loadConversationHistory, clearConversationHistory } from "@/utils/conversationStorage";
 import type { Document, ProcessingStatus as ProcessingStatusType, SecurityScanResult, QueryRequest, CitationResponse } from "@/types/api";
 import type { QueryConfig } from "@/types/query";
 import { DEFAULT_QUERY_CONFIG } from "@/types/query";
@@ -71,12 +74,25 @@ const Documents = () => {
   const [selectedDocuments, setSelectedDocuments] = useState<Document[]>([]);
   const [documentUrls, setDocumentUrls] = useState<Map<string, string>>(new Map());
   const [openProjectDialog, setOpenProjectDialog] = useState(false);
+  const [savedAnalysesDialogOpen, setSavedAnalysesDialogOpen] = useState(false);
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   
   // Query cancellation
   const [abortController, setAbortController] = useState<AbortController | null>(null);
   const [queryStatus, setQueryStatus] = useState<QueryStatus>("idle");
+  
+  // Enhanced loading states
+  const [loadingProgress, setLoadingProgress] = useState<{
+    phase: "retrieving" | "generating";
+    progress: number; // 0-100
+    estimatedTimeRemaining?: number; // seconds
+  } | null>(null);
+  
+  // Refs for interval cleanup
+  const retrievalProgressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const generationProgressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const uploadProgressIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   // Query configuration state (persisted to localStorage)
   const [queryConfig, setQueryConfig] = useState<QueryConfig>(() => {
@@ -96,16 +112,65 @@ const Documents = () => {
     localStorage.setItem("queryConfig", JSON.stringify(queryConfig));
   }, [queryConfig]);
 
-  // Cleanup abort controller on unmount
+  // Cleanup abort controller and intervals on unmount
   useEffect(() => {
     return () => {
       if (abortController) {
         abortController.abort();
       }
+      if (retrievalProgressIntervalRef.current) {
+        clearInterval(retrievalProgressIntervalRef.current);
+        retrievalProgressIntervalRef.current = null;
+      }
+      if (generationProgressIntervalRef.current) {
+        clearInterval(generationProgressIntervalRef.current);
+        generationProgressIntervalRef.current = null;
+      }
+      if (uploadProgressIntervalRef.current) {
+        clearInterval(uploadProgressIntervalRef.current);
+        uploadProgressIntervalRef.current = null;
+      }
     };
   }, [abortController]);
 
   const selectedDocument = documents.find((d) => d.id === selectedDocId);
+
+  // Load conversation history when document changes
+  useEffect(() => {
+    if (selectedDocId) {
+      const storedMessages = loadConversationHistory(selectedDocId);
+      if (storedMessages.length > 0) {
+        // Convert stored messages back to Message format
+        const restoredMessages: Message[] = storedMessages.map((msg) => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp),
+        }));
+        setMessages(restoredMessages);
+      } else {
+        setMessages([]);
+      }
+    } else {
+      setMessages([]);
+    }
+  }, [selectedDocId]);
+
+  // Save conversation history whenever messages change
+  useEffect(() => {
+    if (selectedDocId && messages.length > 0) {
+      // Convert messages to storable format
+      const storableMessages = messages.map((msg) => ({
+        id: msg.id,
+        role: msg.role,
+        content: msg.content,
+        citations: msg.citations,
+        timestamp: msg.timestamp.toISOString(),
+        status: msg.status,
+        error: msg.error,
+        canRetry: msg.canRetry,
+      }));
+      saveConversationHistory(selectedDocId, storableMessages);
+    }
+  }, [messages, selectedDocId]);
 
   // Poll processing status when in processing view
   useEffect(() => {
@@ -453,7 +518,13 @@ const Documents = () => {
     const file = files[0];
     setUploadedFile(file);
 
-    const progressInterval = setInterval(() => {
+    // Clear any existing upload interval
+    if (uploadProgressIntervalRef.current) {
+      clearInterval(uploadProgressIntervalRef.current);
+      uploadProgressIntervalRef.current = null;
+    }
+
+    uploadProgressIntervalRef.current = setInterval(() => {
       setUploadProgress((prev) => Math.min(prev + 15, 95));
     }, 150);
 
@@ -461,7 +532,10 @@ const Documents = () => {
       // Upload file to backend
       const newDoc = await documentsApi.upload(file, projectId);
       
-      clearInterval(progressInterval);
+      if (uploadProgressIntervalRef.current) {
+        clearInterval(uploadProgressIntervalRef.current);
+        uploadProgressIntervalRef.current = null;
+      }
       setUploadProgress(100);
 
       // Immediately switch to processing view BEFORE reloading documents
@@ -482,7 +556,10 @@ const Documents = () => {
       // The polling useEffect will handle status updates automatically
       // No need to call processDocumentWithSecurity since we've already set up the state
     } catch (error) {
-      clearInterval(progressInterval);
+      if (uploadProgressIntervalRef.current) {
+        clearInterval(uploadProgressIntervalRef.current);
+        uploadProgressIntervalRef.current = null;
+      }
       setIsLoading(false);
       setViewState("upload"); // Return to upload view on error
       toast({
@@ -627,19 +704,48 @@ const Documents = () => {
         response = cachedResponse;
         setQueryStatus("completed");
       } else {
-        // Update status to retrieving
+        // Update status to retrieving with progress tracking
         setQueryStatus("retrieving");
+        setLoadingProgress({ phase: "retrieving", progress: 0, estimatedTimeRemaining: 5 });
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === assistantMessageId ? { ...msg, status: "retrieving" } : msg
           )
         );
 
-        // Simulate retrieval phase (backend doesn't provide phase info, so we estimate)
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        // Clear any existing intervals
+        if (retrievalProgressIntervalRef.current) {
+          clearInterval(retrievalProgressIntervalRef.current);
+          retrievalProgressIntervalRef.current = null;
+        }
+        if (generationProgressIntervalRef.current) {
+          clearInterval(generationProgressIntervalRef.current);
+          generationProgressIntervalRef.current = null;
+        }
 
-        // Update status to generating
+        // Simulate retrieval phase with progress updates
+        const retrievalStartTime = Date.now();
+        const retrievalDuration = 800; // Estimated 800ms for retrieval
+        retrievalProgressIntervalRef.current = setInterval(() => {
+          const elapsed = Date.now() - retrievalStartTime;
+          const progress = Math.min((elapsed / retrievalDuration) * 100, 90);
+          const remaining = Math.max((retrievalDuration - elapsed) / 1000, 0);
+          setLoadingProgress({
+            phase: "retrieving",
+            progress: Math.round(progress),
+            estimatedTimeRemaining: Math.round(remaining),
+          });
+        }, 100);
+
+        await new Promise((resolve) => setTimeout(resolve, retrievalDuration));
+        if (retrievalProgressIntervalRef.current) {
+          clearInterval(retrievalProgressIntervalRef.current);
+          retrievalProgressIntervalRef.current = null;
+        }
+
+        // Update status to generating with progress tracking
         setQueryStatus("generating");
+        setLoadingProgress({ phase: "generating", progress: 0, estimatedTimeRemaining: 10 });
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === assistantMessageId ? { ...msg, status: "generating" } : msg
@@ -660,18 +766,51 @@ const Documents = () => {
           max_tokens: queryConfig.max_tokens,
         };
 
-        // Call query API with abort signal
-        response = await queryApi.query(queryRequest, controller.signal);
-        
-        // Cache the response
-        cacheQuery(
-          message,
-          [selectedDocument.id],
-          DEFAULT_COLLECTION_NAME,
-          queryConfig,
-          response
-        );
-        setQueryStatus("completed");
+        // Track generation progress
+        const generationStartTime = Date.now();
+        generationProgressIntervalRef.current = setInterval(() => {
+          const elapsed = Date.now() - generationStartTime;
+          // Estimate generation takes 5-15 seconds, show progress accordingly
+          const estimatedDuration = 10000; // 10 seconds estimate
+          const progress = Math.min((elapsed / estimatedDuration) * 100, 95);
+          const remaining = Math.max((estimatedDuration - elapsed) / 1000, 0);
+          setLoadingProgress({
+            phase: "generating",
+            progress: Math.round(progress),
+            estimatedTimeRemaining: Math.round(remaining),
+          });
+        }, 200);
+
+        try {
+          // Call query API with abort signal
+          response = await queryApi.query(queryRequest, controller.signal);
+          if (generationProgressIntervalRef.current) {
+            clearInterval(generationProgressIntervalRef.current);
+            generationProgressIntervalRef.current = null;
+          }
+          
+          // Cache the response
+          cacheQuery(
+            message,
+            [selectedDocument.id],
+            DEFAULT_COLLECTION_NAME,
+            queryConfig,
+            response
+          );
+          setQueryStatus("completed");
+          setLoadingProgress({ phase: "generating", progress: 100 });
+        } catch (queryError) {
+          // Clear all intervals on error
+          if (retrievalProgressIntervalRef.current) {
+            clearInterval(retrievalProgressIntervalRef.current);
+            retrievalProgressIntervalRef.current = null;
+          }
+          if (generationProgressIntervalRef.current) {
+            clearInterval(generationProgressIntervalRef.current);
+            generationProgressIntervalRef.current = null;
+          }
+          throw queryError;
+        }
       }
 
       // Map backend citations to frontend format
@@ -708,22 +847,36 @@ const Documents = () => {
       );
     } catch (error) {
       console.error("Query failed:", error);
-      const errorMessageText = error instanceof Error ? error.message : "Failed to get answer. Please try again.";
-      const isCancelled = errorMessageText === "Query cancelled";
       
-      // Log detailed error for debugging
-      if (error instanceof Error && !isCancelled) {
+      // Categorize error for better handling
+      const categorizedError = categorizeError(error);
+      
+      // Log detailed error for debugging (except cancelled queries)
+      if (categorizedError.type !== ErrorType.CANCELLED && categorizedError.originalError) {
         console.error("Error details:", {
-          message: error.message,
-          stack: error.stack,
-          name: error.name,
+          type: categorizedError.type,
+          message: categorizedError.message,
+          stack: categorizedError.originalError.stack,
+          name: categorizedError.originalError.name,
         });
       }
       
-      if (!isCancelled) {
+      // Show toast notification for non-cancelled errors
+      if (categorizedError.type !== ErrorType.CANCELLED) {
+        let toastTitle = "Query Failed";
+        if (categorizedError.type === ErrorType.NETWORK) {
+          toastTitle = "Connection Error";
+        } else if (categorizedError.type === ErrorType.TIMEOUT) {
+          toastTitle = "Request Timeout";
+        } else if (categorizedError.type === ErrorType.API) {
+          toastTitle = "Server Error";
+        } else if (categorizedError.type === ErrorType.VALIDATION) {
+          toastTitle = "Invalid Request";
+        }
+
         toast({
-          title: "Query Failed",
-          description: errorMessageText,
+          title: toastTitle,
+          description: categorizedError.userMessage,
           variant: "destructive",
         });
       }
@@ -732,23 +885,25 @@ const Documents = () => {
       const errorMessage: Message = {
         id: assistantMessageId,
         role: "assistant",
-        content: isCancelled
+        content: categorizedError.type === ErrorType.CANCELLED
           ? "Query was cancelled."
-          : "Sorry, I encountered an error while processing your query. Please try again.",
+          : categorizedError.userMessage,
         timestamp: new Date(),
-        status: isCancelled ? "cancelled" : "error",
-        error: errorMessageText,
-        canRetry: !isCancelled,
+        status: categorizedError.type === ErrorType.CANCELLED ? "cancelled" : "error",
+        error: categorizedError.message,
+        canRetry: categorizedError.canRetry,
       };
       
       setMessages((prev) =>
         prev.map((msg) => (msg.id === assistantMessageId ? errorMessage : msg))
       );
-      setQueryStatus(isCancelled ? "cancelled" : "error");
+      setQueryStatus(categorizedError.type === ErrorType.CANCELLED ? "cancelled" : "error");
+      setLoadingProgress(null);
     } finally {
       setIsLoading(false);
       setAbortController(null);
       setQueryStatus("idle");
+      setLoadingProgress(null);
     }
   };
 
@@ -774,6 +929,9 @@ const Documents = () => {
   };
 
   const handleClearHistory = () => {
+    if (selectedDocId) {
+      clearConversationHistory(selectedDocId);
+    }
     setMessages([]);
     toast({
       title: "Chat Cleared",
@@ -936,6 +1094,7 @@ const Documents = () => {
             }}
             queryConfig={queryConfig}
             onQueryConfigChange={setQueryConfig}
+            loadingProgress={loadingProgress}
           />
         );
 
@@ -956,6 +1115,7 @@ const Documents = () => {
               }
             }}
             onCompareDocuments={handleMultiDocumentSelect}
+            onOpenSavedAnalyses={() => setSavedAnalysesDialogOpen(true)}
           />
         );
 
@@ -978,6 +1138,44 @@ const Documents = () => {
             documents={selectedDocuments}
             documentUrls={documentUrls}
             onBack={handleBackFromCrossDocument}
+            onLoadAnalysis={(documentIds) => {
+              // Find documents by IDs
+              const docsToLoad = documents.filter((d) => documentIds.includes(d.id));
+              if (docsToLoad.length >= 2) {
+                setSelectedDocuments(docsToLoad);
+                setSelectedDocIds(new Set(documentIds));
+                
+                // Fetch URLs for selected documents
+                const urlMap = new Map<string, string>();
+                docsToLoad.forEach(async (doc) => {
+                  try {
+                    const url = await documentsApi.getFileUrl(doc.id);
+                    if (url) {
+                      urlMap.set(doc.id, url);
+                      setDocumentUrls((prev) => {
+                        const newMap = new Map(prev);
+                        newMap.set(doc.id, url);
+                        return newMap;
+                      });
+                    }
+                  } catch (error) {
+                    console.error(`Failed to get URL for document ${doc.id}:`, error);
+                  }
+                });
+                
+                setViewState("cross-document");
+                toast({
+                  title: "Analysis Loaded",
+                  description: `Loaded analysis for ${docsToLoad.length} documents.`,
+                });
+              } else {
+                toast({
+                  title: "Error",
+                  description: "Could not find all documents for this analysis.",
+                  variant: "destructive",
+                });
+              }
+            }}
           />
         );
 
@@ -1058,6 +1256,50 @@ const Documents = () => {
           )}
         </main>
       </div>
+
+      {/* Saved Analyses Dialog */}
+      <SavedAnalysesDialog
+        open={savedAnalysesDialogOpen}
+        onOpenChange={setSavedAnalysesDialogOpen}
+        onSelectAnalysis={(selectedDocumentIds) => {
+          // Find documents by IDs
+          const docsToLoad = documents.filter((d) => selectedDocumentIds.includes(d.id));
+          if (docsToLoad.length >= 2) {
+            setSelectedDocuments(docsToLoad);
+            setSelectedDocIds(new Set(selectedDocumentIds));
+            
+            // Fetch URLs for selected documents
+            const urlMap = new Map<string, string>();
+            docsToLoad.forEach(async (doc) => {
+              try {
+                const url = await documentsApi.getFileUrl(doc.id);
+                if (url) {
+                  urlMap.set(doc.id, url);
+                  setDocumentUrls((prev) => {
+                    const newMap = new Map(prev);
+                    newMap.set(doc.id, url);
+                    return newMap;
+                  });
+                }
+              } catch (error) {
+                console.error(`Failed to get URL for document ${doc.id}:`, error);
+              }
+            });
+            
+            setViewState("cross-document");
+            toast({
+              title: "Analysis Loaded",
+              description: `Loaded analysis for ${docsToLoad.length} documents.`,
+            });
+          } else {
+            toast({
+              title: "Error",
+              description: "Could not find all documents for this analysis.",
+              variant: "destructive",
+            });
+          }
+        }}
+      />
     </div>
   );
 };

@@ -2,6 +2,7 @@ import { Building2, Users, Calendar, DollarSign, MapPin, FileText, AlertCircle, 
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { StatusIndicator } from "@/components/ui/StatusIndicator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { DocumentEntities } from "@/types/api";
 import React from "react";
@@ -172,7 +173,16 @@ export const ExtractsTab = ({ entities, isLoading, error, onRetry }: ExtractsTab
   if (isLoading) {
     return (
       <div className="flex flex-col h-full overflow-y-auto">
-        <div className="max-w-5xl mx-auto px-6 py-8 w-full">
+        <div className="max-w-5xl mx-auto px-6 py-8 w-full space-y-6">
+          {/* Status Indicator */}
+          <StatusIndicator
+            status="loading"
+            message="Extracting entities..."
+            progress={undefined}
+            className="mb-2"
+          />
+          
+          {/* Loading Skeletons */}
           <div className="space-y-3">
             {[1, 2, 3, 4].map((i) => (
               <Skeleton key={i} className="h-20 w-full rounded-lg" />
@@ -185,23 +195,29 @@ export const ExtractsTab = ({ entities, isLoading, error, onRetry }: ExtractsTab
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-full px-6 py-16">
-        <div className="w-10 h-10 rounded-lg bg-muted/80 flex items-center justify-center mb-4">
-          <AlertCircle className="h-4 w-4 text-muted-foreground" />
+      <div className="flex flex-col h-full overflow-y-auto">
+        <div className="max-w-5xl mx-auto px-6 py-8 w-full">
+          <StatusIndicator
+            status="error"
+            message="Unable to load extracts"
+            onRetry={onRetry}
+            className="mb-4"
+          />
+          <div className="text-center py-8">
+            <p className="text-sm text-muted-foreground mb-4">{error}</p>
+            {onRetry && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onRetry}
+                className="gap-2"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Retry
+              </Button>
+            )}
+          </div>
         </div>
-        <h3 className="text-sm font-semibold text-foreground mb-1.5">Unable to load extracts</h3>
-        <p className="text-xs text-muted-foreground text-center max-w-sm mb-4">{error}</p>
-        {onRetry && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onRetry}
-            className="gap-2"
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            Retry
-          </Button>
-        )}
       </div>
     );
   }

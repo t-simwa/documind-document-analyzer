@@ -6,6 +6,7 @@ import { DocumentViewer } from "@/components/document-viewer/DocumentViewer";
 import { AnalysisTabs } from "./AnalysisTabs";
 import { cn } from "@/lib/utils";
 import { insightsApi } from "@/services/api";
+import { saveDocumentSummary, loadDocumentSummary, saveDocumentExtracts, loadDocumentExtracts } from "@/utils/documentDataStorage";
 import type { Document, DocumentInsights, QueryStatus } from "@/types/api";
 import type { QueryConfig } from "@/types/query";
 
@@ -39,6 +40,11 @@ interface SplitScreenAnalysisProps {
   onCitationClick?: (citation: Citation) => void;
   queryConfig?: QueryConfig;
   onQueryConfigChange?: (config: QueryConfig) => void;
+  loadingProgress?: {
+    phase: "retrieving" | "generating";
+    progress: number;
+    estimatedTimeRemaining?: number;
+  } | null;
 }
 
 export const SplitScreenAnalysis = ({
@@ -54,6 +60,7 @@ export const SplitScreenAnalysis = ({
   onCitationClick,
   queryConfig,
   onQueryConfigChange,
+  loadingProgress,
 }: SplitScreenAnalysisProps) => {
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
@@ -106,6 +113,15 @@ export const SplitScreenAnalysis = ({
     try {
       const data = await insightsApi.getInsights(document.id);
       setInsights(data);
+      
+      // Save to localStorage
+      if (data.summary) {
+        saveDocumentSummary(document.id, data.summary);
+      }
+      if (data.entities) {
+        saveDocumentExtracts(document.id, data.entities);
+      }
+      
       setInsightsLoading(false);
     } catch (error) {
       console.error("Error fetching insights:", error);
@@ -114,10 +130,55 @@ export const SplitScreenAnalysis = ({
     }
   }, [document?.id, document?.status]);
 
-  // Fetch insights when document is ready
+  // Load cached insights and fetch fresh data only if not cached
   useEffect(() => {
     if (document && document.status === "ready" && document.id) {
-      fetchInsights();
+      const cachedSummary = loadDocumentSummary(document.id);
+      const cachedExtracts = loadDocumentExtracts(document.id);
+      
+      // If we have both cached summary and extracts, use them and don't fetch
+      if (cachedSummary && cachedExtracts) {
+        setInsights({
+          summary: cachedSummary,
+          entities: cachedExtracts,
+          suggestedQuestions: [],
+        });
+        setInsightsLoading(false);
+        setInsightsError(null);
+        // Don't fetch from API if we have cached data
+        return;
+      } else if (cachedSummary) {
+        // If only summary is cached, set partial insights
+        setInsights({
+          summary: cachedSummary,
+          entities: {
+            organizations: [],
+            people: [],
+            dates: [],
+            monetaryValues: [],
+            locations: [],
+          },
+          suggestedQuestions: [],
+        });
+        // Still fetch to get extracts
+        fetchInsights();
+      } else if (cachedExtracts) {
+        // If only extracts are cached, set partial insights
+        setInsights({
+          summary: {
+            executiveSummary: "",
+            keyPoints: [],
+            generatedAt: new Date(),
+          },
+          entities: cachedExtracts,
+          suggestedQuestions: [],
+        });
+        // Still fetch to get summary
+        fetchInsights();
+      } else {
+        // No cached data, fetch from API
+        fetchInsights();
+      }
     } else {
       // Reset insights when document changes or is not ready
       setInsights(null);
@@ -232,6 +293,7 @@ export const SplitScreenAnalysis = ({
                 onRetryInsights={fetchInsights}
                 queryConfig={queryConfig}
                 onQueryConfigChange={onQueryConfigChange}
+                loadingProgress={loadingProgress}
               />
             </div>
           )}
@@ -353,6 +415,9 @@ export const SplitScreenAnalysis = ({
                   onSendMessage={onSendMessage}
                   onClearHistory={onClearHistory}
                   isLoading={isLoading}
+                  queryStatus={queryStatus}
+                  onCancelQuery={onCancelQuery}
+                  onRetryQuery={onRetryQuery}
                   documentId={document?.id}
                   documentName={document?.name}
                   onCitationClick={handleCitationClick}
@@ -362,6 +427,7 @@ export const SplitScreenAnalysis = ({
                   onRetryInsights={fetchInsights}
                   queryConfig={queryConfig}
                   onQueryConfigChange={onQueryConfigChange}
+                  loadingProgress={loadingProgress}
                 />
               </div>
             </div>

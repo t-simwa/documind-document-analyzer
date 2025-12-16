@@ -42,6 +42,11 @@ interface AnalysisTabsProps {
   onRetryInsights?: () => void;
   queryConfig?: QueryConfig;
   onQueryConfigChange?: (config: QueryConfig) => void;
+  loadingProgress?: {
+    phase: "retrieving" | "generating";
+    progress: number;
+    estimatedTimeRemaining?: number;
+  } | null;
 }
 
 export const AnalysisTabs = ({
@@ -61,6 +66,7 @@ export const AnalysisTabs = ({
   onRetryInsights,
   queryConfig,
   onQueryConfigChange,
+  loadingProgress,
 }: AnalysisTabsProps) => {
   const [activeTab, setActiveTab] = useState<string>("chat");
   const [shareAnalysisDialogOpen, setShareAnalysisDialogOpen] = useState(false);
@@ -137,6 +143,7 @@ export const AnalysisTabs = ({
               suggestedQuestionsLoading={insightsLoading}
               queryConfig={queryConfig}
               onQueryConfigChange={onQueryConfigChange}
+              loadingProgress={loadingProgress}
             />
           </TabsContent>
 

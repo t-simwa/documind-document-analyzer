@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from "@/components/ui/pagination";
 import { Badge } from "@/components/ui/badge";
-import { Filter, X, Search, Layers } from "lucide-react";
+import { Filter, X, Search, Layers, Clock } from "lucide-react";
 import { DocumentListTable } from "./DocumentListTable";
 import { DocumentFilters } from "./DocumentFilters";
 import { BulkActionsDialog } from "./BulkActionsDialog";
@@ -19,9 +19,10 @@ interface DocumentListViewProps {
   projectId?: string | null;
   onDocumentSelect?: (document: Document) => void;
   onCompareDocuments?: () => void;
+  onOpenSavedAnalyses?: () => void;
 }
 
-export const DocumentListView = ({ projectId, onDocumentSelect, onCompareDocuments }: DocumentListViewProps) => {
+export const DocumentListView = ({ projectId, onDocumentSelect, onCompareDocuments, onOpenSavedAnalyses }: DocumentListViewProps) => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [tags, setTags] = useState<DocumentTag[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -217,6 +218,16 @@ export const DocumentListView = ({ projectId, onDocumentSelect, onCompareDocumen
               >
                 <Layers className="h-4 w-4" />
                 Compare Documents
+              </Button>
+            )}
+            {onOpenSavedAnalyses && (
+              <Button
+                onClick={onOpenSavedAnalyses}
+                size="sm"
+                className="gap-2"
+              >
+                <Clock className="h-4 w-4" />
+                Saved Analyses
               </Button>
             )}
             <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>

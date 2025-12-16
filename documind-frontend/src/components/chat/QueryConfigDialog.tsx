@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -20,7 +19,8 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Settings2 } from "lucide-react";
+import { Search, Sparkles, RotateCcw } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { QueryConfig } from "@/types/query";
 import { DEFAULT_QUERY_CONFIG } from "@/types/query";
 
@@ -54,52 +54,76 @@ export const QueryConfigDialog = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Settings2 className="h-4 w-4" />
-            Query Configuration
-          </DialogTitle>
-          <DialogDescription>
-            Configure how queries are processed and responses are generated
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <style>{`
+        .query-config-slider span[class*="bg-primary"] {
+          background-color: #171717 !important;
+        }
+        .dark .query-config-slider span[class*="bg-primary"] {
+          background-color: #fafafa !important;
+        }
+        .query-config-slider span[role="slider"] {
+          border-color: #171717 !important;
+        }
+        .dark .query-config-slider span[role="slider"] {
+          border-color: #fafafa !important;
+        }
+      `}</style>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[600px] p-0 gap-0 overflow-hidden">
+        {/* Header */}
+        <div className="px-6 pt-6 pb-4 border-b border-border/50">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold tracking-tight">
+              Query settings
+            </DialogTitle>
+          </DialogHeader>
+        </div>
 
-        <div className="space-y-6 py-4">
+        {/* Content */}
+        <div className="px-6 py-5 space-y-5 overflow-y-auto max-h-[calc(90vh-200px)]">
           {/* Search Configuration */}
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-sm font-semibold mb-3">Search Configuration</h3>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="search_type">Search Type</Label>
-                  <Select
-                    value={localConfig.search_type}
-                    onValueChange={(value: "vector" | "keyword" | "hybrid") =>
-                      setLocalConfig({ ...localConfig, search_type: value })
-                    }
-                  >
-                    <SelectTrigger id="search_type">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="hybrid">
-                        Hybrid (Recommended)
-                      </SelectItem>
-                      <SelectItem value="vector">Vector (Semantic)</SelectItem>
-                      <SelectItem value="keyword">Keyword (BM25)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    Hybrid combines vector and keyword search for best results
-                  </p>
-                </div>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 mb-1">
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <Label className="text-sm font-medium text-foreground">Search configuration</Label>
+            </div>
+            
+            <div className="space-y-4 pl-6">
+              <div className="space-y-2">
+                <Label htmlFor="search_type" className="text-sm font-medium text-foreground">
+                  Search type
+                </Label>
+                <Select
+                  value={localConfig.search_type}
+                  onValueChange={(value: "vector" | "keyword" | "hybrid") =>
+                    setLocalConfig({ ...localConfig, search_type: value })
+                  }
+                >
+                  <SelectTrigger id="search_type" className="h-10 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="hybrid">Hybrid</SelectItem>
+                    <SelectItem value="vector">Vector (Semantic)</SelectItem>
+                    <SelectItem value="keyword">Keyword (BM25)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Hybrid combines vector and keyword search for optimal results
+                </p>
+              </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="top_k">
-                    Top K Results: {localConfig.top_k}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="top_k" className="text-sm font-medium text-foreground">
+                    Top K results
                   </Label>
+                  <span className="text-sm font-medium text-foreground tabular-nums">
+                    {localConfig.top_k}
+                  </span>
+                </div>
+                <div className="px-1 query-config-slider">
                   <Slider
                     id="top_k"
                     min={1}
@@ -109,79 +133,91 @@ export const QueryConfigDialog = ({
                     onValueChange={([value]) =>
                       setLocalConfig({ ...localConfig, top_k: value })
                     }
-                    className="w-full"
                   />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Number of document chunks to retrieve
+                </p>
+              </div>
+
+              <div className="flex items-center justify-between py-2">
+                <div className="space-y-0.5 flex-1">
+                  <Label htmlFor="rerank" className="text-sm font-medium text-foreground">
+                    Re-ranking
+                  </Label>
                   <p className="text-xs text-muted-foreground">
-                    Number of document chunks to retrieve (1-20)
+                    Re-rank results for improved relevance
                   </p>
                 </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="rerank">Re-ranking</Label>
-                    <p className="text-xs text-muted-foreground">
-                      Re-rank results for better relevance
-                    </p>
-                  </div>
-                  <Switch
-                    id="rerank"
-                    checked={localConfig.rerank_enabled}
-                    onCheckedChange={(checked) =>
-                      setLocalConfig({ ...localConfig, rerank_enabled: checked })
-                    }
-                  />
-                </div>
+                <Switch
+                  id="rerank"
+                  checked={localConfig.rerank_enabled}
+                  onCheckedChange={(checked) =>
+                    setLocalConfig({ ...localConfig, rerank_enabled: checked })
+                  }
+                />
               </div>
             </div>
           </div>
 
           <Separator />
 
-          {/* LLM Configuration */}
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-sm font-semibold mb-3">LLM Configuration</h3>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="temperature">
-                    Temperature: {localConfig.temperature.toFixed(1)}
+          {/* Generation Configuration */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 mb-1">
+              <Sparkles className="h-4 w-4 text-muted-foreground" />
+              <Label className="text-sm font-medium text-foreground">Generation configuration</Label>
+            </div>
+            
+            <div className="space-y-4 pl-6">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="temperature" className="text-sm font-medium text-foreground">
+                    Temperature
                   </Label>
+                  <span className="text-sm font-medium text-foreground tabular-nums">
+                    {localConfig.temperature.toFixed(1)}
+                  </span>
+                </div>
+                <div className="px-1 query-config-slider">
                   <Slider
                     id="temperature"
                     min={0}
-                    max={2}
-                    step={0.1}
-                    value={[localConfig.temperature]}
+                    max={20}
+                    step={1}
+                    value={[localConfig.temperature * 10]}
                     onValueChange={([value]) =>
-                      setLocalConfig({ ...localConfig, temperature: value })
+                      setLocalConfig({ ...localConfig, temperature: value / 10 })
                     }
-                    className="w-full"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Controls randomness (0.0 = deterministic, 2.0 = creative)
-                  </p>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Controls response randomness (0.0 = focused, 2.0 = creative)
+                </p>
+              </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="max_tokens">Max Tokens</Label>
-                  <Input
-                    id="max_tokens"
-                    type="number"
-                    min={100}
-                    max={8000}
-                    step={100}
-                    value={localConfig.max_tokens}
-                    onChange={(e) =>
-                      setLocalConfig({
-                        ...localConfig,
-                        max_tokens: parseInt(e.target.value) || 2000,
-                      })
-                    }
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Maximum length of generated response (100-8000)
-                  </p>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="max_tokens" className="text-sm font-medium text-foreground">
+                  Max tokens
+                </Label>
+                <Input
+                  id="max_tokens"
+                  type="number"
+                  min={100}
+                  max={8000}
+                  step={100}
+                  value={localConfig.max_tokens}
+                  onChange={(e) =>
+                    setLocalConfig({
+                      ...localConfig,
+                      max_tokens: parseInt(e.target.value) || 2000,
+                    })
+                  }
+                  className="h-10 text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Maximum length of generated response
+                </p>
               </div>
             </div>
           </div>
@@ -189,41 +225,57 @@ export const QueryConfigDialog = ({
           <Separator />
 
           {/* Additional Options */}
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-sm font-semibold mb-3">Additional Options</h3>
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="generate_insights">Generate Insights</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Extract key points and entities from response
-                  </p>
-                </div>
-                <Switch
-                  id="generate_insights"
-                  checked={localConfig.generate_insights}
-                  onCheckedChange={(checked) =>
-                    setLocalConfig({ ...localConfig, generate_insights: checked })
-                  }
-                />
+          <div className="space-y-3">
+            <Label className="text-sm font-medium text-foreground">Additional options</Label>
+            <div className="flex items-center justify-between py-2 pl-6">
+              <div className="space-y-0.5 flex-1">
+                <Label htmlFor="generate_insights" className="text-sm font-medium text-foreground">
+                  Generate insights
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Extract key points and entities from responses
+                </p>
               </div>
+              <Switch
+                id="generate_insights"
+                checked={localConfig.generate_insights}
+                onCheckedChange={(checked) =>
+                  setLocalConfig({ ...localConfig, generate_insights: checked })
+                }
+              />
             </div>
           </div>
         </div>
 
-        <DialogFooter className="flex items-center justify-between">
-          <Button variant="outline" onClick={handleReset}>
-            Reset to Defaults
+        {/* Footer */}
+        <DialogFooter className="px-6 py-4 border-t border-border/50 bg-card/30">
+          <Button 
+            variant="outline" 
+            onClick={handleReset}
+            className="h-9"
+          >
+            <RotateCcw className="h-3.5 w-3.5 mr-2" />
+            Reset to defaults
           </Button>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <Button 
+              variant="outline" 
+              onClick={() => onOpenChange(false)}
+              className="h-9"
+            >
               Cancel
             </Button>
-            <Button onClick={handleSave}>Save Configuration</Button>
+            <Button 
+              onClick={handleSave}
+              className="h-9"
+            >
+              Save changes
+            </Button>
           </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    </>
   );
 };
 

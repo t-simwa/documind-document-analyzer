@@ -18,6 +18,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { commentsApi } from "@/services/api";
+import { saveDocumentComments, loadDocumentComments } from "@/utils/documentDataStorage";
 import type { Comment } from "@/types/api";
 
 interface CommentsPanelProps {
@@ -43,6 +44,13 @@ export const CommentsPanel = ({
   const { toast } = useToast();
 
   useEffect(() => {
+    // Load cached comments first
+    const cachedComments = loadDocumentComments(documentId, page);
+    if (cachedComments.length > 0) {
+      setComments(cachedComments);
+    }
+    
+    // Then fetch fresh comments
     loadComments();
   }, [documentId, page]);
 
@@ -51,6 +59,9 @@ export const CommentsPanel = ({
     try {
       const loadedComments = await commentsApi.getComments(documentId, page);
       setComments(loadedComments);
+      
+      // Save to localStorage
+      saveDocumentComments(documentId, loadedComments, page);
     } catch (error) {
       toast({
         title: "Error",
@@ -72,8 +83,13 @@ export const CommentsPanel = ({
         content: newComment.trim(),
         page,
       });
-      setComments([...comments, comment]);
+      const updatedComments = [...comments, comment];
+      setComments(updatedComments);
       setNewComment("");
+      
+      // Save to localStorage
+      saveDocumentComments(documentId, updatedComments, page);
+      
       toast({
         title: "Comment added",
         description: "Your comment has been added successfully.",
@@ -101,16 +117,18 @@ export const CommentsPanel = ({
         parentId,
       });
       
-      setComments((prev) =>
-        prev.map((comment) =>
-          comment.id === parentId
-            ? {
-                ...comment,
-                replies: [...(comment.replies || []), reply],
-              }
-            : comment
-        )
+      const updatedComments = comments.map((comment) =>
+        comment.id === parentId
+          ? {
+              ...comment,
+              replies: [...(comment.replies || []), reply],
+            }
+          : comment
       );
+      setComments(updatedComments);
+      
+      // Save to localStorage
+      saveDocumentComments(documentId, updatedComments, page);
       
       setReplyContent("");
       setReplyingTo(null);
@@ -132,7 +150,12 @@ export const CommentsPanel = ({
   const handleDeleteComment = async (commentId: string) => {
     try {
       await commentsApi.deleteComment(commentId);
-      setComments(comments.filter((c) => c.id !== commentId));
+      const updatedComments = comments.filter((c) => c.id !== commentId);
+      setComments(updatedComments);
+      
+      // Save to localStorage
+      saveDocumentComments(documentId, updatedComments, page);
+      
       toast({
         title: "Comment deleted",
         description: "The comment has been deleted.",
@@ -155,11 +178,13 @@ export const CommentsPanel = ({
         resolved: !comment.resolved,
       });
 
-      setComments((prev) =>
-        prev.map((c) =>
-          c.id === commentId ? { ...c, resolved: !c.resolved } : c
-        )
+      const updatedComments = comments.map((c) =>
+        c.id === commentId ? { ...c, resolved: !c.resolved } : c
       );
+      setComments(updatedComments);
+      
+      // Save to localStorage
+      saveDocumentComments(documentId, updatedComments, page);
     } catch (error) {
       toast({
         title: "Error",
