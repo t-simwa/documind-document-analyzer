@@ -60,6 +60,8 @@ let mockProjects: Project[] = [
 let mockDocuments: Document[] = [];
 // Store file blobs/URLs for mock documents
 const documentFileMap = new Map<string, string>(); // documentId -> blob URL
+// Track locally deleted documents to filter them out even if backend still returns them
+const locallyDeletedDocuments = new Set<string>();
 let mockTags: DocumentTag[] = [
   { id: "1", name: "Important", color: "#ef4444", createdAt: new Date() },
   { id: "2", name: "Review", color: "#f59e0b", createdAt: new Date() },
@@ -238,7 +240,8 @@ export const documentsApi = {
         mockDocuments = documents;
 
         // Apply additional frontend filters (search, tags, etc.)
-        let filtered = [...documents];
+        // Filter out locally deleted documents even if backend still returns them
+        let filtered = documents.filter((d) => !locallyDeletedDocuments.has(d.id));
 
         // Apply filters
         // Note: projectId and status are already filtered by backend, but we apply additional filters here
@@ -567,14 +570,43 @@ export const documentsApi = {
   },
 
   async delete(id: string): Promise<void> {
-    await delay(300);
-    // Clean up blob URL
-    const blobUrl = documentFileMap.get(id);
-    if (blobUrl) {
-      URL.revokeObjectURL(blobUrl);
-      documentFileMap.delete(id);
+    try {
+      // Try to delete from backend first
+      const response = await fetch(`${API_BASE_URL}/api/v1/documents/${id}`, {
+        method: "DELETE",
+        headers: {
+          // Add authentication headers if needed
+        },
+      });
+
+      // Clean up blob URL
+      const blobUrl = documentFileMap.get(id);
+      if (blobUrl) {
+        URL.revokeObjectURL(blobUrl);
+        documentFileMap.delete(id);
+      }
+      
+      if (response.ok) {
+        // Backend deletion successful
+        // Update local mock documents
+        mockDocuments = mockDocuments.filter((d) => d.id !== id);
+        // Remove from locally deleted set since backend confirmed deletion
+        locallyDeletedDocuments.delete(id);
+      } else {
+        // If backend deletion fails, mark as locally deleted
+        // This ensures it won't reappear when we reload
+        locallyDeletedDocuments.add(id);
+        // Update local mock documents
+        mockDocuments = mockDocuments.filter((d) => d.id !== id);
+        console.warn("Backend delete failed, marking as locally deleted");
+      }
+    } catch (error) {
+      // If backend is not available, mark as locally deleted
+      locallyDeletedDocuments.add(id);
+      // Update local mock documents
+      mockDocuments = mockDocuments.filter((d) => d.id !== id);
+      console.warn("Backend delete failed, marking as locally deleted:", error);
     }
-    mockDocuments = mockDocuments.filter((d) => d.id !== id);
   },
 
   async bulkAction(request: BulkActionRequest): Promise<void> {

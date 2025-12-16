@@ -75,6 +75,7 @@ const Documents = () => {
   const [documentUrls, setDocumentUrls] = useState<Map<string, string>>(new Map());
   const [openProjectDialog, setOpenProjectDialog] = useState(false);
   const [savedAnalysesDialogOpen, setSavedAnalysesDialogOpen] = useState(false);
+  const [documentListRefreshTrigger, setDocumentListRefreshTrigger] = useState(0);
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   
@@ -593,17 +594,37 @@ const Documents = () => {
   const handleDeleteDocument = async (id: string) => {
     try {
       await documentsApi.delete(id);
-      const response = await documentsApi.list({ projectId: selectedProjectId });
-      setDocuments(response.documents);
+      
+      // Update local documents state
+      setDocuments((prev) => prev.filter((d) => d.id !== id));
+      
+      // Clear selected document if it was deleted
       if (selectedDocId === id) {
         setSelectedDocId(null);
         setViewState("list");
       }
+      
+      // Clear selected documents in cross-document view if deleted
+      setSelectedDocuments((prev) => prev.filter((d) => d.id !== id));
+      setSelectedDocIds((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(id);
+        return newSet;
+      });
+      
+      // Reload documents list to ensure consistency
+      const response = await documentsApi.list({ projectId: selectedProjectId });
+      setDocuments(response.documents);
+      
+      // Trigger refresh in DocumentListView
+      setDocumentListRefreshTrigger((prev) => prev + 1);
+      
       toast({
         title: "Document Deleted",
         description: "The document has been removed.",
       });
     } catch (error) {
+      console.error("Failed to delete document:", error);
       toast({
         title: "Error",
         description: "Failed to delete document",
@@ -1116,6 +1137,23 @@ const Documents = () => {
             }}
             onCompareDocuments={handleMultiDocumentSelect}
             onOpenSavedAnalyses={() => setSavedAnalysesDialogOpen(true)}
+            refreshTrigger={documentListRefreshTrigger}
+            onDocumentDeleted={(id) => {
+              // Update parent documents state
+              setDocuments((prev) => prev.filter((d) => d.id !== id));
+              // Clear selected document if it was deleted
+              if (selectedDocId === id) {
+                setSelectedDocId(null);
+                setViewState("list");
+              }
+              // Clear selected documents in cross-document view if deleted
+              setSelectedDocuments((prev) => prev.filter((d) => d.id !== id));
+              setSelectedDocIds((prev) => {
+                const newSet = new Set(prev);
+                newSet.delete(id);
+                return newSet;
+              });
+            }}
           />
         );
 

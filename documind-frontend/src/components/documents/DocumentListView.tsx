@@ -20,9 +20,11 @@ interface DocumentListViewProps {
   onDocumentSelect?: (document: Document) => void;
   onCompareDocuments?: () => void;
   onOpenSavedAnalyses?: () => void;
+  refreshTrigger?: number; // Add refresh trigger to force reload when documents are deleted elsewhere
+  onDocumentDeleted?: (id: string) => void; // Callback to notify parent when document is deleted
 }
 
-export const DocumentListView = ({ projectId, onDocumentSelect, onCompareDocuments, onOpenSavedAnalyses }: DocumentListViewProps) => {
+export const DocumentListView = ({ projectId, onDocumentSelect, onCompareDocuments, onOpenSavedAnalyses, refreshTrigger, onDocumentDeleted }: DocumentListViewProps) => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [tags, setTags] = useState<DocumentTag[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -49,7 +51,8 @@ export const DocumentListView = ({ projectId, onDocumentSelect, onCompareDocumen
 
   useEffect(() => {
     loadData();
-  }, [filters, sortField, sortDirection, page]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters, sortField, sortDirection, page, refreshTrigger]);
 
   const loadData = async () => {
     try {
@@ -115,18 +118,34 @@ export const DocumentListView = ({ projectId, onDocumentSelect, onCompareDocumen
     if (!confirm("Are you sure you want to delete this document?")) return;
 
     try {
-      await documentsApi.delete(id);
-      await loadData();
+      // Optimistically update local state immediately
+      const previousDocuments = documents;
+      setDocuments((prev) => prev.filter((d) => d.id !== id));
       setSelectedIds((prev) => {
         const newSet = new Set(prev);
         newSet.delete(id);
         return newSet;
       });
+      
+      // Call API to delete
+      await documentsApi.delete(id);
+      
+      // Notify parent component
+      if (onDocumentDeleted) {
+        onDocumentDeleted(id);
+      }
+      
+      // Reload data to ensure consistency with server
+      await loadData();
+      
       toast({
         title: "Success",
         description: "Document deleted successfully",
       });
     } catch (error) {
+      console.error("Failed to delete document:", error);
+      // Restore previous state on error
+      await loadData();
       toast({
         title: "Error",
         description: "Failed to delete document",
