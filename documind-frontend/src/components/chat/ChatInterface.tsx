@@ -2,12 +2,15 @@ import { useRef, useEffect, useState } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
 import { QueryHistory } from "./QueryHistory";
+import { QueryConfigDialog } from "./QueryConfigDialog";
 import { Button } from "@/components/ui/button";
-import { RotateCcw, Download, FileSearch } from "lucide-react";
+import { RotateCcw, Download, FileSearch, Settings2 } from "lucide-react";
 import { SuggestedQuestions } from "@/components/analysis/SuggestedQuestions";
 import { ExportDialog } from "@/components/sharing/ExportDialog";
 import { DEFAULT_COLLECTION_NAME } from "@/config/api";
 import type { DocumentSummary } from "@/types/api";
+import type { QueryConfig } from "@/types/query";
+import { DEFAULT_QUERY_CONFIG } from "@/types/query";
 
 interface Message {
   id: string;
@@ -32,6 +35,8 @@ interface ChatInterfaceProps {
   onCitationClick?: (citation: { text: string; page?: number; section?: string }) => void;
   suggestedQuestions?: string[];
   suggestedQuestionsLoading?: boolean;
+  queryConfig?: QueryConfig;
+  onQueryConfigChange?: (config: QueryConfig) => void;
 }
 
 export const ChatInterface = ({
@@ -45,9 +50,12 @@ export const ChatInterface = ({
   onCitationClick,
   suggestedQuestions = [],
   suggestedQuestionsLoading = false,
+  queryConfig = DEFAULT_QUERY_CONFIG,
+  onQueryConfigChange,
 }: ChatInterfaceProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [configDialogOpen, setConfigDialogOpen] = useState(false);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -69,6 +77,21 @@ export const ChatInterface = ({
                   Ask questions about your document to extract insights and information
                 </p>
               </div>
+
+              {/* Settings button in empty state */}
+              {onQueryConfigChange && (
+                <div className="mb-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setConfigDialogOpen(true)}
+                    className="h-8 text-xs"
+                  >
+                    <Settings2 className="h-3 w-3 mr-1.5" />
+                    Configure Query Settings
+                  </Button>
+                </div>
+              )}
               
               {/* Suggested Questions */}
               {suggestedQuestions && suggestedQuestions.length > 0 && (
@@ -138,6 +161,17 @@ export const ChatInterface = ({
               <RotateCcw className="h-3 w-3 mr-1.5" />
               Clear history
             </Button>
+            {onQueryConfigChange && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setConfigDialogOpen(true)}
+                className="h-7 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <Settings2 className="h-3 w-3 mr-1.5" />
+                Settings
+              </Button>
+            )}
           </div>
           <Button
             variant="ghost"
@@ -147,6 +181,21 @@ export const ChatInterface = ({
           >
             <Download className="h-3 w-3 mr-1.5" />
             Export conversation
+          </Button>
+        </div>
+      )}
+
+      {/* Settings button when no messages (always visible) */}
+      {messages.length === 0 && onQueryConfigChange && (
+        <div className="flex items-center justify-end px-6 py-2 border-t border-border/50 bg-card/30 backdrop-blur-sm">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setConfigDialogOpen(true)}
+            className="h-7 text-xs text-muted-foreground hover:text-foreground"
+          >
+            <Settings2 className="h-3 w-3 mr-1.5" />
+            Query Settings
           </Button>
         </div>
       )}
@@ -176,6 +225,16 @@ export const ChatInterface = ({
         }))}
         summary={summary}
       />
+
+      {/* Query Config Dialog */}
+      {onQueryConfigChange && (
+        <QueryConfigDialog
+          open={configDialogOpen}
+          onOpenChange={setConfigDialogOpen}
+          config={queryConfig}
+          onConfigChange={onQueryConfigChange}
+        />
+      )}
     </div>
   );
 };

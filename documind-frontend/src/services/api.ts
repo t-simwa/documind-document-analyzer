@@ -706,17 +706,49 @@ export const insightsApi = {
 export const crossDocumentApi = {
   async query(request: CrossDocumentQueryRequest): Promise<CrossDocumentQueryResponse> {
     try {
-      // Use the real query API endpoint with multiple document_ids
-      const queryRequest: QueryRequest = {
-        query: request.query,
-        collection_name: DEFAULT_COLLECTION_NAME,
-        document_ids: request.documentIds, // Multiple documents for cross-doc analysis
-        generate_insights: false, // We'll get patterns/contradictions from the response
-        search_type: "hybrid",
-        top_k: 10, // Retrieve more chunks for cross-document analysis
-      };
+      // Import caching functions
+      const { getCachedQuery, cacheQuery } = await import("./queryCache");
+      const { DEFAULT_QUERY_CONFIG } = await import("@/types/query");
+      
+      // Use default config for cross-document queries (can be made configurable later)
+      const config = { ...DEFAULT_QUERY_CONFIG, top_k: 10 };
+      
+      // Check cache first
+      const cachedResponse = getCachedQuery(
+        request.query,
+        request.documentIds,
+        DEFAULT_COLLECTION_NAME,
+        config
+      );
+      
+      let response;
+      if (cachedResponse) {
+        response = cachedResponse;
+      } else {
+        // Use the real query API endpoint with multiple document_ids
+        const queryRequest: QueryRequest = {
+          query: request.query,
+          collection_name: DEFAULT_COLLECTION_NAME,
+          document_ids: request.documentIds, // Multiple documents for cross-doc analysis
+          generate_insights: false, // We'll get patterns/contradictions from the response
+          search_type: config.search_type,
+          top_k: config.top_k,
+          rerank_enabled: config.rerank_enabled,
+          temperature: config.temperature,
+          max_tokens: config.max_tokens,
+        };
 
-      const response = await queryApi.query(queryRequest);
+        response = await queryApi.query(queryRequest);
+        
+        // Cache the response
+        cacheQuery(
+          request.query,
+          request.documentIds,
+          DEFAULT_COLLECTION_NAME,
+          config,
+          response
+        );
+      }
 
       // Get document names for citation mapping
       const docNameMap = new Map<string, string>();

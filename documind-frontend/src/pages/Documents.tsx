@@ -16,9 +16,12 @@ import { GitCompare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { documentsApi, queryApi, tasksApi } from "@/services/api";
 import { getProcessingStatus } from "@/services/processingQueueService";
+import { getCachedQuery, cacheQuery } from "@/services/queryCache";
 import { DEFAULT_COLLECTION_NAME } from "@/config/api";
 import { formatResponse } from "@/utils/formatResponse";
 import type { Document, ProcessingStatus as ProcessingStatusType, SecurityScanResult, QueryRequest, CitationResponse } from "@/types/api";
+import type { QueryConfig } from "@/types/query";
+import { DEFAULT_QUERY_CONFIG } from "@/types/query";
 
 type ViewState = "empty" | "upload" | "processing" | "chat" | "list" | "multi-select" | "cross-document";
 
@@ -65,6 +68,24 @@ const Documents = () => {
   const [openProjectDialog, setOpenProjectDialog] = useState(false);
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Query configuration state (persisted to localStorage)
+  const [queryConfig, setQueryConfig] = useState<QueryConfig>(() => {
+    const saved = localStorage.getItem("queryConfig");
+    if (saved) {
+      try {
+        return { ...DEFAULT_QUERY_CONFIG, ...JSON.parse(saved) };
+      } catch {
+        return DEFAULT_QUERY_CONFIG;
+      }
+    }
+    return DEFAULT_QUERY_CONFIG;
+  });
+
+  // Save config to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem("queryConfig", JSON.stringify(queryConfig));
+  }, [queryConfig]);
 
   const selectedDocument = documents.find((d) => d.id === selectedDocId);
 
@@ -546,19 +567,45 @@ const Documents = () => {
           content: msg.content,
         }));
 
-      // Prepare query request
-      const queryRequest: QueryRequest = {
-        query: message,
-        collection_name: DEFAULT_COLLECTION_NAME,
-        document_ids: [selectedDocument.id], // Limit to current document
-        conversation_history: conversationHistory,
-        generate_insights: false, // Can be toggled via UI
-        search_type: "hybrid", // Default to hybrid search
-        top_k: 5, // Retrieve top 5 chunks
-      };
+      // Check cache first
+      const cachedResponse = getCachedQuery(
+        message,
+        [selectedDocument.id],
+        DEFAULT_COLLECTION_NAME,
+        queryConfig
+      );
 
-      // Call query API
-      const response = await queryApi.query(queryRequest);
+      let response;
+      if (cachedResponse) {
+        // Use cached response
+        response = cachedResponse;
+      } else {
+        // Prepare query request with config
+        const queryRequest: QueryRequest = {
+          query: message,
+          collection_name: DEFAULT_COLLECTION_NAME,
+          document_ids: [selectedDocument.id], // Limit to current document
+          conversation_history: conversationHistory,
+          generate_insights: queryConfig.generate_insights,
+          search_type: queryConfig.search_type,
+          top_k: queryConfig.top_k,
+          rerank_enabled: queryConfig.rerank_enabled,
+          temperature: queryConfig.temperature,
+          max_tokens: queryConfig.max_tokens,
+        };
+
+        // Call query API
+        response = await queryApi.query(queryRequest);
+        
+        // Cache the response
+        cacheQuery(
+          message,
+          [selectedDocument.id],
+          DEFAULT_COLLECTION_NAME,
+          queryConfig,
+          response
+        );
+      }
 
       // Map backend citations to frontend format
       const citations = response.citations.map((c: CitationResponse) => ({
@@ -779,6 +826,8 @@ const Documents = () => {
                 description: `Navigating to ${citation.page ? `page ${citation.page}` : citation.section || "citation"}`,
               });
             }}
+            queryConfig={queryConfig}
+            onQueryConfigChange={setQueryConfig}
           />
         );
 

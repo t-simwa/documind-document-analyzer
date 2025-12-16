@@ -7,6 +7,7 @@ import { AnalysisTabs } from "./AnalysisTabs";
 import { cn } from "@/lib/utils";
 import { insightsApi } from "@/services/api";
 import type { Document, DocumentInsights } from "@/types/api";
+import type { QueryConfig } from "@/types/query";
 
 interface Citation {
   text: string;
@@ -30,6 +31,8 @@ interface SplitScreenAnalysisProps {
   onClearHistory: () => void;
   isLoading?: boolean;
   onCitationClick?: (citation: Citation) => void;
+  queryConfig?: QueryConfig;
+  onQueryConfigChange?: (config: QueryConfig) => void;
 }
 
 export const SplitScreenAnalysis = ({
@@ -40,6 +43,8 @@ export const SplitScreenAnalysis = ({
   onClearHistory,
   isLoading,
   onCitationClick,
+  queryConfig,
+  onQueryConfigChange,
 }: SplitScreenAnalysisProps) => {
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
@@ -213,6 +218,8 @@ export const SplitScreenAnalysis = ({
                 insightsLoading={insightsLoading}
                 insightsError={insightsError}
                 onRetryInsights={fetchInsights}
+                queryConfig={queryConfig}
+                onQueryConfigChange={onQueryConfigChange}
               />
             </div>
           )}
@@ -341,6 +348,8 @@ export const SplitScreenAnalysis = ({
                   insightsLoading={insightsLoading}
                   insightsError={insightsError}
                   onRetryInsights={fetchInsights}
+                  queryConfig={queryConfig}
+                  onQueryConfigChange={onQueryConfigChange}
                 />
               </div>
             </div>

@@ -8,6 +8,7 @@ import { ExtractsTab } from "./ExtractsTab";
 import { ShareAnalysisDialog } from "@/components/sharing/ShareAnalysisDialog";
 import { CommentsPanel } from "@/components/sharing/CommentsPanel";
 import type { DocumentInsights } from "@/types/api";
+import type { QueryConfig } from "@/types/query";
 
 interface Message {
   id: string;
@@ -33,6 +34,8 @@ interface AnalysisTabsProps {
   insightsLoading?: boolean;
   insightsError?: string | null;
   onRetryInsights?: () => void;
+  queryConfig?: QueryConfig;
+  onQueryConfigChange?: (config: QueryConfig) => void;
 }
 
 export const AnalysisTabs = ({
@@ -47,6 +50,8 @@ export const AnalysisTabs = ({
   insightsLoading,
   insightsError,
   onRetryInsights,
+  queryConfig,
+  onQueryConfigChange,
 }: AnalysisTabsProps) => {
   const [activeTab, setActiveTab] = useState<string>("chat");
   const [shareAnalysisDialogOpen, setShareAnalysisDialogOpen] = useState(false);
@@ -118,6 +123,8 @@ export const AnalysisTabs = ({
               onCitationClick={onCitationClick}
               suggestedQuestions={insights?.suggestedQuestions || []}
               suggestedQuestionsLoading={insightsLoading}
+              queryConfig={queryConfig}
+              onQueryConfigChange={onQueryConfigChange}
             />
           </TabsContent>
 
