@@ -19,6 +19,12 @@ class DocumentUploadResponse(BaseModel):
     metadata: Dict[str, Any] = {}
 
 
+class DocumentUpdate(BaseModel):
+    """Schema for updating a document"""
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    project_id: Optional[str] = Field(None, description="Project ID to assign document to (use null to remove from project)")
+
+
 class DocumentResponse(BaseModel):
     """Document response schema"""
     id: str

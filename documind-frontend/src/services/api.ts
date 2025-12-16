@@ -732,8 +732,17 @@ export const documentsApi = {
   },
   
   async getFileUrl(id: string): Promise<string | null> {
-    // In a real app, this would be: `/api/v1/documents/${id}/download`
+    try {
+      // Use backend download endpoint
+      const url = `${API_BASE_URL}/api/v1/documents/${id}/download`;
+      console.log("Generated document file URL:", url, "for document ID:", id);
+      // Return the URL directly - the PDF viewer will handle the request
+      return url;
+    } catch (error) {
+      console.error("Failed to get document file URL:", error);
+      // Fallback to mock blob URL if available
     return documentFileMap.get(id) || null;
+    }
   },
 
   async getSecurityScanStatus(id: string): Promise<SecurityScanResult | null> {
@@ -875,14 +884,44 @@ export const documentsApi = {
         return updatedDoc;
       }
       
-      // For other updates (name, projectId), use mock for now
-      // TODO: Implement backend endpoints for these updates
-      await delay(300);
-      const doc = mockDocuments.find((d) => d.id === id);
-      if (!doc) throw new Error("Document not found");
-      if (data.name !== undefined) doc.name = data.name;
-      if (data.projectId !== undefined) doc.projectId = data.projectId;
-      return doc;
+      // Update document (name, projectId) via backend
+      const body: any = {};
+      if (data.name !== undefined) {
+        body.name = data.name;
+      }
+      if (data.projectId !== undefined) {
+        body.project_id = data.projectId;
+      }
+      
+      const updateResponse = await fetch(`${API_BASE_URL}/api/v1/documents/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache",
+        },
+        cache: "no-store",
+        body: JSON.stringify(body),
+      });
+      
+      if (!updateResponse.ok) {
+        const error = await updateResponse.json().catch(() => ({ detail: "Failed to update document" }));
+        throw new Error(error.detail || `HTTP ${updateResponse.status}`);
+      }
+      
+      const updatedDoc = await updateResponse.json();
+      
+      return {
+        id: updatedDoc.id,
+        name: updatedDoc.name,
+        status: updatedDoc.status,
+        uploadedAt: new Date(updatedDoc.uploaded_at),
+        uploadedBy: updatedDoc.uploaded_by,
+        size: updatedDoc.size,
+        type: updatedDoc.type,
+        projectId: updatedDoc.project_id || null,
+        tags: updatedDoc.tags || [],
+        metadata: updatedDoc.metadata || {},
+      };
     } catch (error) {
       console.error("Failed to update document via backend, using mock:", error);
       // Fallback to mock implementation

@@ -70,12 +70,25 @@ async def documind_exception_handler(request: Request, exc: DocuMindException):
     )
 
 # Add CORS middleware
+# Ensure CORS_ORIGINS is a list (it might be a string from env)
+cors_origins = settings.CORS_ORIGINS
+if isinstance(cors_origins, str):
+    cors_origins = [origin.strip() for origin in cors_origins.split(",") if origin.strip()]
+
+cors_methods = settings.CORS_METHODS
+if isinstance(cors_methods, str):
+    cors_methods = [method.strip() for method in cors_methods.split(",") if method.strip()]
+
+cors_headers = settings.CORS_HEADERS
+if isinstance(cors_headers, str) and cors_headers != "*":
+    cors_headers = [header.strip() for header in cors_headers.split(",") if header.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=cors_origins,
     allow_credentials=settings.CORS_CREDENTIALS,
-    allow_methods=settings.CORS_METHODS,
-    allow_headers=settings.CORS_HEADERS,
+    allow_methods=cors_methods,
+    allow_headers=cors_headers,
 )
 
 # Add custom middleware (order matters - last added is first executed)

@@ -23,7 +23,20 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         
         # Security headers
         response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
+        
+        # Only set X-Frame-Options for non-download endpoints
+        # PDF downloads need to be embeddable in iframes/embeds
+        # Check both the request path and response headers to ensure we don't block PDFs
+        is_download_endpoint = "/download" in request.url.path
+        is_pdf_response = response.headers.get("Content-Type", "").startswith("application/pdf")
+        
+        if not is_download_endpoint and not is_pdf_response:
+            response.headers["X-Frame-Options"] = "DENY"
+        else:
+            # Explicitly remove X-Frame-Options for PDF downloads
+            if "X-Frame-Options" in response.headers:
+                del response.headers["X-Frame-Options"]
+        
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"

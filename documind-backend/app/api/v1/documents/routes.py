@@ -2,21 +2,24 @@
 Document upload and management API routes
 """
 
-from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Form, Depends, Body
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Form, Depends, Body, Request
+from fastapi.responses import JSONResponse, FileResponse, StreamingResponse, Response
 from typing import Optional, List
 from pydantic import Field
 import os
 import time
+import glob
 import structlog
 from pathlib import Path
 from datetime import datetime
 
 from app.core.config import settings
 from app.workers.tasks import process_document_async, security_scan_async
+from app.database.models import Document as DocumentModel, Tag as TagModel
 from .schemas import (
     DocumentUploadResponse, 
     DocumentResponse,
+    DocumentUpdate,
     DocumentInsightsResponse,
     DocumentSummaryResponse,
     DocumentEntitiesResponse,
@@ -106,12 +109,27 @@ async def upload_document(
         document_id = str(document.id)
         
         # Save file with MongoDB-generated ID
-        file_path = os.path.join(settings.UPLOAD_DIR, f"{document_id}_{file.filename}")
+        # Use absolute path to avoid path resolution issues
+        upload_dir = os.path.abspath(settings.UPLOAD_DIR)
+        os.makedirs(upload_dir, exist_ok=True)
+        file_path = os.path.join(upload_dir, f"{document_id}_{file.filename}")
+        
+        # Write file content to disk
         with open(file_path, "wb") as f:
             f.write(file_content)
         
-        # Update document with file path
-        document.file_path = file_path
+        # Verify file was written
+        if not os.path.exists(file_path):
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to save file to disk. Path: {file_path}"
+            )
+        
+        # Get absolute path
+        absolute_file_path = os.path.abspath(file_path)
+        
+        # Update document with absolute file path
+        document.file_path = absolute_file_path
         await document.save()
         
         logger.info(
@@ -119,7 +137,9 @@ async def upload_document(
             document_id=document_id,
             filename=file.filename,
             size=file_size,
-            file_type=file_ext
+            file_type=file_ext,
+            file_path=absolute_file_path,
+            file_exists=os.path.exists(absolute_file_path)
         )
         
         # Start security scan in background
@@ -347,6 +367,252 @@ async def get_document(document_id: str):
     )
 
 
+@router.options(
+    "/{document_id}/download",
+    summary="CORS preflight for document download"
+)
+async def download_document_options(request: Request):
+    """Handle CORS preflight request"""
+    origin = request.headers.get("origin")
+    cors_origin = "*"
+    if origin:
+        allowed_origins = settings.CORS_ORIGINS
+        if isinstance(allowed_origins, str):
+            allowed_origins = [o.strip() for o in allowed_origins.split(",")]
+        if origin in allowed_origins:
+            cors_origin = origin
+    
+    return Response(
+        content="",
+        headers={
+            "Access-Control-Allow-Origin": cors_origin,
+            "Access-Control-Allow-Methods": "GET, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Max-Age": "3600",
+        }
+    )
+
+
+@router.get(
+    "/{document_id}/download",
+    summary="Download document",
+    description="Download or view document file"
+)
+async def download_document(document_id: str, request: Request):
+    """
+    Download or view document file
+    
+    Args:
+        document_id: Document ID
+        
+    Returns:
+        File response with document content
+    """
+    doc = await DocumentModel.get(document_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    logger.info(
+        "document_download_requested",
+        document_id=document_id,
+        document_name=doc.name,
+        stored_file_path=doc.file_path,
+        upload_dir=os.path.abspath(settings.UPLOAD_DIR)
+    )
+    
+    # Convert relative path to absolute path if needed
+    file_path = doc.file_path
+    if file_path:
+        if not os.path.isabs(file_path):
+            # Convert relative path to absolute
+            file_path = os.path.abspath(file_path)
+    
+    # Check if file exists, if not try to find it in upload directory
+    if not file_path or not os.path.exists(file_path):
+        logger.warning(
+            "document_file_path_not_found",
+            document_id=document_id,
+            stored_path=doc.file_path,
+            resolved_path=file_path,
+            path_exists=os.path.exists(file_path) if file_path else False
+        )
+        
+        # Try to find file in upload directory by document ID
+        upload_dir = os.path.abspath(settings.UPLOAD_DIR)
+        if os.path.exists(upload_dir):
+            # Look for files matching the document ID pattern
+            pattern = os.path.join(upload_dir, f"{document_id}_*")
+            matches = glob.glob(pattern)
+            if matches:
+                file_path = matches[0]  # Use first match
+                logger.info(
+                    "document_file_found_by_pattern",
+                    document_id=document_id,
+                    found_path=file_path,
+                    original_path=doc.file_path
+                )
+            else:
+                # List all files in upload directory for debugging
+                all_files = os.listdir(upload_dir) if os.path.exists(upload_dir) else []
+                logger.error(
+                    "document_file_not_found",
+                    document_id=document_id,
+                    file_path=file_path,
+                    stored_file_path=doc.file_path,
+                    upload_dir=upload_dir,
+                    files_in_upload_dir=all_files[:10]  # Log first 10 files for debugging
+                )
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Document file not found on server. Document ID: {document_id}, Stored path: {doc.file_path or 'not set'}, Upload dir: {upload_dir}"
+                )
+        else:
+            logger.error(
+                "upload_directory_not_found",
+                document_id=document_id,
+                upload_dir=upload_dir
+            )
+            raise HTTPException(
+                status_code=404,
+                detail=f"Upload directory not found: {upload_dir}"
+            )
+    
+    # Determine media type based on file extension
+    file_ext = Path(file_path).suffix.lower()
+    media_types = {
+        '.pdf': 'application/pdf',
+        '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        '.doc': 'application/msword',
+        '.txt': 'text/plain',
+        '.md': 'text/markdown',
+        '.png': 'image/png',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.tiff': 'image/tiff',
+        '.bmp': 'image/bmp',
+    }
+    media_type = media_types.get(file_ext, 'application/octet-stream')
+    
+    logger.info(
+        "document_downloaded",
+        document_id=document_id,
+        filename=doc.name,
+        file_path=file_path
+    )
+    
+    # Read file content
+    with open(file_path, "rb") as f:
+        file_content = f.read()
+    
+    # Get origin from request for CORS header
+    origin = request.headers.get("origin")
+    cors_origin = "*"
+    if origin:
+        # Check if origin is in allowed origins
+        allowed_origins = settings.CORS_ORIGINS
+        if isinstance(allowed_origins, str):
+            allowed_origins = [o.strip() for o in allowed_origins.split(",")]
+        if origin in allowed_origins:
+            cors_origin = origin
+    
+    # Create response with explicit CORS headers
+    # Use inline disposition to display in browser, not download
+    # Remove Content-Disposition header entirely for PDFs to prevent forced downloads
+    # Explicitly remove X-Frame-Options to allow embedding in iframes/embeds (needed for PDF viewer)
+    headers = {
+        "Content-Type": media_type,
+        "Access-Control-Allow-Origin": cors_origin,
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+        "Access-Control-Allow-Headers": "*",
+        "Access-Control-Expose-Headers": "Content-Type",
+        "X-Content-Type-Options": "nosniff",  # Prevent MIME type sniffing
+        "Cache-Control": "public, max-age=3600",  # Cache the PDF
+    }
+    
+    # For PDFs, don't include Content-Disposition to allow inline viewing
+    # Only add it for non-PDF files that should be downloaded
+    if media_type != "application/pdf":
+        headers["Content-Disposition"] = f'inline; filename="{doc.name}"'
+    
+    # Create response
+    response = Response(
+        content=file_content,
+        media_type=media_type,
+        headers=headers
+    )
+    
+    # Explicitly remove X-Frame-Options header if middleware added it
+    # This allows PDFs to be embedded in iframes/objects from different origins
+    if "X-Frame-Options" in response.headers:
+        del response.headers["X-Frame-Options"]
+    
+    return response
+
+
+@router.put(
+    "/{document_id}",
+    response_model=DocumentResponse,
+    summary="Update document",
+    description="Update document metadata (name, project_id)"
+)
+async def update_document(
+    document_id: str,
+    document_update: DocumentUpdate
+):
+    """
+    Update document metadata
+    
+    Args:
+        document_id: Document ID
+        document_update: Document update data
+        
+    Returns:
+        Updated document
+    """
+    doc = await DocumentModel.get(document_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    try:
+        # Update fields if provided
+        if document_update.name is not None:
+            doc.name = document_update.name
+        
+        # Handle project_id update (including None to remove from project)
+        update_dict = document_update.model_dump(exclude_unset=True)
+        if 'project_id' in update_dict:
+            doc.project_id = document_update.project_id
+        
+        await doc.save()
+        
+        logger.info(
+            "document_updated",
+            document_id=document_id,
+            name=doc.name,
+            project_id=doc.project_id
+        )
+        
+        return DocumentResponse(
+            id=str(doc.id),
+            name=doc.name,
+            status=doc.status,
+            uploaded_at=doc.uploaded_at,
+            uploaded_by=doc.uploaded_by,
+            size=doc.size,
+            type=doc.type,
+            project_id=doc.project_id,
+            tags=doc.tags,
+            metadata=doc.metadata
+        )
+    
+    except Exception as e:
+        logger.exception("document_update_failed", document_id=document_id, error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to update document: {str(e)}"
+        )
+
+
 @router.get(
     "/",
     summary="List documents",
@@ -360,24 +626,28 @@ async def list_documents(
     List documents with optional filtering
     
     Args:
-        project_id: Optional project ID filter
+        project_id: Optional project ID filter (use "null" or empty string to filter for documents with no project)
         status: Optional status filter (processing, ready, error)
         
     Returns:
         List of documents
     """
-    # Build query
-    query = {}
-    if project_id:
-        query["project_id"] = project_id
-    if status:
-        query["status"] = status
-    
-    # Fetch documents from MongoDB
-    if query:
-        documents = await DocumentModel.find(query).to_list()
+    # Build query using Beanie query builder
+    if project_id is not None:
+        # Handle explicit None/null filtering
+        if project_id == "null" or project_id == "":
+            # Filter for documents with no project (project_id is None)
+            documents = await DocumentModel.find(DocumentModel.project_id == None).to_list()
+        else:
+            # Filter for specific project
+            documents = await DocumentModel.find(DocumentModel.project_id == project_id).to_list()
     else:
+        # No project filter - get all documents
         documents = await DocumentModel.find_all().to_list()
+    
+    # Apply status filter if provided
+    if status:
+        documents = [doc for doc in documents if doc.status == status]
     
     # Update status from task queue
     from app.workers.tasks import task_queue
@@ -692,8 +962,6 @@ async def assign_tags_to_document(
     
     try:
         # Validate that all tags exist
-        from app.database.models import Tag as TagModel
-        
         invalid_tags = []
         for tag_id in tag_request.tag_ids:
             tag = await TagModel.get(tag_id)

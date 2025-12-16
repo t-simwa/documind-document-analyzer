@@ -423,7 +423,7 @@ async def delete_project(project_id: str):
             for doc in documents:
                 doc.project_id = None
                 await doc.save()
-                    reassigned_count += 1
+                reassigned_count += 1
         
         # Delete the project
         await project.delete()

@@ -220,7 +220,7 @@ export const Sidebar = ({
         >
           {hasChildren ? (
             isExpanded ? (
-              <FolderOpen className="h-[15px] w-[15px] flex-shrink-0 text-foreground/70" />
+            <FolderOpen className="h-[15px] w-[15px] flex-shrink-0 text-foreground/70" />
             ) : (
               <Folder className="h-[15px] w-[15px] flex-shrink-0 text-foreground/70" />
             )
