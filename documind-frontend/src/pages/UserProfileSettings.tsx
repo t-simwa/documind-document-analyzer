@@ -10,22 +10,49 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SettingsIcon, ProfileIcon, SecurityIcon, NotificationsIcon } from "@/components/settings/SettingsIcons";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 export default function UserProfileSettings() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"profile" | "security" | "notifications">("profile");
   const { toast } = useToast();
+  const { user, refreshUser } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
+    // If user is not authenticated, redirect to login
+    if (!user) {
+      navigate("/login");
+      return;
+    }
     loadProfile();
-  }, []);
+  }, [user, navigate]);
 
   const loadProfile = async () => {
+    if (!user) return;
+    
     setIsLoading(true);
     try {
-      const userProfile = await userProfileApi.getProfile();
-      setProfile(userProfile);
+      // Try to load profile from API, but fallback to auth user data if API fails
+      try {
+        const userProfile = await userProfileApi.getProfile();
+        setProfile(userProfile);
+      } catch (apiError) {
+        // If API fails, use auth user data as fallback
+        setProfile({
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          avatar: user.avatar,
+          phone: undefined,
+          bio: undefined,
+          email_notifications: true,
+          in_app_notifications: true,
+          push_notifications: false,
+        });
+      }
     } catch (error) {
       toast({
         title: "Failed to load profile",
@@ -37,8 +64,10 @@ export default function UserProfileSettings() {
     }
   };
 
-  const handleProfileUpdate = (updatedProfile: UserProfile) => {
+  const handleProfileUpdate = async (updatedProfile: UserProfile) => {
     setProfile(updatedProfile);
+    // Refresh auth user data to sync changes
+    await refreshUser();
   };
 
   const handleAvatarChange = (avatarUrl: string) => {

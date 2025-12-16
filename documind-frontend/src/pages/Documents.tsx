@@ -8,6 +8,7 @@ import { SplitScreenAnalysis } from "@/components/analysis/SplitScreenAnalysis";
 import { ProcessingStatus } from "@/components/processing/ProcessingStatus";
 import { EmptyState } from "@/components/empty/EmptyState";
 import { DocumentListView } from "@/components/documents/DocumentListView";
+import { ProjectView } from "@/components/projects/ProjectView";
 import { MultiDocumentSelector } from "@/components/cross-document/MultiDocumentSelector";
 import { CrossDocumentAnalysis } from "@/components/cross-document/CrossDocumentAnalysis";
 import { SavedAnalysesDialog } from "@/components/cross-document/SavedAnalysesDialog";
@@ -15,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { GitCompare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { documentsApi, queryApi, tasksApi } from "@/services/api";
+import { documentsApi, queryApi, tasksApi, projectsApi } from "@/services/api";
 import { getProcessingStatus } from "@/services/processingQueueService";
 import { getCachedQuery, cacheQuery } from "@/services/queryCache";
 import { DEFAULT_COLLECTION_NAME } from "@/config/api";
@@ -59,6 +60,7 @@ const Documents = () => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [selectedProject, setSelectedProject] = useState<{ id: string; name: string } | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [viewState, setViewState] = useState<ViewState>("list");
   const [isLoading, setIsLoading] = useState(false);
@@ -226,22 +228,45 @@ const Documents = () => {
         const animateStep = async (stepIndex: number) => {
           if (stepIndex >= allSteps.length) {
             // All steps completed, wait a moment then redirect
-            setTimeout(() => {
+            // Store the document ID we're processing to ensure we don't switch to wrong document
+            const processingDocId = selectedDocId;
+            
+            setTimeout(async () => {
               clearInterval(pollInterval);
               if (simulationTimeout) clearTimeout(simulationTimeout);
               
-              documentsApi.list({ projectId: selectedProjectId }).then((response) => {
+              try {
+                const response = await documentsApi.list({ projectId: selectedProjectId });
                 setDocuments(response.documents);
                 
-                const updatedDoc = response.documents.find(d => d.id === selectedDocId);
-                if (updatedDoc?.status === "ready") {
-                  setViewState("chat");
-                  toast({
-                    title: "Document Ready",
-                    description: "Document has been processed and indexed. You can now query it.",
-                  });
+                // Ensure we're still processing the same document
+                if (processingDocId) {
+                  const updatedDoc = response.documents.find(d => d.id === processingDocId);
+                  if (updatedDoc?.status === "ready") {
+                    // Ensure selectedDocId is still set to the correct document before switching
+                    setSelectedDocId(processingDocId);
+                    setViewState("chat");
+                    toast({
+                      title: "Document Ready",
+                      description: "Document has been processed and indexed. You can now query it.",
+                    });
+                  } else {
+                    // Document not ready yet, but simulation completed - force switch anyway
+                    console.warn("Simulation completed but document status is:", updatedDoc?.status);
+                    if (viewState === "processing") {
+                      setSelectedDocId(processingDocId);
+                      setViewState("chat");
+                    }
+                  }
                 }
-              });
+              } catch (error) {
+                console.error("Failed to reload documents after simulation:", error);
+                // Still switch to chat view if we're in processing and document ID is valid
+                if (viewState === "processing" && processingDocId) {
+                  setSelectedDocId(processingDocId);
+                  setViewState("chat");
+                }
+              }
             }, 1500);
             return;
           }
@@ -295,6 +320,11 @@ const Documents = () => {
       };
 
       const pollStatus = async () => {
+        // Stop polling if simulation has started
+        if (simulationStarted && backendCompleted) {
+          return;
+        }
+
         try {
           const status = await getProcessingStatus(selectedDocId);
           
@@ -303,6 +333,8 @@ const Documents = () => {
             if (status.progress === 100 && !backendCompleted) {
               backendCompleted = true;
               if (!simulationStarted) {
+                // Stop polling before starting simulation
+                clearInterval(pollInterval);
                 runSimulation(status);
               }
             } else if (status.progress < 100) {
@@ -331,22 +363,34 @@ const Documents = () => {
             // Status is null, check document directly
             try {
               const doc = await documentsApi.get(selectedDocId);
-              if (doc.status === "ready" && !backendCompleted) {
-                backendCompleted = true;
-                // Create completed status for simulation
-                const completedStatus: ProcessingStatusType = {
-                  currentStep: "",
-                  progress: 100,
-                  steps: processingSteps.map(step => ({
-                    id: step.id,
-                    label: step.label,
-                    status: "completed" as const,
-                    completedAt: new Date(),
-                  })),
-                  queuePosition: 0,
-                };
-                if (!simulationStarted) {
-                  runSimulation(completedStatus);
+              if (doc.status === "ready") {
+                if (!backendCompleted) {
+                  backendCompleted = true;
+                  // Stop polling before starting simulation
+                  clearInterval(pollInterval);
+                  // Create completed status for simulation
+                  const completedStatus: ProcessingStatusType = {
+                    currentStep: "",
+                    progress: 100,
+                    steps: processingSteps.map(step => ({
+                      id: step.id,
+                      label: step.label,
+                      status: "completed" as const,
+                      completedAt: new Date(),
+                    })),
+                    queuePosition: 0,
+                  };
+                  if (!simulationStarted) {
+                    runSimulation(completedStatus);
+                  }
+                } else if (simulationStarted) {
+                  // If simulation already started but view hasn't switched, check if we should switch
+                  // This handles the case where simulation completed but view didn't switch
+                  const currentDoc = documents.find(d => d.id === selectedDocId);
+                  if (currentDoc?.status === "ready" && viewState === "processing") {
+                    // Force switch to chat view if document is ready
+                    setViewState("chat");
+                  }
                 }
               } else if (doc.status === "error") {
                 clearInterval(pollInterval);
@@ -360,6 +404,11 @@ const Documents = () => {
               }
             } catch (error) {
               console.error("Failed to check document status:", error);
+              // If document check fails and we haven't started simulation, continue polling
+              // but don't spam errors if simulation already started
+              if (simulationStarted) {
+                return;
+              }
             }
           }
 
@@ -373,8 +422,53 @@ const Documents = () => {
               variant: "destructive",
             });
           }
-        } catch (error) {
-          console.error("Failed to poll processing status:", error);
+        } catch (error: any) {
+          // Handle 404 or other errors - check document status as fallback
+          if (error?.message?.includes("404") || error?.message?.includes("Not Found")) {
+            // Task not found, check document status
+            try {
+              const doc = await documentsApi.get(selectedDocId);
+              if (doc.status === "ready") {
+                if (!backendCompleted) {
+                  backendCompleted = true;
+                  // Stop polling before starting simulation
+                  clearInterval(pollInterval);
+                  const completedStatus: ProcessingStatusType = {
+                    currentStep: "",
+                    progress: 100,
+                    steps: processingSteps.map(step => ({
+                      id: step.id,
+                      label: step.label,
+                      status: "completed" as const,
+                      completedAt: new Date(),
+                    })),
+                    queuePosition: 0,
+                  };
+                  if (!simulationStarted) {
+                    runSimulation(completedStatus);
+                  }
+                } else if (simulationStarted && viewState === "processing") {
+                  // Simulation started but view didn't switch - force switch
+                  const currentDoc = documents.find(d => d.id === selectedDocId);
+                  if (currentDoc?.status === "ready") {
+                    setViewState("chat");
+                    toast({
+                      title: "Document Ready",
+                      description: "Document has been processed and indexed. You can now query it.",
+                    });
+                  }
+                }
+              }
+            } catch (docError) {
+              // Only log error if simulation hasn't started
+              if (!simulationStarted) {
+                console.error("Failed to check document status:", docError);
+              }
+            }
+          } else if (!simulationStarted) {
+            // Only log other errors if simulation hasn't started
+            console.error("Failed to poll processing status:", error);
+          }
         }
       };
 
@@ -414,10 +508,12 @@ const Documents = () => {
     }
   }, [searchParams, setSearchParams]);
 
-  // Fetch document URL when document is selected
+  // Fetch document URL when document is selected AND we're in chat view (not during processing)
   useEffect(() => {
     const fetchDocumentUrl = async () => {
-      if (selectedDocId) {
+      // Only fetch blob URL when in chat view, not during processing
+      // This prevents fetching blob URL for wrong document during processing
+      if (selectedDocId && viewState === "chat") {
         try {
           const url = await documentsApi.getFileUrl(selectedDocId);
           setDocumentUrl(url);
@@ -425,12 +521,13 @@ const Documents = () => {
           console.error("Failed to get document URL:", error);
           setDocumentUrl(null);
         }
-      } else {
+      } else if (!selectedDocId || viewState !== "chat") {
+        // Clear document URL when not in chat view or no document selected
         setDocumentUrl(null);
       }
     };
     fetchDocumentUrl();
-  }, [selectedDocId]);
+  }, [selectedDocId, viewState]);
 
   const handleNewUpload = () => {
     setViewState("upload");
@@ -962,6 +1059,30 @@ const Documents = () => {
 
   const handleProjectSelect = async (projectId: string | null) => {
     setSelectedProjectId(projectId);
+    if (projectId) {
+      try {
+        // Load project details for breadcrumb/title
+        const hierarchy = await projectsApi.getHierarchy();
+        const findProject = (projects: any[], id: string): any | null => {
+          for (const p of projects) {
+            if (p.id === id) return p;
+            if (p.children) {
+              const found = findProject(p.children, id);
+              if (found) return found;
+            }
+          }
+          return null;
+        };
+        const project = findProject(hierarchy, projectId);
+        if (project) {
+          setSelectedProject({ id: project.id, name: project.name });
+        }
+      } catch (error) {
+        console.error("Failed to load project:", error);
+      }
+    } else {
+      setSelectedProject(null);
+    }
     try {
       const response = await documentsApi.list({ projectId });
       setDocuments(response.documents);
@@ -1120,6 +1241,46 @@ const Documents = () => {
         );
 
       case "list":
+        // Show ProjectView if a project is selected, otherwise show DocumentListView
+        if (selectedProjectId) {
+          return (
+            <ProjectView
+              projectId={selectedProjectId}
+              onDocumentSelect={(doc) => {
+                if (doc.status === "ready") {
+                  setSelectedDocId(doc.id);
+                  setViewState("chat");
+                } else {
+                  toast({
+                    title: "Document Not Ready",
+                    description: "Please wait for the document to finish processing.",
+                    variant: "destructive",
+                  });
+                }
+              }}
+              onCompareDocuments={handleMultiDocumentSelect}
+              onOpenSavedAnalyses={() => setSavedAnalysesDialogOpen(true)}
+              refreshTrigger={documentListRefreshTrigger}
+              onDocumentDeleted={(id) => {
+                // Update parent documents state
+                setDocuments((prev) => prev.filter((d) => d.id !== id));
+                // Clear selected document if it was deleted
+                if (selectedDocId === id) {
+                  setSelectedDocId(null);
+                  setViewState("list");
+                }
+                // Clear selected documents in cross-document view if deleted
+                setSelectedDocuments((prev) => prev.filter((d) => d.id !== id));
+                setSelectedDocIds((prev) => {
+                  const newSet = new Set(prev);
+                  newSet.delete(id);
+                  return newSet;
+                });
+              }}
+              onProjectSelect={handleProjectSelect}
+            />
+          );
+        }
         return (
           <DocumentListView
             projectId={selectedProjectId}
@@ -1259,7 +1420,7 @@ const Documents = () => {
                 <div className="border-b border-border px-6 pt-3 pb-0">
                   <TabsList className="bg-transparent">
                     <TabsTrigger value="list" className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-foreground data-[state=active]:rounded-none w-[100px] justify-center">
-                      Documents
+                      {selectedProject ? selectedProject.name : "Documents"}
                     </TabsTrigger>
                     {selectedDocument && (
                       <TabsTrigger 

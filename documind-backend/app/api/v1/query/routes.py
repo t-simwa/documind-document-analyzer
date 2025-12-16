@@ -10,6 +10,7 @@ import structlog
 import json
 
 from app.core.config import settings
+from app.core.dependencies import require_auth
 from app.services.retrieval import RetrievalService, RetrievalConfig, SearchType
 from app.services.llm import LLMService, LLMConfig, LLMProvider
 from app.services.generation import GenerationService
@@ -31,8 +32,9 @@ logger = structlog.get_logger(__name__)
 
 router = APIRouter()
 
-# In-memory query history (in production, use a database)
-query_history: List[dict] = []
+# In-memory query history per user (in production, use a database)
+# Structure: {user_id: [history_items]}
+query_history: dict[str, List[dict]] = {}
 
 
 def get_generation_service() -> GenerationService:
@@ -54,10 +56,11 @@ def get_generation_service() -> GenerationService:
 )
 async def query_documents(
     request: QueryRequest,
-    generation_service: GenerationService = Depends(get_generation_service)
+    generation_service: GenerationService = Depends(get_generation_service),
+    current_user: dict = Depends(require_auth)
 ):
     """
-    Query documents and get AI-generated answer
+    Query documents and get AI-generated answer (only user's documents)
     
     Args:
         request: Query request with question and configuration
@@ -67,6 +70,21 @@ async def query_documents(
         QueryResponse with answer, citations, and metadata
     """
     try:
+        user_id = current_user["id"]
+        
+        # Validate that all document_ids belong to the user
+        if request.document_ids:
+            from app.database.models import Document as DocumentModel
+            for doc_id in request.document_ids:
+                doc = await DocumentModel.find_one(
+                    DocumentModel.id == doc_id,
+                    DocumentModel.uploaded_by == user_id
+                )
+                if not doc:
+                    raise HTTPException(
+                        status_code=403,
+                        detail=f"Document {doc_id} not found or access denied"
+                    )
         # Build retrieval config
         retrieval_config = RetrievalConfig()
         if request.top_k:
@@ -107,11 +125,14 @@ async def query_documents(
         # Only generate patterns/contradictions if multiple documents are queried
         if request.document_ids and len(request.document_ids) > 1:
             try:
-                # Get document names for mapping
+                # Get document names for mapping (already validated above)
                 from app.database.models import Document as DocumentModel
                 doc_name_map = {}
                 for doc_id in request.document_ids:
-                    doc = await DocumentModel.get(doc_id)
+                    doc = await DocumentModel.find_one(
+                        DocumentModel.id == doc_id,
+                        DocumentModel.uploaded_by == user_id
+                    )
                     if doc:
                         doc_name_map[doc_id] = doc.name
                     else:
@@ -213,9 +234,12 @@ async def query_documents(
             generated_at=response.generated_at
         )
         
-        # Store in history
+        # Store in history (scoped to user)
+        if user_id not in query_history:
+            query_history[user_id] = []
+        
         history_item = {
-            "id": f"query_{len(query_history)}",
+            "id": f"query_{len(query_history[user_id])}",
             "query": request.query,
             "answer": response.answer,
             "collection_name": request.collection_name,
@@ -223,7 +247,7 @@ async def query_documents(
             "created_at": response.generated_at,
             "metadata": response.metadata
         }
-        query_history.append(history_item)
+        query_history[user_id].append(history_item)
         
         logger.info(
             "Query processed",
@@ -246,10 +270,11 @@ async def query_documents(
 )
 async def query_documents_stream(
     request: QueryRequest,
-    generation_service: GenerationService = Depends(get_generation_service)
+    generation_service: GenerationService = Depends(get_generation_service),
+    current_user: dict = Depends(require_auth)
 ):
     """
-    Query documents and stream answer
+    Query documents and stream answer (only user's documents)
     
     Args:
         request: Query request with question and configuration
@@ -259,6 +284,21 @@ async def query_documents_stream(
         StreamingResponse with text chunks
     """
     try:
+        user_id = current_user["id"]
+        
+        # Validate that all document_ids belong to the user
+        if request.document_ids:
+            from app.database.models import Document as DocumentModel
+            for doc_id in request.document_ids:
+                doc = await DocumentModel.find_one(
+                    DocumentModel.id == doc_id,
+                    DocumentModel.uploaded_by == user_id
+                )
+                if not doc:
+                    raise HTTPException(
+                        status_code=403,
+                        detail=f"Document {doc_id} not found or access denied"
+                    )
         # Build retrieval config
         retrieval_config = RetrievalConfig()
         if request.top_k:
@@ -317,14 +357,15 @@ async def query_documents_stream(
     "/history",
     response_model=QueryHistoryResponse,
     summary="Get query history",
-    description="Get query history for the current session"
+    description="Get query history for the authenticated user"
 )
 async def get_query_history(
     limit: int = 50,
-    offset: int = 0
+    offset: int = 0,
+    current_user: dict = Depends(require_auth)
 ):
     """
-    Get query history
+    Get query history for the authenticated user
     
     Args:
         limit: Maximum number of items to return
@@ -333,9 +374,12 @@ async def get_query_history(
     Returns:
         QueryHistoryResponse with history items
     """
+    user_id = current_user["id"]
+    user_history = query_history.get(user_id, [])
+    
     # Get items in reverse chronological order
     sorted_history = sorted(
-        query_history,
+        user_history,
         key=lambda x: x.get("created_at", datetime.min),
         reverse=True
     )
@@ -358,18 +402,18 @@ async def get_query_history(
     
     return QueryHistoryResponse(
         items=items,
-        total=len(query_history)
+        total=len(user_history)
     )
 
 
 @router.delete(
     "/history/{query_id}",
     summary="Delete query from history",
-    description="Delete a specific query from history"
+    description="Delete a specific query from authenticated user's history"
 )
-async def delete_query_history(query_id: str):
+async def delete_query_history(query_id: str, current_user: dict = Depends(require_auth)):
     """
-    Delete query from history
+    Delete query from authenticated user's history
     
     Args:
         query_id: Query ID to delete
@@ -377,11 +421,17 @@ async def delete_query_history(query_id: str):
     Returns:
         Success message
     """
-    global query_history
-    original_length = len(query_history)
-    query_history = [item for item in query_history if item["id"] != query_id]
+    user_id = current_user["id"]
+    if user_id not in query_history:
+        raise HTTPException(status_code=404, detail=f"Query {query_id} not found")
     
-    if len(query_history) == original_length:
+    original_length = len(query_history[user_id])
+    query_history[user_id] = [
+        item for item in query_history[user_id] 
+        if item["id"] != query_id
+    ]
+    
+    if len(query_history[user_id]) == original_length:
         raise HTTPException(status_code=404, detail=f"Query {query_id} not found")
     
     return {"message": f"Query {query_id} deleted successfully"}

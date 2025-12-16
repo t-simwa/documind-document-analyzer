@@ -2,7 +2,7 @@
 Tags API routes
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import JSONResponse
 from typing import List
 from datetime import datetime
@@ -10,6 +10,7 @@ import structlog
 import time
 
 from app.database.models import Tag as TagModel
+from app.core.dependencies import require_auth
 from .schemas import (
     TagCreate,
     TagUpdate,
@@ -20,48 +21,52 @@ logger = structlog.get_logger(__name__)
 
 router = APIRouter()
 
-# Initialize default tags if none exist
-async def _initialize_default_tags():
-    """Initialize default tags if none exist"""
-    count = await TagModel.count()
+# Initialize default tags if none exist for a user
+async def _initialize_default_tags(user_id: str):
+    """Initialize default tags if none exist for a user"""
+    count = await TagModel.find(TagModel.created_by == user_id).count()
     if count == 0:
         default_tags = [
             TagModel(
                 name="Important",
                 color="#ef4444",
+                created_by=user_id,
             ),
             TagModel(
                 name="Review",
                 color="#f59e0b",
+                created_by=user_id,
             ),
             TagModel(
                 name="Archive",
                 color="#6b7280",
+                created_by=user_id,
             ),
         ]
         for tag in default_tags:
             await tag.insert()
-        logger.info("default_tags_initialized", count=len(default_tags))
+        logger.info("default_tags_initialized", count=len(default_tags), user_id=user_id)
 
 
 @router.get(
     "/",
     response_model=List[TagResponse],
     summary="List tags",
-    description="List all tags"
+    description="List all tags for the authenticated user"
 )
-async def list_tags():
+async def list_tags(current_user: dict = Depends(require_auth)):
     """
-    List all tags
+    List all tags for the authenticated user
     
     Returns:
-        List of all tags
+        List of all tags for the user
     """
     try:
+        user_id = current_user["id"]
         # Initialize default tags if needed
-        await _initialize_default_tags()
+        await _initialize_default_tags(user_id)
         
-        tags = await TagModel.find_all().to_list()
+        tags = await TagModel.find(TagModel.created_by == user_id).to_list()
         return [
             TagResponse(
                 id=str(tag.id),
@@ -84,11 +89,11 @@ async def list_tags():
     response_model=TagResponse,
     status_code=201,
     summary="Create tag",
-    description="Create a new tag"
+    description="Create a new tag for the authenticated user"
 )
-async def create_tag(tag: TagCreate):
+async def create_tag(tag: TagCreate, current_user: dict = Depends(require_auth)):
     """
-    Create a new tag
+    Create a new tag for the authenticated user
     
     Args:
         tag: Tag creation data
@@ -97,8 +102,12 @@ async def create_tag(tag: TagCreate):
         Created tag
     """
     try:
-        # Check if tag with same name already exists
-        existing_tag = await TagModel.find_one(TagModel.name == tag.name)
+        user_id = current_user["id"]
+        # Check if tag with same name already exists for this user
+        existing_tag = await TagModel.find_one(
+            TagModel.name == tag.name,
+            TagModel.created_by == user_id
+        )
         if existing_tag:
             raise HTTPException(
                 status_code=400,
@@ -109,6 +118,7 @@ async def create_tag(tag: TagCreate):
         new_tag = TagModel(
             name=tag.name,
             color=tag.color or "#6b7280",  # Default gray color
+            created_by=user_id,
         )
         await new_tag.insert()
         
@@ -135,11 +145,11 @@ async def create_tag(tag: TagCreate):
     "/{tag_id}",
     response_model=TagResponse,
     summary="Get tag",
-    description="Get a tag by ID"
+    description="Get a tag by ID (must belong to authenticated user)"
 )
-async def get_tag(tag_id: str):
+async def get_tag(tag_id: str, current_user: dict = Depends(require_auth)):
     """
-    Get tag by ID
+    Get tag by ID (must belong to authenticated user)
     
     Args:
         tag_id: Tag ID
@@ -148,8 +158,22 @@ async def get_tag(tag_id: str):
         Tag details
     """
     try:
+        user_id = current_user["id"]
         from bson import ObjectId
-        tag = await TagModel.get(ObjectId(tag_id))
+        
+        # Try ObjectId first, then string
+        try:
+            tag_object_id = ObjectId(tag_id)
+            tag = await TagModel.find_one(
+                TagModel.id == tag_object_id,
+                TagModel.created_by == user_id
+            )
+        except (ValueError, TypeError):
+            tag = await TagModel.find_one(
+                TagModel.id == tag_id,
+                TagModel.created_by == user_id
+            )
+        
         if not tag:
             raise HTTPException(status_code=404, detail="Tag not found")
         
@@ -170,11 +194,11 @@ async def get_tag(tag_id: str):
     "/{tag_id}",
     response_model=TagResponse,
     summary="Update tag",
-    description="Update a tag"
+    description="Update a tag (must belong to authenticated user)"
 )
-async def update_tag(tag_id: str, tag_update: TagUpdate):
+async def update_tag(tag_id: str, tag_update: TagUpdate, current_user: dict = Depends(require_auth)):
     """
-    Update a tag
+    Update a tag (must belong to authenticated user)
     
     Args:
         tag_id: Tag ID
@@ -184,15 +208,31 @@ async def update_tag(tag_id: str, tag_update: TagUpdate):
         Updated tag
     """
     try:
-        tag = await TagModel.get(tag_id)
+        user_id = current_user["id"]
+        from bson import ObjectId
+        
+        # Try ObjectId first, then string
+        try:
+            tag_object_id = ObjectId(tag_id)
+            tag = await TagModel.find_one(
+                TagModel.id == tag_object_id,
+                TagModel.created_by == user_id
+            )
+        except (ValueError, TypeError):
+            tag = await TagModel.find_one(
+                TagModel.id == tag_id,
+                TagModel.created_by == user_id
+            )
+        
         if not tag:
             raise HTTPException(status_code=404, detail="Tag not found")
         
-        # Check if new name conflicts with existing tag
+        # Check if new name conflicts with existing tag for this user
         if tag_update.name:
             existing_tag = await TagModel.find_one(
                 TagModel.name == tag_update.name,
-                TagModel.id != tag.id
+                TagModel.id != tag.id,
+                TagModel.created_by == user_id
             )
             if existing_tag:
                 raise HTTPException(
@@ -230,11 +270,11 @@ async def update_tag(tag_id: str, tag_update: TagUpdate):
 @router.delete(
     "/{tag_id}",
     summary="Delete tag",
-    description="Delete a tag and remove it from all documents"
+    description="Delete a tag and remove it from all user's documents"
 )
-async def delete_tag(tag_id: str):
+async def delete_tag(tag_id: str, current_user: dict = Depends(require_auth)):
     """
-    Delete a tag
+    Delete a tag (must belong to authenticated user)
     
     Args:
         tag_id: Tag ID to delete
@@ -243,19 +283,35 @@ async def delete_tag(tag_id: str):
         Success message
     """
     try:
+        user_id = current_user["id"]
         from app.database.models import Document as DocumentModel
+        from bson import ObjectId
         
-        tag = await TagModel.get(tag_id)
+        # Try ObjectId first, then string
+        try:
+            tag_object_id = ObjectId(tag_id)
+            tag = await TagModel.find_one(
+                TagModel.id == tag_object_id,
+                TagModel.created_by == user_id
+            )
+        except (ValueError, TypeError):
+            tag = await TagModel.find_one(
+                TagModel.id == tag_id,
+                TagModel.created_by == user_id
+            )
+        
         if not tag:
             raise HTTPException(status_code=404, detail="Tag not found")
         
-        # Remove tag from all documents
+        # Remove tag from all documents owned by this user
         tag_id_str = str(tag.id)
-        # Find documents that contain this tag
-        all_documents = await DocumentModel.find_all().to_list()
+        # Find documents that contain this tag and belong to the user
+        user_documents = await DocumentModel.find(
+            DocumentModel.uploaded_by == user_id
+        ).to_list()
         
         removed_count = 0
-        for doc in all_documents:
+        for doc in user_documents:
             if tag_id_str in doc.tags:
                 doc.tags.remove(tag_id_str)
                 await doc.save()

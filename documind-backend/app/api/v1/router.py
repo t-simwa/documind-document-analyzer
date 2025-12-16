@@ -13,6 +13,8 @@ from app.api.v1.query import routes as query_routes
 from app.api.v1.documents import routes as documents_routes
 from app.api.v1.projects import routes as projects_routes
 from app.api.v1.tags import routes as tags_routes
+from app.api.v1.auth import routes as auth_routes
+from app.api.v1.analyses import routes as analyses_routes
 from app.core.config import settings
 
 # Create main v1 router
@@ -71,6 +73,15 @@ api_router.include_router(
     tags=["Tags"]
 )
 
-# Additional routers will be added here as they are implemented
-# api_router.include_router(auth_routes.router, prefix="/auth", tags=["Authentication"])
+api_router.include_router(
+    auth_routes.router,
+    prefix="/auth",
+    tags=["Authentication"]
+)
+
+api_router.include_router(
+    analyses_routes.router,
+    prefix="/analyses",
+    tags=["Saved Analyses"]
+)
 

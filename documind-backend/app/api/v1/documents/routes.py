@@ -14,6 +14,7 @@ from pathlib import Path
 from datetime import datetime
 
 from app.core.config import settings
+from app.core.dependencies import require_auth
 from app.workers.tasks import process_document_async, security_scan_async
 from app.database.models import Document as DocumentModel, Tag as TagModel
 from .schemas import (
@@ -40,6 +41,29 @@ logger = structlog.get_logger(__name__)
 router = APIRouter()
 
 
+async def _get_user_document(document_id: str, user_id: str) -> DocumentModel:
+    """Helper to get a document that belongs to a specific user"""
+    from bson import ObjectId
+    
+    # Try to convert document_id to ObjectId if it's a valid ObjectId string
+    try:
+        doc_object_id = ObjectId(document_id)
+        doc = await DocumentModel.find_one(
+            DocumentModel.id == doc_object_id,
+            DocumentModel.uploaded_by == user_id
+        )
+    except (ValueError, TypeError):
+        # If not a valid ObjectId, try string match
+        doc = await DocumentModel.find_one(
+            DocumentModel.id == document_id,
+            DocumentModel.uploaded_by == user_id
+        )
+    
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return doc
+
+
 @router.post(
     "/upload",
     response_model=DocumentUploadResponse,
@@ -50,6 +74,7 @@ async def upload_document(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     project_id: Optional[str] = Form(None),
+    current_user: dict = Depends(require_auth),
 ):
     """
     Upload a document file and start processing pipeline
@@ -93,14 +118,85 @@ async def upload_document(
         # Create upload directory if it doesn't exist
         os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
         
+        user_id = current_user["id"]
+        
+        # Validate project_id if provided (must belong to user)
+        # Handle empty string, "null" string, or None
+        validated_project_id = None
+        if project_id and project_id.strip() and project_id.lower() != "null":
+            from app.database.models import Project as ProjectModel
+            from bson import ObjectId
+            
+            project_id_clean = project_id.strip()
+            logger.info(
+                "validating_project_for_upload",
+                project_id=project_id_clean,
+                user_id=user_id
+            )
+            
+            # Try to convert project_id to ObjectId if it's a valid ObjectId string
+            try:
+                project_object_id = ObjectId(project_id_clean)
+                # Try with ObjectId first
+                project = await ProjectModel.find_one(
+                    ProjectModel.id == project_object_id,
+                    ProjectModel.created_by == user_id
+                )
+                # If not found, try with string comparison for created_by
+                if not project:
+                    project = await ProjectModel.find_one(
+                        ProjectModel.id == project_object_id,
+                        ProjectModel.created_by == str(user_id)
+                    )
+            except (ValueError, TypeError) as e:
+                logger.warning(
+                    "project_id_not_valid_objectid",
+                    project_id=project_id_clean,
+                    error=str(e)
+                )
+                # If not a valid ObjectId, try string match
+                project = await ProjectModel.find_one(
+                    ProjectModel.id == project_id_clean,
+                    ProjectModel.created_by == user_id
+                )
+                # If still not found, try with string comparison for created_by
+                if not project:
+                    project = await ProjectModel.find_one(
+                        ProjectModel.id == project_id_clean,
+                        ProjectModel.created_by == str(user_id)
+                    )
+            
+            if not project:
+                # Log all projects for this user for debugging
+                user_projects = await ProjectModel.find(
+                    ProjectModel.created_by == user_id
+                ).to_list()
+                logger.error(
+                    "project_not_found_for_upload",
+                    requested_project_id=project_id_clean,
+                    user_id=user_id,
+                    user_project_ids=[str(p.id) for p in user_projects]
+                )
+                raise HTTPException(
+                    status_code=404,
+                    detail="Project not found or access denied"
+                )
+            # Use the validated project_id (keep original format)
+            validated_project_id = project_id_clean
+            logger.info(
+                "project_validated_for_upload",
+                project_id=validated_project_id,
+                project_name=project.name
+            )
+        
         # Store document metadata in MongoDB first to get the ID
         document = DocumentModel(
             name=file.filename,
             status="processing",
-            uploaded_by="user1",  # In production, get from auth context
+            uploaded_by=user_id,
             size=file_size,
             type=file_ext,
-            project_id=project_id,
+            project_id=validated_project_id,
             file_path=None,  # Will be set after saving
             tags=[],  # Initialize empty tags list
             metadata={}
@@ -147,7 +243,7 @@ async def upload_document(
             security_scan_async,
             document_id=document_id,
             file_path=file_path,
-            metadata={"project_id": project_id}
+            metadata={"project_id": validated_project_id}
         )
         
         # Start document processing in background (after security scan)
@@ -157,7 +253,7 @@ async def upload_document(
             document_id=document_id,
             file_path=file_path,
             file_type=file_ext,
-            metadata={"project_id": project_id, "filename": file.filename}
+            metadata={"project_id": validated_project_id, "filename": file.filename}
         )
         
         return DocumentUploadResponse(
@@ -167,7 +263,7 @@ async def upload_document(
             uploaded_at=document.uploaded_at,
             size=file_size,
             type=file_ext,
-            project_id=project_id,
+            project_id=validated_project_id,
             metadata={}
         )
     
@@ -197,10 +293,11 @@ def get_generation_service() -> GenerationService:
 )
 async def get_document_insights(
     document_id: str,
-    generation_service: GenerationService = Depends(get_generation_service)
+    generation_service: GenerationService = Depends(get_generation_service),
+    current_user: dict = Depends(require_auth)
 ):
     """
-    Get AI-generated insights for a document
+    Get AI-generated insights for a document (filtered by authenticated user)
     
     Args:
         document_id: Document ID
@@ -209,10 +306,8 @@ async def get_document_insights(
     Returns:
         DocumentInsightsResponse with summary, entities, and suggested questions
     """
-    # Check if document exists
-    doc = await DocumentModel.get(document_id)
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
+    user_id = current_user["id"]
+    doc = await _get_user_document(document_id, user_id)
     
     # Check if document is ready
     from app.workers.tasks import task_queue
@@ -321,9 +416,12 @@ async def get_document_insights(
     summary="Get document",
     description="Get document metadata by ID"
 )
-async def get_document(document_id: str):
+async def get_document(
+    document_id: str,
+    current_user: dict = Depends(require_auth)
+):
     """
-    Get document metadata
+    Get document metadata (filtered by authenticated user)
     
     Args:
         document_id: Document ID
@@ -331,7 +429,23 @@ async def get_document(document_id: str):
     Returns:
         DocumentResponse with document metadata
     """
-    doc = await DocumentModel.get(document_id)
+    user_id = current_user["id"]
+    from bson import ObjectId
+    
+    # Try to convert document_id to ObjectId if it's a valid ObjectId string
+    try:
+        doc_object_id = ObjectId(document_id)
+        doc = await DocumentModel.find_one(
+            DocumentModel.id == doc_object_id,
+            DocumentModel.uploaded_by == user_id
+        )
+    except (ValueError, TypeError):
+        # If not a valid ObjectId, try string match
+        doc = await DocumentModel.find_one(
+            DocumentModel.id == document_id,
+            DocumentModel.uploaded_by == user_id
+        )
+    
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     
@@ -398,9 +512,13 @@ async def download_document_options(request: Request):
     summary="Download document",
     description="Download or view document file"
 )
-async def download_document(document_id: str, request: Request):
+async def download_document(
+    document_id: str,
+    request: Request,
+    current_user: dict = Depends(require_auth)
+):
     """
-    Download or view document file
+    Download or view document file (filtered by authenticated user)
     
     Args:
         document_id: Document ID
@@ -408,9 +526,8 @@ async def download_document(document_id: str, request: Request):
     Returns:
         File response with document content
     """
-    doc = await DocumentModel.get(document_id)
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
+    user_id = current_user["id"]
+    doc = await _get_user_document(document_id, user_id)
     
     logger.info(
         "document_download_requested",
@@ -557,10 +674,11 @@ async def download_document(document_id: str, request: Request):
 )
 async def update_document(
     document_id: str,
-    document_update: DocumentUpdate
+    document_update: DocumentUpdate,
+    current_user: dict = Depends(require_auth)
 ):
     """
-    Update document metadata
+    Update document metadata (filtered by authenticated user)
     
     Args:
         document_id: Document ID
@@ -569,7 +687,11 @@ async def update_document(
     Returns:
         Updated document
     """
-    doc = await DocumentModel.get(document_id)
+    user_id = current_user["id"]
+    doc = await DocumentModel.find_one(
+        DocumentModel.id == document_id,
+        DocumentModel.uploaded_by == user_id
+    )
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     
@@ -581,7 +703,20 @@ async def update_document(
         # Handle project_id update (including None to remove from project)
         update_dict = document_update.model_dump(exclude_unset=True)
         if 'project_id' in update_dict:
-            doc.project_id = document_update.project_id
+            project_id_value = document_update.project_id
+            # Validate project belongs to user if provided
+            if project_id_value:
+                from app.database.models import Project as ProjectModel
+                project = await ProjectModel.find_one(
+                    ProjectModel.id == project_id_value,
+                    ProjectModel.created_by == user_id
+                )
+                if not project:
+                    raise HTTPException(
+                        status_code=404,
+                        detail="Project not found or access denied"
+                    )
+            doc.project_id = project_id_value
         
         await doc.save()
         
@@ -620,10 +755,11 @@ async def update_document(
 )
 async def list_documents(
     project_id: Optional[str] = None,
-    status: Optional[str] = None
+    status: Optional[str] = None,
+    current_user: dict = Depends(require_auth)
 ):
     """
-    List documents with optional filtering
+    List documents with optional filtering (filtered by authenticated user)
     
     Args:
         project_id: Optional project ID filter (use "null" or empty string to filter for documents with no project)
@@ -632,18 +768,89 @@ async def list_documents(
     Returns:
         List of documents
     """
-    # Build query using Beanie query builder
+    user_id = current_user["id"]
+    
+    # Build query using Beanie query builder (always filter by user)
     if project_id is not None:
         # Handle explicit None/null filtering
         if project_id == "null" or project_id == "":
-            # Filter for documents with no project (project_id is None)
-            documents = await DocumentModel.find(DocumentModel.project_id == None).to_list()
+            # Filter for documents with no project (project_id is None) for this user
+            documents = await DocumentModel.find(
+                DocumentModel.uploaded_by == user_id,
+                DocumentModel.project_id == None
+            ).to_list()
         else:
-            # Filter for specific project
-            documents = await DocumentModel.find(DocumentModel.project_id == project_id).to_list()
+            # Validate project belongs to user
+            from app.database.models import Project as ProjectModel
+            from bson import ObjectId
+            
+            project_id_clean = project_id.strip() if project_id else project_id
+            
+            # Try to convert project_id to ObjectId if it's a valid ObjectId string
+            try:
+                project_object_id = ObjectId(project_id_clean)
+                # Try with ObjectId first
+                project = await ProjectModel.find_one(
+                    ProjectModel.id == project_object_id,
+                    ProjectModel.created_by == user_id
+                )
+                # If not found, try with string comparison for created_by
+                if not project:
+                    project = await ProjectModel.find_one(
+                        ProjectModel.id == project_object_id,
+                        ProjectModel.created_by == str(user_id)
+                    )
+                # Use ObjectId for document query
+                filter_project_id = project_object_id
+            except (ValueError, TypeError):
+                # If not a valid ObjectId, try string match
+                project = await ProjectModel.find_one(
+                    ProjectModel.id == project_id_clean,
+                    ProjectModel.created_by == user_id
+                )
+                # If still not found, try with string comparison for created_by
+                if not project:
+                    project = await ProjectModel.find_one(
+                        ProjectModel.id == project_id_clean,
+                        ProjectModel.created_by == str(user_id)
+                    )
+                # Use string for document query
+                filter_project_id = project_id_clean
+            
+            if not project:
+                # Log all projects for this user for debugging
+                user_projects = await ProjectModel.find(
+                    ProjectModel.created_by == user_id
+                ).to_list()
+                logger.error(
+                    "project_not_found_for_list",
+                    requested_project_id=project_id_clean,
+                    user_id=user_id,
+                    user_project_ids=[str(p.id) for p in user_projects]
+                )
+                raise HTTPException(
+                    status_code=404,
+                    detail="Project not found or access denied"
+                )
+            
+            # Filter for specific project and user
+            # Try both ObjectId and string matching for project_id in documents
+            try:
+                documents = await DocumentModel.find(
+                    DocumentModel.uploaded_by == user_id,
+                    DocumentModel.project_id == filter_project_id
+                ).to_list()
+            except Exception:
+                # Fallback: try string comparison
+                documents = await DocumentModel.find(
+                    DocumentModel.uploaded_by == user_id,
+                    DocumentModel.project_id == project_id_clean
+                ).to_list()
     else:
-        # No project filter - get all documents
-        documents = await DocumentModel.find_all().to_list()
+        # No project filter - get all documents for this user
+        documents = await DocumentModel.find(
+            DocumentModel.uploaded_by == user_id
+        ).to_list()
     
     # Apply status filter if provided
     if status:
@@ -695,7 +902,8 @@ async def list_documents(
 )
 async def compare_documents(
     document_ids: List[str] = Body(..., description="List of document IDs to compare (minimum 2)"),
-    generation_service: GenerationService = Depends(get_generation_service)
+    generation_service: GenerationService = Depends(get_generation_service),
+    current_user: dict = Depends(require_auth)
 ):
     """
     Compare multiple documents and generate similarities and differences
@@ -719,8 +927,13 @@ async def compare_documents(
     missing_docs = []
     not_ready_docs = []
     
+    user_id = current_user["id"]
+    
     for doc_id in document_ids:
-        doc = await DocumentModel.get(doc_id)
+        doc = await DocumentModel.find_one(
+            DocumentModel.id == doc_id,
+            DocumentModel.uploaded_by == user_id
+        )
         if not doc:
             missing_docs.append(doc_id)
             continue
@@ -824,9 +1037,12 @@ async def compare_documents(
     summary="Delete document",
     description="Delete a document and all its associated data (chunks, embeddings, file)"
 )
-async def delete_document(document_id: str):
+async def delete_document(
+    document_id: str,
+    current_user: dict = Depends(require_auth)
+):
     """
-    Delete a document and all its associated data
+    Delete a document and all its associated data (filtered by authenticated user)
     
     Args:
         document_id: Document ID to delete
@@ -834,10 +1050,8 @@ async def delete_document(document_id: str):
     Returns:
         Success message
     """
-    # Check if document exists
-    doc = await DocumentModel.get(document_id)
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
+    user_id = current_user["id"]
+    doc = await _get_user_document(document_id, user_id)
     
     try:
         # Step 1: Delete file from disk
@@ -943,10 +1157,11 @@ async def delete_document(document_id: str):
 )
 async def assign_tags_to_document(
     document_id: str,
-    tag_request: TagAssignRequest
+    tag_request: TagAssignRequest,
+    current_user: dict = Depends(require_auth)
 ):
     """
-    Assign tags to a document
+    Assign tags to a document (filtered by authenticated user)
     
     Args:
         document_id: Document ID
@@ -955,23 +1170,35 @@ async def assign_tags_to_document(
     Returns:
         Success message with assigned tags
     """
-    # Check if document exists
-    doc = await DocumentModel.get(document_id)
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
+    user_id = current_user["id"]
+    doc = await _get_user_document(document_id, user_id)
     
     try:
-        # Validate that all tags exist
+        # Validate that all tags exist and belong to the user
         invalid_tags = []
+        from bson import ObjectId
+        
         for tag_id in tag_request.tag_ids:
-            tag = await TagModel.get(tag_id)
+            # Try ObjectId first, then string
+            try:
+                tag_object_id = ObjectId(tag_id)
+                tag = await TagModel.find_one(
+                    TagModel.id == tag_object_id,
+                    TagModel.created_by == user_id
+                )
+            except (ValueError, TypeError):
+                tag = await TagModel.find_one(
+                    TagModel.id == tag_id,
+                    TagModel.created_by == user_id
+                )
+            
             if not tag:
                 invalid_tags.append(tag_id)
         
         if invalid_tags:
             raise HTTPException(
                 status_code=404,
-                detail=f"Tags not found: {', '.join(invalid_tags)}"
+                detail=f"Tags not found or access denied: {', '.join(invalid_tags)}"
             )
         
         # Add tags (avoid duplicates)
@@ -1016,10 +1243,11 @@ async def assign_tags_to_document(
 )
 async def remove_tag_from_document(
     document_id: str,
-    tag_id: str
+    tag_id: str,
+    current_user: dict = Depends(require_auth)
 ):
     """
-    Remove a tag from a document
+    Remove a tag from a document (filtered by authenticated user)
     
     Args:
         document_id: Document ID
@@ -1028,10 +1256,8 @@ async def remove_tag_from_document(
     Returns:
         Success message
     """
-    # Check if document exists
-    doc = await DocumentModel.get(document_id)
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
+    user_id = current_user["id"]
+    doc = await _get_user_document(document_id, user_id)
     
     try:
         # Check if tag is assigned to document

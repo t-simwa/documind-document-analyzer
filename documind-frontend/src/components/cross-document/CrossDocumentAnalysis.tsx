@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { ChatInterface } from "@/components/chat/ChatInterface";
 import { DocumentComparisonView } from "./DocumentComparisonView";
-import { crossDocumentApi } from "@/services/api";
+import { crossDocumentApi, savedAnalysesApi } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { formatResponse } from "@/utils/formatResponse";
@@ -32,7 +32,6 @@ import {
   loadCrossDocumentPatterns,
   saveCrossDocumentContradictions,
   loadCrossDocumentContradictions,
-  saveCrossDocumentAnalysisMetadata,
 } from "@/utils/crossDocumentStorage";
 import type { 
   Document, 
@@ -186,15 +185,22 @@ export const CrossDocumentAnalysis = ({
         saveCrossDocumentHistory(documentIds, storableMessages);
       }
 
-      // Update metadata
-      saveCrossDocumentAnalysisMetadata(
+      // Update metadata after comparison (save to backend)
+      (async () => {
+        try {
+          await savedAnalysesApi.create({
         documentIds,
         documentNames,
-        comparison !== null,
-        patterns.length > 0,
-        contradictions.length > 0,
-        messages.length > 0
-      );
+            hasComparison: comparison !== null,
+            hasPatterns: patterns.length > 0,
+            hasContradictions: contradictions.length > 0,
+            hasMessages: messages.length > 0,
+          });
+        } catch (error) {
+          console.error("Failed to save analysis metadata:", error);
+          // Don't show error to user - this is background operation
+        }
+      })();
     }
   }, [messages, comparison, patterns, contradictions, documentIdsKey]);
 
@@ -412,15 +418,18 @@ export const CrossDocumentAnalysis = ({
         saveCrossDocumentContradictions(documentIds, updatedContradictions);
       }
 
-      // Update metadata after successful query
-      saveCrossDocumentAnalysisMetadata(
+      // Update metadata after successful query (save to backend)
+      savedAnalysesApi.create({
         documentIds,
         documentNames,
-        comparison !== null,
-        patterns.length > 0 || (response.patterns && response.patterns.length > 0),
-        contradictions.length > 0 || (response.contradictions && response.contradictions.length > 0),
-        messages.length > 0
-      );
+        hasComparison: comparison !== null,
+        hasPatterns: patterns.length > 0 || (response.patterns && response.patterns.length > 0),
+        hasContradictions: contradictions.length > 0 || (response.contradictions && response.contradictions.length > 0),
+        hasMessages: messages.length > 0,
+      }).catch((error) => {
+        console.error("Failed to save analysis metadata:", error);
+        // Don't show error to user - this is background operation
+      });
 
       if (response.contradictions && response.contradictions.length > 0) {
         setActiveTab("contradictions");

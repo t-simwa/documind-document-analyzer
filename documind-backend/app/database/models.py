@@ -76,11 +76,12 @@ class Tag(BeanieDocument):
     name: str
     color: Optional[str] = None  # Hex color code
     organization_id: Optional[str] = None
+    created_by: str  # User who created the tag
     created_at: datetime = Field(default_factory=datetime.utcnow)
     
     class Settings:
         name = "tags"
-        indexes = ["organization_id", "name"]
+        indexes = ["organization_id", "name", "created_by"]
 
 
 class DocumentTag(BeanieDocument):
@@ -96,4 +97,21 @@ class DocumentTag(BeanieDocument):
             "document_id",
             "tag_id"
         ]
+
+
+class SavedAnalysis(BeanieDocument):
+    """Saved cross-document analysis model"""
+    user_id: str  # User who created the analysis
+    document_ids: List[str]  # List of document IDs in the analysis
+    document_names: List[str]  # List of document names for display
+    has_comparison: bool = False
+    has_patterns: bool = False
+    has_contradictions: bool = False
+    has_messages: bool = False
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    class Settings:
+        name = "saved_analyses"
+        indexes = ["user_id", "document_ids", "created_at"]
 

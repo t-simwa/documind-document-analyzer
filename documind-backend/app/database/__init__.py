@@ -13,7 +13,8 @@ from app.database.models import (
     Project,
     Document,
     Tag,
-    DocumentTag
+    DocumentTag,
+    SavedAnalysis
 )
 
 logger = structlog.get_logger(__name__)
@@ -38,7 +39,8 @@ async def connect_to_mongo():
                 Project,
                 Document,
                 Tag,
-                DocumentTag
+                DocumentTag,
+                SavedAnalysis
             ]
         )
         

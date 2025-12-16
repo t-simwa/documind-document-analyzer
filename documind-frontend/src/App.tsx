@@ -3,9 +3,12 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import LandingPage from "./pages/LandingPage";
 import Dashboard from "./pages/Dashboard";
 import Documents from "./pages/Documents";
+import Login from "./pages/Login";
 import ProductsPage from "./pages/ProductsPage";
 import PricingPage from "./pages/PricingPage";
 import FeaturesPage from "./pages/products/FeaturesPage";
@@ -22,12 +25,14 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
+    <BrowserRouter>
+      <AuthProvider>
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
         <Routes>
           <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<Login />} />
           <Route path="/products" element={<ProductsPage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/products/features" element={<FeaturesPage />} />
@@ -37,14 +42,36 @@ const App = () => (
           <Route path="/products/analytics" element={<AnalyticsPage />} />
           <Route path="/products/mobile" element={<MobilePage />} />
           <Route path="/resources" element={<ResourcesPage />} />
-          <Route path="/app" element={<Dashboard />} />
-          <Route path="/app/documents" element={<Documents />} />
-          <Route path="/app/settings" element={<UserProfileSettings />} />
+            <Route
+              path="/app"
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/app/documents"
+              element={
+                <ProtectedRoute>
+                  <Documents />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/app/settings"
+              element={
+                <ProtectedRoute>
+                  <UserProfileSettings />
+                </ProtectedRoute>
+              }
+            />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
+        </TooltipProvider>
+      </AuthProvider>
       </BrowserRouter>
-    </TooltipProvider>
   </QueryClientProvider>
 );
 

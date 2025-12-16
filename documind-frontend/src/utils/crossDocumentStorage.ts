@@ -3,6 +3,7 @@
  */
 
 import type { DocumentComparison, DocumentPattern, DocumentContradiction } from "@/types/api";
+import { tokenStorage } from "@/services/authService";
 
 export interface StoredCrossDocumentMessage {
   id: string;
@@ -21,6 +22,36 @@ export interface StoredCrossDocumentMessage {
   canRetry?: boolean;
 }
 
+/**
+ * Get current user ID from token storage
+ * Returns empty string if not authenticated (for backward compatibility)
+ */
+function getUserId(): string {
+  try {
+    // Try to get user ID from token payload
+    const token = tokenStorage.getAccessToken();
+    if (!token) return "";
+    
+    // Decode JWT token to get user ID (simple base64 decode)
+    const parts = token.split(".");
+    if (parts.length !== 3) return "";
+    
+    const payload = JSON.parse(atob(parts[1]));
+    return payload.sub || payload.user_id || payload.id || "";
+  } catch (error) {
+    console.warn("Failed to get user ID from token:", error);
+    return "";
+  }
+}
+
+/**
+ * Get user-scoped storage prefix
+ */
+function getUserPrefix(): string {
+  const userId = getUserId();
+  return userId ? `user_${userId}_` : "";
+}
+
 const STORAGE_KEY_PREFIX = "documind_crossdoc_";
 const STORAGE_KEY_PREFIX_COMPARISON = "documind_crossdoc_comparison_";
 const STORAGE_KEY_PREFIX_PATTERNS = "documind_crossdoc_patterns_";
@@ -29,11 +60,12 @@ const STORAGE_KEY_PREFIX_ANALYSIS = "documind_crossdoc_analysis_"; // Complete a
 const MAX_STORED_MESSAGES = 50;
 
 /**
- * Get storage key for a document set's conversation history
+ * Get storage key for a document set's conversation history (user-scoped)
  */
 function getStorageKey(documentIds: string[]): string {
   const sortedIds = [...documentIds].sort().join(",");
-  return `${STORAGE_KEY_PREFIX}${sortedIds}`;
+  const userPrefix = getUserPrefix();
+  return `${STORAGE_KEY_PREFIX}${userPrefix}${sortedIds}`;
 }
 
 /**
@@ -90,11 +122,12 @@ export function clearCrossDocumentHistory(documentIds: string[]): void {
 }
 
 /**
- * Get storage key for a document set's comparison
+ * Get storage key for a document set's comparison (user-scoped)
  */
 function getComparisonStorageKey(documentIds: string[]): string {
   const sortedIds = [...documentIds].sort().join(",");
-  return `${STORAGE_KEY_PREFIX_COMPARISON}${sortedIds}`;
+  const userPrefix = getUserPrefix();
+  return `${STORAGE_KEY_PREFIX_COMPARISON}${userPrefix}${sortedIds}`;
 }
 
 /**
@@ -163,7 +196,8 @@ export function saveCrossDocumentPatterns(
 ): void {
   try {
     const sortedIds = [...documentIds].sort().join(",");
-    const key = `${STORAGE_KEY_PREFIX_PATTERNS}${sortedIds}`;
+    const userPrefix = getUserPrefix();
+    const key = `${STORAGE_KEY_PREFIX_PATTERNS}${userPrefix}${sortedIds}`;
     const data = {
       documentIds,
       patterns,
@@ -181,7 +215,8 @@ export function saveCrossDocumentPatterns(
 export function loadCrossDocumentPatterns(documentIds: string[]): DocumentPattern[] {
   try {
     const sortedIds = [...documentIds].sort().join(",");
-    const key = `${STORAGE_KEY_PREFIX_PATTERNS}${sortedIds}`;
+    const userPrefix = getUserPrefix();
+    const key = `${STORAGE_KEY_PREFIX_PATTERNS}${userPrefix}${sortedIds}`;
     const stored = localStorage.getItem(key);
     if (!stored) return [];
 
@@ -202,7 +237,8 @@ export function saveCrossDocumentContradictions(
 ): void {
   try {
     const sortedIds = [...documentIds].sort().join(",");
-    const key = `${STORAGE_KEY_PREFIX_CONTRADICTIONS}${sortedIds}`;
+    const userPrefix = getUserPrefix();
+    const key = `${STORAGE_KEY_PREFIX_CONTRADICTIONS}${userPrefix}${sortedIds}`;
     const data = {
       documentIds,
       contradictions,
@@ -220,7 +256,8 @@ export function saveCrossDocumentContradictions(
 export function loadCrossDocumentContradictions(documentIds: string[]): DocumentContradiction[] {
   try {
     const sortedIds = [...documentIds].sort().join(",");
-    const key = `${STORAGE_KEY_PREFIX_CONTRADICTIONS}${sortedIds}`;
+    const userPrefix = getUserPrefix();
+    const key = `${STORAGE_KEY_PREFIX_CONTRADICTIONS}${userPrefix}${sortedIds}`;
     const stored = localStorage.getItem(key);
     if (!stored) return [];
 
@@ -257,7 +294,8 @@ export function saveCrossDocumentAnalysisMetadata(
   try {
     const sortedIds = [...documentIds].sort();
     const id = sortedIds.join(",");
-    const key = `${STORAGE_KEY_PREFIX_ANALYSIS}${id}`;
+    const userPrefix = getUserPrefix();
+    const key = `${STORAGE_KEY_PREFIX_ANALYSIS}${userPrefix}${id}`;
     const data: SavedCrossDocumentAnalysis = {
       id,
       documentIds: sortedIds,
@@ -281,9 +319,11 @@ export function getAllSavedCrossDocumentAnalyses(): SavedCrossDocumentAnalysis[]
   try {
     const keys = Object.keys(localStorage);
     const analyses: SavedCrossDocumentAnalysis[] = [];
+    const userPrefix = getUserPrefix();
+    const prefix = `${STORAGE_KEY_PREFIX_ANALYSIS}${userPrefix}`;
     
     keys.forEach((key) => {
-      if (key.startsWith(STORAGE_KEY_PREFIX_ANALYSIS)) {
+      if (key.startsWith(prefix)) {
         try {
           const data = JSON.parse(localStorage.getItem(key) || "{}");
           analyses.push(data);
@@ -313,13 +353,14 @@ export function getAllSavedCrossDocumentAnalyses(): SavedCrossDocumentAnalysis[]
 export function deleteSavedCrossDocumentAnalysis(documentIds: string[]): void {
   try {
     const sortedIds = [...documentIds].sort().join(",");
+    const userPrefix = getUserPrefix();
     
-    // Delete all related storage
-    localStorage.removeItem(`${STORAGE_KEY_PREFIX}${sortedIds}`);
-    localStorage.removeItem(`${STORAGE_KEY_PREFIX_COMPARISON}${sortedIds}`);
-    localStorage.removeItem(`${STORAGE_KEY_PREFIX_PATTERNS}${sortedIds}`);
-    localStorage.removeItem(`${STORAGE_KEY_PREFIX_CONTRADICTIONS}${sortedIds}`);
-    localStorage.removeItem(`${STORAGE_KEY_PREFIX_ANALYSIS}${sortedIds}`);
+    // Delete all related storage (user-scoped)
+    localStorage.removeItem(`${STORAGE_KEY_PREFIX}${userPrefix}${sortedIds}`);
+    localStorage.removeItem(`${STORAGE_KEY_PREFIX_COMPARISON}${userPrefix}${sortedIds}`);
+    localStorage.removeItem(`${STORAGE_KEY_PREFIX_PATTERNS}${userPrefix}${sortedIds}`);
+    localStorage.removeItem(`${STORAGE_KEY_PREFIX_CONTRADICTIONS}${userPrefix}${sortedIds}`);
+    localStorage.removeItem(`${STORAGE_KEY_PREFIX_ANALYSIS}${userPrefix}${sortedIds}`);
   } catch (error) {
     console.error("Failed to delete saved cross-document analysis:", error);
   }

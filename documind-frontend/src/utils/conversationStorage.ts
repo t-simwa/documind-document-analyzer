@@ -2,6 +2,8 @@
  * Conversation history persistence utilities
  */
 
+import { tokenStorage } from "@/services/authService";
+
 export interface StoredMessage {
   id: string;
   role: "user" | "assistant";
@@ -17,14 +19,43 @@ export interface StoredMessage {
   canRetry?: boolean;
 }
 
+/**
+ * Get current user ID from token storage
+ * Returns empty string if not authenticated (for backward compatibility)
+ */
+function getUserId(): string {
+  try {
+    const token = tokenStorage.getAccessToken();
+    if (!token) return "";
+    
+    const parts = token.split(".");
+    if (parts.length !== 3) return "";
+    
+    const payload = JSON.parse(atob(parts[1]));
+    return payload.sub || payload.user_id || payload.id || "";
+  } catch (error) {
+    console.warn("Failed to get user ID from token:", error);
+    return "";
+  }
+}
+
+/**
+ * Get user-scoped storage prefix
+ */
+function getUserPrefix(): string {
+  const userId = getUserId();
+  return userId ? `user_${userId}_` : "";
+}
+
 const STORAGE_KEY_PREFIX = "documind_conversation_";
 const MAX_STORED_CONVERSATIONS = 50; // Limit stored conversations per document
 
 /**
- * Get storage key for a document's conversation history
+ * Get storage key for a document's conversation history (user-scoped)
  */
 function getStorageKey(documentId: string): string {
-  return `${STORAGE_KEY_PREFIX}${documentId}`;
+  const userPrefix = getUserPrefix();
+  return `${STORAGE_KEY_PREFIX}${userPrefix}${documentId}`;
 }
 
 /**
@@ -87,8 +118,10 @@ export function clearConversationHistory(documentId: string): void {
 export function clearAllConversationHistories(): void {
   try {
     const keys = Object.keys(localStorage);
+    const userPrefix = getUserPrefix();
+    const prefix = `${STORAGE_KEY_PREFIX}${userPrefix}`;
     keys.forEach((key) => {
-      if (key.startsWith(STORAGE_KEY_PREFIX)) {
+      if (key.startsWith(prefix)) {
         localStorage.removeItem(key);
       }
     });
@@ -103,9 +136,11 @@ export function clearAllConversationHistories(): void {
 export function getDocumentsWithHistory(): string[] {
   try {
     const keys = Object.keys(localStorage);
+    const userPrefix = getUserPrefix();
+    const prefix = `${STORAGE_KEY_PREFIX}${userPrefix}`;
     return keys
-      .filter((key) => key.startsWith(STORAGE_KEY_PREFIX))
-      .map((key) => key.replace(STORAGE_KEY_PREFIX, ""));
+      .filter((key) => key.startsWith(prefix))
+      .map((key) => key.replace(prefix, ""));
   } catch (error) {
     console.error("Failed to get documents with history:", error);
     return [];

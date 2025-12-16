@@ -2,21 +2,23 @@
 Background task status endpoints
 """
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from typing import Optional
 
 from app.workers.tasks import task_queue
 from app.database.models import Document as DocumentModel
+from app.core.dependencies import require_auth
 
 router = APIRouter(tags=["Tasks"])
 
 
 @router.get("/tasks/{task_id}")
-async def get_task_status(task_id: str):
+async def get_task_status(task_id: str, current_user: dict = Depends(require_auth)):
     """
-    Get the status of a background task
+    Get the status of a background task (must belong to authenticated user)
     If task is not found (e.g., after server reload), check document status
     """
+    user_id = current_user["id"]
     task = task_queue.get_task(task_id)
     
     if task is None:
@@ -25,8 +27,11 @@ async def get_task_status(task_id: str):
         if task_id.startswith("doc_process_"):
             document_id = task_id.replace("doc_process_", "")
             
-            # Check MongoDB for document status
-            doc = await DocumentModel.get(document_id)
+            # Check MongoDB for document status (must belong to user)
+            doc = await DocumentModel.find_one(
+                DocumentModel.id == document_id,
+                DocumentModel.uploaded_by == user_id
+            )
             if doc:
                 # If document is ready, return a completed task status
                 if doc.status == "ready":
@@ -76,18 +81,43 @@ async def get_task_status(task_id: str):
 @router.get("/tasks")
 async def list_tasks(
     task_type: Optional[str] = None,
-    task_status: Optional[str] = None
+    task_status: Optional[str] = None,
+    current_user: dict = Depends(require_auth)
 ):
     """
-    List all background tasks with optional filtering
+    List all background tasks for the authenticated user with optional filtering
     """
-    tasks = task_queue.list_tasks(
+    user_id = current_user["id"]
+    all_tasks = task_queue.list_tasks(
         task_type=task_type,
         status=task_status
     )
     
+    # Filter tasks to only include those for user's documents
+    user_tasks = []
+    for task in all_tasks:
+        # Check if task is for a document owned by the user
+        if task.get("metadata", {}).get("document_id"):
+            doc_id = task["metadata"]["document_id"]
+            doc = await DocumentModel.find_one(
+                DocumentModel.id == doc_id,
+                DocumentModel.uploaded_by == user_id
+            )
+            if doc:
+                user_tasks.append(task)
+        elif task_id := task.get("id"):
+            # Check if task_id starts with doc_process_ and verify document
+            if task_id.startswith("doc_process_"):
+                doc_id = task_id.replace("doc_process_", "")
+                doc = await DocumentModel.find_one(
+                    DocumentModel.id == doc_id,
+                    DocumentModel.uploaded_by == user_id
+                )
+                if doc:
+                    user_tasks.append(task)
+    
     return {
-        "tasks": tasks,
-        "count": len(tasks)
+        "tasks": user_tasks,
+        "count": len(user_tasks)
     }
 

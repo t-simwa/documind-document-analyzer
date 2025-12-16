@@ -2,13 +2,14 @@
 Project management API routes
 """
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from fastapi.responses import JSONResponse
 from typing import Optional, List
 from datetime import datetime
 import structlog
 
 from app.database.models import Project as ProjectModel, Document as DocumentModel
+from app.core.dependencies import require_auth
 from .schemas import (
     ProjectCreate,
     ProjectUpdate,
@@ -21,9 +22,12 @@ logger = structlog.get_logger(__name__)
 
 router = APIRouter()
 
-async def _count_documents_for_project(project_id: str) -> int:
-    """Count documents for a project"""
-    count = await DocumentModel.find(DocumentModel.project_id == project_id).count()
+async def _count_documents_for_project(project_id: str, user_id: str) -> int:
+    """Count documents for a project (filtered by user)"""
+    count = await DocumentModel.find(
+        DocumentModel.project_id == project_id,
+        DocumentModel.uploaded_by == user_id
+    ).count()
     return count
 
 
@@ -34,7 +38,10 @@ async def _count_documents_for_project(project_id: str) -> int:
     summary="Create project",
     description="Create a new project"
 )
-async def create_project(project: ProjectCreate):
+async def create_project(
+    project: ProjectCreate,
+    current_user: dict = Depends(require_auth)
+):
     """
     Create a new project
     
@@ -45,27 +52,58 @@ async def create_project(project: ProjectCreate):
         Created project
     """
     try:
-        # Validate parent_id if provided
+        user_id = current_user["id"]
+        
+        # Validate and normalize parent_id if provided (must belong to same user)
+        parent_id_str = None
         if project.parent_id:
-            parent = await ProjectModel.get(project.parent_id)
+            # Convert to string and strip whitespace
+            parent_id_str = str(project.parent_id).strip()
+            if parent_id_str and parent_id_str.lower() not in ["null", "none", ""]:
+                # Try to find parent project - handle both ObjectId and string formats
+                from bson import ObjectId
+                try:
+                    # Try ObjectId conversion first
+                    parent_oid = ObjectId(parent_id_str)
+                    parent = await ProjectModel.find_one(
+                        ProjectModel.id == parent_oid,
+                        ProjectModel.created_by == user_id
+                    )
+                except Exception:
+                    # If ObjectId conversion fails, try string match
+                    parent = await ProjectModel.find_one(
+                        ProjectModel.id == parent_id_str,
+                        ProjectModel.created_by == user_id
+                    )
+                
             if not parent:
                 raise HTTPException(
-                    status_code=400,
-                    detail=f"Parent project not found: {project.parent_id}"
+                        status_code=404,
+                        detail=f"Parent project not found or access denied"
                 )
+                # Store parent_id as string for consistency
+                parent_id_str = str(parent.id)
+            else:
+                parent_id_str = None
         
         # Create new project
         new_project = ProjectModel(
             name=project.name,
             description=project.description,
-            parent_id=project.parent_id,
-            created_by="user1",  # In production, get from auth context
+            parent_id=parent_id_str,
+            created_by=user_id,
         )
         await new_project.insert()
         
-        logger.info("project_created", project_id=str(new_project.id), name=project.name)
+        logger.info(
+            "project_created",
+            project_id=str(new_project.id),
+            name=new_project.name,
+            parent_id=parent_id_str,
+            user_id=user_id
+        )
         
-        document_count = await _count_documents_for_project(str(new_project.id))
+        document_count = await _count_documents_for_project(str(new_project.id), user_id)
         
         return ProjectResponse(
             id=str(new_project.id),
@@ -96,7 +134,8 @@ async def create_project(project: ProjectCreate):
 )
 async def list_projects(
     page: int = Query(1, ge=1, description="Page number"),
-    limit: int = Query(50, ge=1, le=100, description="Items per page")
+    limit: int = Query(50, ge=1, le=100, description="Items per page"),
+    current_user: dict = Depends(require_auth)
 ):
     """
     List projects with pagination
@@ -109,17 +148,21 @@ async def list_projects(
         List of projects with pagination info
     """
     try:
-        # Calculate pagination
-        total = await ProjectModel.count()
+        user_id = current_user["id"]
+        
+        # Calculate pagination (filtered by user)
+        total = await ProjectModel.find(ProjectModel.created_by == user_id).count()
         skip = (page - 1) * limit
         
-        # Get paginated projects
-        projects_list = await ProjectModel.find_all().skip(skip).limit(limit).to_list()
+        # Get paginated projects (filtered by user)
+        projects_list = await ProjectModel.find(
+            ProjectModel.created_by == user_id
+        ).skip(skip).limit(limit).to_list()
         
         # Convert to response format with document counts
         projects = []
         for project in projects_list:
-            document_count = await _count_documents_for_project(str(project.id))
+            document_count = await _count_documents_for_project(str(project.id), user_id)
             projects.append(
             ProjectResponse(
                     id=str(project.id),
@@ -159,7 +202,9 @@ async def list_projects(
     summary="Get project hierarchy",
     description="Get all projects in hierarchical structure"
 )
-async def get_project_hierarchy():
+async def get_project_hierarchy(
+    current_user: dict = Depends(require_auth)
+):
     """
     Get projects in hierarchical structure
     
@@ -167,18 +212,31 @@ async def get_project_hierarchy():
         List of root projects with their children
     """
     try:
-        # Get all projects
-        all_projects = await ProjectModel.find_all().to_list()
+        user_id = current_user["id"]
+        
+        # Get all projects for this user
+        all_projects = await ProjectModel.find(
+            ProjectModel.created_by == user_id
+        ).to_list()
         
         # Build project map with document counts
         project_map = {}
         for project in all_projects:
-            document_count = await _count_documents_for_project(str(project.id))
+            document_count = await _count_documents_for_project(str(project.id), user_id)
+            # Ensure parent_id is converted to string (handle both ObjectId and string)
+            parent_id_str = None
+            if project.parent_id:
+                if isinstance(project.parent_id, str):
+                    parent_id_str = project.parent_id
+                else:
+                    # Convert ObjectId to string
+                    parent_id_str = str(project.parent_id)
+            
             project_map[str(project.id)] = {
                 "id": str(project.id),
                 "name": project.name,
                 "description": project.description,
-                "parent_id": project.parent_id,
+                "parent_id": parent_id_str,  # Store as string consistently
                 "created_at": project.created_at,
                 "updated_at": project.updated_at,
                 "created_by": project.created_by,
@@ -194,13 +252,40 @@ async def get_project_hierarchy():
                 # Root project
                 roots.append(project_data)
             else:
-                # Child project
-                parent = project_map.get(str(parent_id))
-                if parent:
-                    parent["children"].append(project_data)
+                # Child project - parent_id is already a string from project_map
+                parent_id_str = str(parent_id).strip() if parent_id else None
+                if parent_id_str:
+                    parent = project_map.get(parent_id_str)
+                    if parent:
+                        parent["children"].append(project_data)
+                        logger.debug(
+                            "child_project_linked",
+                            child_id=project_id,
+                            child_name=project_data["name"],
+                            parent_id=parent_id_str,
+                            parent_name=parent["name"]
+                        )
+                    else:
+                        # Parent not found (might be deleted or belongs to different user), treat as root
+                        logger.warning(
+                            "parent_project_not_found_in_hierarchy",
+                            project_id=project_id,
+                            project_name=project_data["name"],
+                            parent_id=parent_id_str,
+                            available_parents=list(project_map.keys()),
+                            all_project_ids=[str(p.id) for p in all_projects]
+                        )
+                        roots.append(project_data)
                 else:
-                    # Parent not found, treat as root
+                    # Invalid parent_id, treat as root
+                    logger.warning("invalid_parent_id", project_id=project_id, parent_id=parent_id)
                     roots.append(project_data)
+        
+        # Sort roots and children by name for consistent ordering
+        roots.sort(key=lambda x: x["name"].lower())
+        for project_data in project_map.values():
+            if project_data.get("children"):
+                project_data["children"].sort(key=lambda x: x["name"].lower())
         
         # Convert to response format recursively
         def build_hierarchy_response(project_data: dict) -> ProjectHierarchyResponse:
@@ -237,7 +322,10 @@ async def get_project_hierarchy():
     summary="Get project",
     description="Get a project by ID"
 )
-async def get_project(project_id: str):
+async def get_project(
+    project_id: str,
+    current_user: dict = Depends(require_auth)
+):
     """
     Get project by ID
     
@@ -247,11 +335,16 @@ async def get_project(project_id: str):
     Returns:
         Project details
     """
-    project = await ProjectModel.get(project_id)
+    user_id = current_user["id"]
+    
+    project = await ProjectModel.find_one(
+        ProjectModel.id == project_id,
+        ProjectModel.created_by == user_id
+    )
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     
-    document_count = await _count_documents_for_project(project_id)
+    document_count = await _count_documents_for_project(project_id, user_id)
     
     return ProjectResponse(
         id=str(project.id),
@@ -271,7 +364,11 @@ async def get_project(project_id: str):
     summary="Update project",
     description="Update a project"
 )
-async def update_project(project_id: str, project_update: ProjectUpdate):
+async def update_project(
+    project_id: str,
+    project_update: ProjectUpdate,
+    current_user: dict = Depends(require_auth)
+):
     """
     Update a project
     
@@ -282,11 +379,32 @@ async def update_project(project_id: str, project_update: ProjectUpdate):
     Returns:
         Updated project
     """
-    project = await ProjectModel.get(project_id)
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+    user_id = current_user["id"]
+    
+    # Handle ObjectId conversion for project lookup
+    from bson import ObjectId
+    project = None
     
     try:
+        # Try ObjectId conversion first
+        project_oid = ObjectId(project_id)
+        project = await ProjectModel.find_one(
+            ProjectModel.id == project_oid,
+            ProjectModel.created_by == user_id
+        )
+    except Exception:
+        # If ObjectId conversion fails, try string match
+        project = await ProjectModel.find_one(
+            ProjectModel.id == project_id,
+            ProjectModel.created_by == user_id
+        )
+    
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found or access denied")
+    
+    try:
+        project_id_str = str(project.id)
+        
         # Validate parent_id if provided (including None/null to remove parent)
         # Check if parent_id was explicitly set in the request
         update_dict = project_update.model_dump(exclude_unset=True)
@@ -295,18 +413,35 @@ async def update_project(project_id: str, project_update: ProjectUpdate):
         if parent_id_provided:
             parent_id_value = project_update.parent_id
             # Prevent setting self as parent (only if not None)
-            if parent_id_value is not None and parent_id_value == project_id:
+            if parent_id_value is not None and str(parent_id_value) == project_id_str:
                 raise HTTPException(
                     status_code=400,
                     detail="Project cannot be its own parent"
                 )
-            # Validate parent exists if provided (not None)
+            # Validate parent exists if provided (not None) and belongs to user
             if parent_id_value is not None:
-                parent = await ProjectModel.get(parent_id_value)
+                # Normalize parent_id to string
+                parent_id_str = str(parent_id_value).strip()
+                
+                # Try ObjectId conversion for parent lookup
+                parent = None
+                try:
+                    parent_oid = ObjectId(parent_id_str)
+                    parent = await ProjectModel.find_one(
+                        ProjectModel.id == parent_oid,
+                        ProjectModel.created_by == user_id
+                    )
+                except Exception:
+                    # If ObjectId conversion fails, try string match
+                    parent = await ProjectModel.find_one(
+                        ProjectModel.id == parent_id_str,
+                        ProjectModel.created_by == user_id
+                    )
+                
                 if not parent:
                     raise HTTPException(
-                        status_code=400,
-                        detail=f"Parent project not found: {parent_id_value}"
+                        status_code=404,
+                        detail=f"Parent project not found or access denied"
                     )
                 
                 # Prevent circular references - check if the new parent is a descendant of this project
@@ -314,8 +449,20 @@ async def update_project(project_id: str, project_update: ProjectUpdate):
                     """Check if potential_descendant_id is a descendant of ancestor_id"""
                     if ancestor_id == potential_descendant_id:
                         return True
+                    # Get all projects for this user and filter manually to handle both ObjectId and string formats
+                    all_user_projects = await ProjectModel.find(
+                        ProjectModel.created_by == user_id
+                    ).to_list()
                     # Get all direct children of ancestor
-                    children = await ProjectModel.find(ProjectModel.parent_id == ancestor_id).to_list()
+                    children = []
+                    for child in all_user_projects:
+                        if str(child.id) == ancestor_id:
+                            continue
+                        child_parent_id = child.parent_id
+                        if child_parent_id:
+                            child_parent_str = str(child_parent_id)
+                            if child_parent_str == ancestor_id:
+                                children.append(child)
                     # Recursively check each child
                     for child in children:
                         if await is_descendant(str(child.id), potential_descendant_id):
@@ -323,7 +470,7 @@ async def update_project(project_id: str, project_update: ProjectUpdate):
                     return False
                 
                 # Check if the new parent is a descendant of this project
-                if await is_descendant(project_id, parent_id_value):
+                if await is_descendant(project_id_str, parent_id_str):
                     raise HTTPException(
                         status_code=400,
                         detail="Cannot set a descendant project as parent (circular reference)"
@@ -337,23 +484,30 @@ async def update_project(project_id: str, project_update: ProjectUpdate):
         
         # Handle parent_id update (including None to remove parent)
         # Check if parent_id was explicitly provided in the request
-        update_dict = project_update.model_dump(exclude_unset=True)
         if 'parent_id' in update_dict:
             old_parent_id = project.parent_id
-            project.parent_id = project_update.parent_id
+            # Normalize parent_id to string (or None)
+            parent_id_to_set = None
+            if project_update.parent_id is not None:
+                parent_id_to_set = str(project_update.parent_id).strip()
+                if not parent_id_to_set or parent_id_to_set.lower() in ["null", "none", ""]:
+                    parent_id_to_set = None
+            
+            project.parent_id = parent_id_to_set
             logger.info(
                 "project_parent_updated",
-                project_id=project_id,
-                old_parent_id=old_parent_id,
-                new_parent_id=project_update.parent_id
+                project_id=project_id_str,
+                old_parent_id=str(old_parent_id) if old_parent_id else None,
+                new_parent_id=parent_id_to_set,
+                user_id=user_id
             )
         
         project.updated_at = datetime.utcnow()
         await project.save()
         
-        logger.info("project_updated", project_id=project_id, parent_id=project.parent_id)
+        logger.info("project_updated", project_id=project_id_str, parent_id=project.parent_id, user_id=user_id)
         
-        document_count = await _count_documents_for_project(project_id)
+        document_count = await _count_documents_for_project(project_id_str, user_id)
         
         return ProjectResponse(
             id=str(project.id),
@@ -369,7 +523,7 @@ async def update_project(project_id: str, project_update: ProjectUpdate):
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception("project_update_failed", project_id=project_id, error=str(e))
+        logger.exception("project_update_failed", project_id=project_id, user_id=user_id, error=str(e))
         raise HTTPException(
             status_code=500,
             detail=f"Failed to update project: {str(e)}"
@@ -381,7 +535,10 @@ async def update_project(project_id: str, project_update: ProjectUpdate):
     summary="Delete project",
     description="Delete a project and reassign its documents to another project or remove project association"
 )
-async def delete_project(project_id: str):
+async def delete_project(
+    project_id: str,
+    current_user: dict = Depends(require_auth)
+):
     """
     Delete a project
     
@@ -391,46 +548,108 @@ async def delete_project(project_id: str):
     Returns:
         Success message
     """
-    project = await ProjectModel.get(project_id)
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+    user_id = current_user["id"]
+    
+    # Handle ObjectId conversion for project lookup
+    from bson import ObjectId
+    project = None
     
     try:
-        # Check if project has children
-        children = await ProjectModel.find(ProjectModel.parent_id == project_id).to_list()
+        # Try ObjectId conversion first
+        project_oid = ObjectId(project_id)
+        project = await ProjectModel.find_one(
+            ProjectModel.id == project_oid,
+            ProjectModel.created_by == user_id
+        )
+    except Exception:
+        # If ObjectId conversion fails, try string match
+        project = await ProjectModel.find_one(
+            ProjectModel.id == project_id,
+            ProjectModel.created_by == user_id
+        )
+    
+    if not project:
+        logger.warning("project_not_found_for_deletion", project_id=project_id, user_id=user_id)
+        raise HTTPException(status_code=404, detail="Project not found or access denied")
+    
+    try:
+        project_id_str = str(project.id)
         
-        if children:
+        # Check if project has children (for this user)
+        # Need to check both ObjectId and string formats for parent_id
+        all_user_projects = await ProjectModel.find(
+            ProjectModel.created_by == user_id
+        ).to_list()
+        
+        child_projects = []
+        for child in all_user_projects:
+            # Skip self
+            if str(child.id) == project_id_str:
+                continue
+            child_parent_id = child.parent_id
+            if child_parent_id:
+                # Convert to string for comparison
+                child_parent_str = str(child_parent_id)
+                if child_parent_str == project_id_str:
+                    child_projects.append(child)
+        
+        if child_projects:
+            logger.warning(
+                "cannot_delete_project_with_children",
+                project_id=project_id_str,
+                children_count=len(child_projects)
+            )
             raise HTTPException(
                 status_code=400,
-                detail=f"Cannot delete project with {len(children)} child project(s). Please delete or reassign child projects first."
+                detail=f"Cannot delete project with {len(child_projects)} child project(s). Please delete or reassign child projects first."
             )
         
         # Reassign documents to another project if available, otherwise set project_id to null
-        other_project = await ProjectModel.find_one(ProjectModel.id != project_id)
+        # Only consider other projects owned by this user
+        other_project = await ProjectModel.find_one(
+            ProjectModel.id != project.id,
+            ProjectModel.created_by == user_id
+        )
         
         reassigned_count = 0
-        documents = await DocumentModel.find(DocumentModel.project_id == project_id).to_list()
+        # Get all documents for this user and filter by project_id
+        all_user_documents = await DocumentModel.find(
+            DocumentModel.uploaded_by == user_id
+        ).to_list()
+        
+        # Filter documents manually to handle both ObjectId and string project_id formats
+        project_documents = []
+        for doc in all_user_documents:
+            doc_project_id = doc.project_id
+            if doc_project_id:
+                doc_project_str = str(doc_project_id)
+                if doc_project_str == project_id_str:
+                    project_documents.append(doc)
         
         if other_project:
             # Reassign to another project
             default_project_id = str(other_project.id)
-            for doc in documents:
+            for doc in project_documents:
                 doc.project_id = default_project_id
                 await doc.save()
                 reassigned_count += 1
+            logger.info("documents_reassigned", project_id=project_id_str, target_project_id=default_project_id, count=reassigned_count)
         else:
             # No other projects exist, remove project association from documents
-            for doc in documents:
+            for doc in project_documents:
                 doc.project_id = None
                 await doc.save()
                 reassigned_count += 1
+            logger.info("documents_unassigned", project_id=project_id_str, count=reassigned_count)
         
         # Delete the project
         await project.delete()
         
         logger.info(
             "project_deleted",
-            project_id=project_id,
+            project_id=project_id_str,
+            project_name=project.name,
+            user_id=user_id,
             reassigned_documents=reassigned_count
         )
         
@@ -438,7 +657,7 @@ async def delete_project(project_id: str):
             status_code=200,
             content={
                 "message": "Project deleted successfully",
-                "project_id": project_id,
+                "project_id": project_id_str,
                 "reassigned_documents": reassigned_count
             }
         )
@@ -446,7 +665,7 @@ async def delete_project(project_id: str):
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception("project_deletion_failed", project_id=project_id, error=str(e))
+        logger.exception("project_deletion_failed", project_id=project_id, user_id=user_id, error=str(e))
         raise HTTPException(
             status_code=500,
             detail=f"Failed to delete project: {str(e)}"

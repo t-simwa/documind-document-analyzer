@@ -118,6 +118,18 @@ export const Sidebar = ({
       setLoadingProjects(true);
       const response = await projectsApi.getHierarchy();
       setProjects(response);
+      
+      // Debug: Log the hierarchy to help diagnose issues
+      console.log("Loaded projects hierarchy:", response);
+      console.log("Projects count:", response.length);
+      response.forEach((p) => {
+        console.log(`  - ${p.name} (ID: ${p.id}, Parent: ${p.parentId}, Children: ${p.children?.length || 0})`);
+        if (p.children && p.children.length > 0) {
+          p.children.forEach((c) => {
+            console.log(`    └─ ${c.name} (ID: ${c.id}, Parent: ${c.parentId})`);
+          });
+        }
+      });
     } catch (error) {
       console.error("Failed to load projects:", error);
       toast({
@@ -132,8 +144,20 @@ export const Sidebar = ({
 
   const handleCreateProject = async (data: { name: string; description?: string; parentId?: string | null }) => {
     try {
+      // Preserve current expanded state
+      const currentExpanded = new Set(expandedProjects);
+      
+      // Auto-expand parent project if child was created
+      if (data.parentId) {
+        currentExpanded.add(data.parentId);
+      }
+      
       await projectsApi.create(data);
       await loadProjects();
+      
+      // Restore expanded state after reload (including parent if child was created)
+      setExpandedProjects(currentExpanded);
+      
       toast({
         title: "Success",
         description: "Project created successfully",
@@ -150,16 +174,39 @@ export const Sidebar = ({
   const handleUpdateProject = async (data: { name: string; description?: string; parentId?: string | null }) => {
     if (!editingProject) return;
     try {
+      // Preserve current expanded state
+      const currentExpanded = new Set(expandedProjects);
+      const oldParentId = editingProject.parentId;
+      const newParentId = data.parentId;
+      
+      // If parent changed, expand the new parent (if any)
+      if (oldParentId !== newParentId) {
+        // Remove from old parent's expanded state if it was expanded
+        if (oldParentId) {
+          currentExpanded.delete(oldParentId);
+        }
+        // Add new parent to expanded state
+        if (newParentId) {
+          currentExpanded.add(newParentId);
+        }
+      }
+      
       await projectsApi.update(editingProject.id, data);
+      
       // Clear expanded state to ensure proper hierarchy refresh
       setExpandedProjects(new Set());
       await loadProjects();
+      
+      // Restore expanded state after reload (including new parent if changed)
+      setExpandedProjects(currentExpanded);
+      
       setEditingProject(null);
       toast({
         title: "Success",
         description: "Project updated successfully",
       });
     } catch (error) {
+      console.error("Failed to update project:", error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to update project",
@@ -173,16 +220,35 @@ export const Sidebar = ({
       return;
     }
     try {
+      // Remove from expanded state if it was expanded
+      setExpandedProjects((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(id);
+        return newSet;
+      });
+      
+      // If this project was selected, clear selection
+      if (selectedProjectId === id) {
+        onSelectProject?.(null);
+      }
+      
       await projectsApi.delete(id);
+      
+      // Clear expanded state to ensure clean refresh
+      setExpandedProjects(new Set());
+      
+      // Reload projects after deletion
       await loadProjects();
+      
       toast({
         title: "Success",
         description: "Project deleted successfully",
       });
     } catch (error) {
+      console.error("Failed to delete project:", error);
       toast({
         title: "Error",
-        description: "Failed to delete project",
+        description: error instanceof Error ? error.message : "Failed to delete project",
         variant: "destructive",
       });
     }

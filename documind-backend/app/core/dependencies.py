@@ -8,6 +8,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from app.core.security import decode_access_token
 from app.core.exceptions import AuthenticationError, AuthorizationError
+from app.database.models import User
 
 security = HTTPBearer(auto_error=False)
 
@@ -29,14 +30,41 @@ async def get_current_user(
         raise AuthenticationError("Invalid authentication credentials")
     
     # Extract user information from token payload
-    # This will be expanded when user authentication is implemented
     user_id: Optional[str] = payload.get("sub")
     if user_id is None:
         raise AuthenticationError("Invalid token payload")
     
+    # Fetch user from database to ensure they still exist and are active
+    try:
+        from bson import ObjectId
+        from beanie.exceptions import DocumentNotFound
+        
+        # Try to convert to ObjectId first (MongoDB format)
+        try:
+            object_id = ObjectId(user_id)
+            try:
+                user = await User.get(object_id)
+            except DocumentNotFound:
+                user = None
+        except (ValueError, TypeError):
+            # If conversion fails, try finding by string ID
+            user = await User.find_one(User.id == user_id)
+        
+        if not user:
+            raise AuthenticationError("User not found")
+        if not user.is_active:
+            raise AuthenticationError("User account is inactive")
+    except AuthenticationError:
+        raise
+    except Exception as e:
+        raise AuthenticationError(f"Invalid authentication credentials: {str(e)}")
+    
     return {
-        "id": user_id,
-        "email": payload.get("email"),
+        "id": str(user.id),
+        "email": user.email,
+        "name": user.name,
+        "is_superuser": user.is_superuser,
+        "organization_id": user.organization_id,
         "permissions": payload.get("permissions", []),
     }
 

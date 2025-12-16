@@ -3,31 +3,63 @@
  */
 
 import type { DocumentSummary, DocumentEntities, Comment } from "@/types/api";
+import { tokenStorage } from "@/services/authService";
+
+/**
+ * Get current user ID from token storage
+ * Returns empty string if not authenticated (for backward compatibility)
+ */
+function getUserId(): string {
+  try {
+    const token = tokenStorage.getAccessToken();
+    if (!token) return "";
+    
+    const parts = token.split(".");
+    if (parts.length !== 3) return "";
+    
+    const payload = JSON.parse(atob(parts[1]));
+    return payload.sub || payload.user_id || payload.id || "";
+  } catch (error) {
+    console.warn("Failed to get user ID from token:", error);
+    return "";
+  }
+}
+
+/**
+ * Get user-scoped storage prefix
+ */
+function getUserPrefix(): string {
+  const userId = getUserId();
+  return userId ? `user_${userId}_` : "";
+}
 
 const STORAGE_KEY_PREFIX_SUMMARY = "documind_summary_";
 const STORAGE_KEY_PREFIX_EXTRACTS = "documind_extracts_";
 const STORAGE_KEY_PREFIX_COMMENTS = "documind_comments_";
 
 /**
- * Get storage key for a document's summary
+ * Get storage key for a document's summary (user-scoped)
  */
 function getSummaryStorageKey(documentId: string): string {
-  return `${STORAGE_KEY_PREFIX_SUMMARY}${documentId}`;
+  const userPrefix = getUserPrefix();
+  return `${STORAGE_KEY_PREFIX_SUMMARY}${userPrefix}${documentId}`;
 }
 
 /**
- * Get storage key for a document's extracts
+ * Get storage key for a document's extracts (user-scoped)
  */
 function getExtractsStorageKey(documentId: string): string {
-  return `${STORAGE_KEY_PREFIX_EXTRACTS}${documentId}`;
+  const userPrefix = getUserPrefix();
+  return `${STORAGE_KEY_PREFIX_EXTRACTS}${userPrefix}${documentId}`;
 }
 
 /**
- * Get storage key for a document's comments
+ * Get storage key for a document's comments (user-scoped)
  */
 function getCommentsStorageKey(documentId: string, page?: number): string {
+  const userPrefix = getUserPrefix();
   const pageSuffix = page !== undefined ? `_page_${page}` : "";
-  return `${STORAGE_KEY_PREFIX_COMMENTS}${documentId}${pageSuffix}`;
+  return `${STORAGE_KEY_PREFIX_COMMENTS}${userPrefix}${documentId}${pageSuffix}`;
 }
 
 /**
@@ -213,11 +245,13 @@ export function clearDocumentComments(documentId: string, page?: number): void {
 export function clearAllDocumentData(documentId: string): void {
   clearDocumentSummary(documentId);
   clearDocumentExtracts(documentId);
-  // Clear all comment pages for this document
+  // Clear all comment pages for this document (user-scoped)
   try {
     const keys = Object.keys(localStorage);
+    const userPrefix = getUserPrefix();
+    const prefix = `${STORAGE_KEY_PREFIX_COMMENTS}${userPrefix}${documentId}`;
     keys.forEach((key) => {
-      if (key.startsWith(`${STORAGE_KEY_PREFIX_COMMENTS}${documentId}`)) {
+      if (key.startsWith(prefix)) {
         localStorage.removeItem(key);
       }
     });

@@ -38,9 +38,23 @@ import type {
   QueryResponse,
   QueryHistoryResponse,
 } from "@/types/api";
+import type { SavedCrossDocumentAnalysis } from "@/utils/crossDocumentStorage";
 import { performSecurityScan } from "./securityScanService";
 import { processDocument, retryProcessing } from "./processingQueueService";
 import { API_BASE_URL, DEFAULT_COLLECTION_NAME } from "@/config/api";
+import { tokenStorage } from "./authService";
+
+// Helper function to get auth headers
+const getAuthHeaders = (): Record<string, string> => {
+  const token = tokenStorage.getAccessToken();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return headers;
+};
 
 // Mock data storage (in a real app, this would be API calls)
 let mockProjects: Project[] = [];
@@ -111,9 +125,8 @@ export const projectsApi = {
       const response = await fetch(`${API_BASE_URL}/api/v1/projects/?${queryParams.toString()}`, {
         method: "GET",
         headers: {
-          "Content-Type": "application/json",
+          ...getAuthHeaders(),
           "Cache-Control": "no-cache",
-          // Add authentication headers if needed
         },
         cache: "no-store", // Prevent browser caching
       });
@@ -172,9 +185,7 @@ export const projectsApi = {
     try {
       const response = await fetch(`${API_BASE_URL}/api/v1/projects/${id}`, {
         method: "GET",
-        headers: {
-          // Add authentication headers if needed
-        },
+        headers: getAuthHeaders(),
       });
 
       if (!response.ok) {
@@ -210,8 +221,7 @@ export const projectsApi = {
       const response = await fetch(`${API_BASE_URL}/api/v1/projects/`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          // Add authentication headers if needed
+          ...getAuthHeaders(),
         },
         body: JSON.stringify({
           name: data.name,
@@ -278,9 +288,8 @@ export const projectsApi = {
       const response = await fetch(`${API_BASE_URL}/api/v1/projects/${id}`, {
         method: "PUT",
         headers: {
-          "Content-Type": "application/json",
+          ...getAuthHeaders(),
           "Cache-Control": "no-cache",
-          // Add authentication headers if needed
         },
         cache: "no-store",
         body: JSON.stringify(body),
@@ -327,9 +336,7 @@ export const projectsApi = {
     try {
       const response = await fetch(`${API_BASE_URL}/api/v1/projects/${id}`, {
         method: "DELETE",
-        headers: {
-          // Add authentication headers if needed
-        },
+        headers: getAuthHeaders(),
       });
 
       if (!response.ok) {
@@ -360,9 +367,8 @@ export const projectsApi = {
       const response = await fetch(`${API_BASE_URL}/api/v1/projects/hierarchy`, {
         method: "GET",
         headers: {
-          "Content-Type": "application/json",
+          ...getAuthHeaders(),
           "Cache-Control": "no-cache",
-          // Add authentication headers if needed
         },
         cache: "no-store", // Prevent browser caching
       });
@@ -429,7 +435,7 @@ export const documentsApi = {
       const response = await fetch(`${API_BASE_URL}/api/v1/documents/?${queryParams.toString()}`, {
         method: "GET",
         headers: {
-          // Add authentication headers if needed
+          ...getAuthHeaders(),
         },
       });
 
@@ -625,8 +631,7 @@ export const documentsApi = {
       const response = await fetch(`${API_BASE_URL}/api/v1/documents/${id}`, {
         method: "GET",
         headers: {
-          "Content-Type": "application/json",
-          // Add authentication headers if needed
+          ...getAuthHeaders(),
         },
       });
 
@@ -682,10 +687,13 @@ export const documentsApi = {
       }
 
       // Upload to backend
+      const authHeaders = getAuthHeaders();
+      // Remove Content-Type from auth headers for FormData (browser will set it with boundary)
+      delete authHeaders["Content-Type"];
       const response = await fetch(`${API_BASE_URL}/api/v1/documents/upload`, {
         method: "POST",
+        headers: authHeaders,
         body: formData,
-        // Don't set Content-Type header - browser will set it with boundary for FormData
       });
 
       if (!response.ok) {
@@ -733,11 +741,34 @@ export const documentsApi = {
   
   async getFileUrl(id: string): Promise<string | null> {
     try {
-      // Use backend download endpoint
+      // Fetch the PDF with auth headers and create a blob URL
+      // This is necessary because iframes can't send Authorization headers
       const url = `${API_BASE_URL}/api/v1/documents/${id}/download`;
-      console.log("Generated document file URL:", url, "for document ID:", id);
-      // Return the URL directly - the PDF viewer will handle the request
-      return url;
+      console.log("Fetching document file URL:", url, "for document ID:", id);
+      
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          ...getAuthHeaders(),
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: `HTTP ${response.status}` }));
+        throw new Error(error.detail || `Failed to fetch document: HTTP ${response.status}`);
+      }
+
+      // Get the file as a blob
+      const blob = await response.blob();
+      
+      // Create a blob URL
+      const blobUrl = URL.createObjectURL(blob);
+      
+      // Store the blob URL in the map for cleanup later
+      documentFileMap.set(id, blobUrl);
+      
+      console.log("Created blob URL for document:", id, blobUrl);
+      return blobUrl;
     } catch (error) {
       console.error("Failed to get document file URL:", error);
       // Fallback to mock blob URL if available
@@ -844,8 +875,7 @@ export const documentsApi = {
             const addResponse = await fetch(`${API_BASE_URL}/api/v1/documents/${id}/tags`, {
               method: "POST",
               headers: {
-                "Content-Type": "application/json",
-                // Add authentication headers if needed
+                ...getAuthHeaders(),
               },
               body: JSON.stringify({ tag_ids: tagsToAdd }),
             });
@@ -865,8 +895,7 @@ export const documentsApi = {
             const removeResponse = await fetch(`${API_BASE_URL}/api/v1/documents/${id}/tags/${tagId}`, {
               method: "DELETE",
               headers: {
-                "Content-Type": "application/json",
-                // Add authentication headers if needed
+                ...getAuthHeaders(),
               },
             });
             
@@ -896,7 +925,7 @@ export const documentsApi = {
       const updateResponse = await fetch(`${API_BASE_URL}/api/v1/documents/${id}`, {
         method: "PUT",
         headers: {
-          "Content-Type": "application/json",
+          ...getAuthHeaders(),
           "Cache-Control": "no-cache",
         },
         cache: "no-store",
@@ -939,7 +968,7 @@ export const documentsApi = {
       const response = await fetch(`${API_BASE_URL}/api/v1/documents/${id}`, {
         method: "DELETE",
         headers: {
-          // Add authentication headers if needed
+          ...getAuthHeaders(),
         },
       });
 
@@ -983,8 +1012,7 @@ export const documentsApi = {
             const response = await fetch(`${API_BASE_URL}/api/v1/documents/${docId}/tags`, {
               method: "POST",
               headers: {
-                "Content-Type": "application/json",
-                // Add authentication headers if needed
+                ...getAuthHeaders(),
               },
               body: JSON.stringify({ tag_ids: request.payload.tags }),
             });
@@ -1007,8 +1035,7 @@ export const documentsApi = {
               const response = await fetch(`${API_BASE_URL}/api/v1/documents/${docId}/tags/${tagId}`, {
                 method: "DELETE",
                 headers: {
-                  "Content-Type": "application/json",
-                  // Add authentication headers if needed
+                  ...getAuthHeaders(),
                 },
               });
               
@@ -1081,8 +1108,7 @@ export const tagsApi = {
       const response = await fetch(`${API_BASE_URL}/api/v1/tags/`, {
         method: "GET",
         headers: {
-          "Content-Type": "application/json",
-          // Add authentication headers if needed
+          ...getAuthHeaders(),
         },
       });
 
@@ -1117,8 +1143,7 @@ export const tagsApi = {
       const response = await fetch(`${API_BASE_URL}/api/v1/tags/`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          // Add authentication headers if needed
+          ...getAuthHeaders(),
         },
         body: JSON.stringify({
           name,
@@ -1170,8 +1195,7 @@ export const tagsApi = {
       const response = await fetch(`${API_BASE_URL}/api/v1/tags/${id}`, {
         method: "PUT",
         headers: {
-          "Content-Type": "application/json",
-          // Add authentication headers if needed
+          ...getAuthHeaders(),
         },
         body: JSON.stringify(updateData),
       });
@@ -1218,8 +1242,7 @@ export const tagsApi = {
       const response = await fetch(`${API_BASE_URL}/api/v1/tags/${id}`, {
         method: "DELETE",
         headers: {
-          "Content-Type": "application/json",
-          // Add authentication headers if needed
+          ...getAuthHeaders(),
         },
       });
 
@@ -1272,8 +1295,7 @@ export const insightsApi = {
       const response = await fetch(`${API_BASE_URL}/api/v1/documents/${documentId}/insights`, {
         method: "GET",
         headers: {
-          "Content-Type": "application/json",
-          // Add authentication headers if needed
+          ...getAuthHeaders(),
         },
       });
 
@@ -1446,7 +1468,7 @@ export const crossDocumentApi = {
       const response = await fetch(`${API_BASE_URL}/api/v1/documents/compare`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
+          ...getAuthHeaders(),
         },
         body: JSON.stringify(documentIds),
       });
@@ -1857,8 +1879,7 @@ export const queryApi = {
       const response = await fetch(`${API_BASE_URL}/api/v1/query/`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          // Add authentication headers if needed
+          ...getAuthHeaders(),
         },
         body: JSON.stringify(request),
         signal, // Support cancellation
@@ -1898,10 +1919,7 @@ export const queryApi = {
   ): Promise<void> {
     const response = await fetch(`${API_BASE_URL}/api/v1/query/stream`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        // Add authentication headers if needed
-      },
+        headers: getAuthHeaders(),
       body: JSON.stringify(request),
     });
 
@@ -1954,9 +1972,7 @@ export const queryApi = {
   async getHistory(): Promise<QueryHistoryResponse> {
     const response = await fetch(`${API_BASE_URL}/api/v1/query/history`, {
       method: "GET",
-      headers: {
-        // Add authentication headers if needed
-      },
+        headers: getAuthHeaders(),
     });
 
     if (!response.ok) {
@@ -1975,9 +1991,7 @@ export const tasksApi = {
   async getTaskStatus(taskId: string): Promise<any> {
     const response = await fetch(`${API_BASE_URL}/api/v1/tasks/${taskId}`, {
       method: "GET",
-      headers: {
-        // Add authentication headers if needed
-      },
+        headers: getAuthHeaders(),
     });
 
     if (!response.ok) {
@@ -2002,9 +2016,7 @@ export const tasksApi = {
 
     const response = await fetch(`${API_BASE_URL}/api/v1/tasks?${params.toString()}`, {
       method: "GET",
-      headers: {
-        // Add authentication headers if needed
-      },
+        headers: getAuthHeaders(),
     });
 
     if (!response.ok) {
@@ -2012,6 +2024,142 @@ export const tasksApi = {
     }
 
     return response.json();
+  },
+};
+
+// Saved Analyses API
+export const savedAnalysesApi = {
+  /**
+   * List all saved analyses for the current user
+   */
+  async list(): Promise<SavedCrossDocumentAnalysis[]> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/analyses`, {
+        method: "GET",
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      // Map backend response to SavedCrossDocumentAnalysis format
+      return (data.analyses || []).map((analysis: any) => ({
+        id: analysis.id,
+        documentIds: analysis.document_ids || [],
+        documentNames: analysis.document_names || [],
+        savedAt: analysis.created_at || analysis.updated_at || new Date().toISOString(),
+        hasComparison: analysis.has_comparison || false,
+        hasPatterns: analysis.has_patterns || false,
+        hasContradictions: analysis.has_contradictions || false,
+        hasMessages: analysis.has_messages || false,
+      }));
+    } catch (error) {
+      console.error("Failed to list saved analyses:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Create or update a saved analysis
+   */
+  async create(analysis: {
+    documentIds: string[];
+    documentNames: string[];
+    hasComparison: boolean;
+    hasPatterns: boolean;
+    hasContradictions: boolean;
+    hasMessages: boolean;
+  }): Promise<SavedCrossDocumentAnalysis> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/analyses`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          document_ids: analysis.documentIds,
+          document_names: analysis.documentNames,
+          has_comparison: analysis.hasComparison,
+          has_patterns: analysis.hasPatterns,
+          has_contradictions: analysis.hasContradictions,
+          has_messages: analysis.hasMessages,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      // Map backend response to SavedCrossDocumentAnalysis format
+      return {
+        id: data.id,
+        documentIds: data.document_ids || [],
+        documentNames: data.document_names || [],
+        savedAt: data.created_at || data.updated_at || new Date().toISOString(),
+        hasComparison: data.has_comparison || false,
+        hasPatterns: data.has_patterns || false,
+        hasContradictions: data.has_contradictions || false,
+        hasMessages: data.has_messages || false,
+      };
+    } catch (error) {
+      console.error("Failed to create saved analysis:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get a saved analysis by ID
+   */
+  async get(analysisId: string): Promise<SavedCrossDocumentAnalysis> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/analyses/${analysisId}`, {
+        method: "GET",
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      // Map backend response to SavedCrossDocumentAnalysis format
+      return {
+        id: data.id,
+        documentIds: data.document_ids || [],
+        documentNames: data.document_names || [],
+        savedAt: data.created_at || data.updated_at || new Date().toISOString(),
+        hasComparison: data.has_comparison || false,
+        hasPatterns: data.has_patterns || false,
+        hasContradictions: data.has_contradictions || false,
+        hasMessages: data.has_messages || false,
+      };
+    } catch (error) {
+      console.error("Failed to get saved analysis:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Delete a saved analysis
+   */
+  async delete(analysisId: string): Promise<void> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/analyses/${analysisId}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error("Failed to delete saved analysis:", error);
+      throw error;
+    }
   },
 };
 

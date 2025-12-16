@@ -18,6 +18,8 @@ import {
   FileText,
   Folder,
   Command,
+  LayoutDashboard,
+  User,
 } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 
@@ -80,6 +82,7 @@ const ProfileIcon = () => (
 );
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Notification {
   id: string;
@@ -118,16 +121,10 @@ export const GlobalNavBar = ({ onSearch }: GlobalNavBarProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const { user, logout: authLogout } = useAuth();
   
   // Check if we're on dashboard or settings page (show logo only on these pages)
   const showLogo = location.pathname === "/app" || location.pathname === "/app/" || location.pathname === "/app/settings";
-
-  // Mock user data - replace with actual auth context when available
-  const user = {
-    name: "John Doe",
-    email: "john.doe@example.com",
-    avatar: undefined,
-  };
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -155,13 +152,21 @@ export const GlobalNavBar = ({ onSearch }: GlobalNavBarProps) => {
     });
   };
 
-  const handleLogout = () => {
-    // TODO: Implement actual logout logic when auth is available
+  const handleLogout = async () => {
+    try {
+      await authLogout();
     toast({
       title: "Logged out",
       description: "You have been successfully logged out.",
     });
-    navigate("/");
+      navigate("/login");
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to logout. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleMarkAllAsRead = () => {
@@ -401,12 +406,13 @@ export const GlobalNavBar = ({ onSearch }: GlobalNavBarProps) => {
           </DropdownMenu>
 
           {/* User Profile Menu */}
+          {user && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="relative h-9 w-9 rounded-lg hover:bg-muted/50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-foreground/20 focus:ring-offset-2 focus:ring-offset-background">
-                <Avatar className="h-9 w-9 ring-2 ring-border/40 ring-offset-0 transition-all duration-200 hover:ring-border/60">
+                <button className="relative h-8 w-8 rounded-lg hover:bg-muted/50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-foreground/20 focus:ring-offset-2 focus:ring-offset-background">
+                  <Avatar className="h-8 w-8 ring-1 ring-border/30 ring-offset-0 transition-all duration-200 hover:ring-border/50">
                   <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback className="bg-gradient-to-br from-foreground/15 to-foreground/8 text-foreground font-semibold text-sm">
+                    <AvatarFallback className="bg-gradient-to-br from-foreground/12 to-foreground/6 text-foreground font-semibold text-[11px]">
                     {user.name
                       .split(" ")
                       .map((n) => n[0])
@@ -416,13 +422,13 @@ export const GlobalNavBar = ({ onSearch }: GlobalNavBarProps) => {
                 </Avatar>
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[240px] rounded-xl border border-border/40 bg-background/95 backdrop-blur-xl shadow-2xl p-0 overflow-hidden">
+              <DropdownMenuContent align="end" className="w-[200px] rounded-lg border border-border/50 bg-background shadow-xl p-1.5 overflow-hidden">
               {/* Profile Header */}
-              <div className="px-5 py-4 border-b border-border/30 bg-muted/20">
-                <div className="flex items-center gap-3 mb-3">
-                  <Avatar className="h-11 w-11 ring-2 ring-border/30">
+                <div className="px-3 py-2.5 border-b border-border/20">
+                  <div className="flex items-center gap-2.5">
+                    <Avatar className="h-8 w-8 ring-1 ring-border/20">
                     <AvatarImage src={user.avatar} alt={user.name} />
-                    <AvatarFallback className="bg-gradient-to-br from-foreground/15 to-foreground/8 text-foreground font-semibold">
+                      <AvatarFallback className="bg-gradient-to-br from-foreground/12 to-foreground/6 text-foreground font-semibold text-[11px]">
                       {user.name
                         .split(" ")
                         .map((n) => n[0])
@@ -431,10 +437,10 @@ export const GlobalNavBar = ({ onSearch }: GlobalNavBarProps) => {
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground leading-tight truncate">
+                      <p className="text-[13px] font-semibold text-foreground leading-tight truncate">
                       {user.name}
                     </p>
-                    <p className="text-xs text-muted-foreground/70 leading-tight truncate mt-0.5">
+                      <p className="text-[11px] text-muted-foreground/70 leading-tight truncate">
                       {user.email}
                     </p>
                   </div>
@@ -442,41 +448,49 @@ export const GlobalNavBar = ({ onSearch }: GlobalNavBarProps) => {
               </div>
 
               {/* Menu Items */}
-              <div className="py-2">
+              <div className="py-1">
+                <DropdownMenuItem asChild className="px-0 mx-0">
+                  <Link 
+                    to="/app" 
+                    className="flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium text-foreground/90 hover:text-foreground transition-colors duration-150 hover:bg-muted/50 rounded-md w-full"
+                  >
+                    <LayoutDashboard className="h-3.5 w-3.5 text-muted-foreground/70" />
+                    <span>Dashboard</span>
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuItem asChild className="px-0 mx-0">
                   <Link 
                     to="/app/profile" 
-                    className="flex items-center gap-3 px-5 py-2.5 text-sm font-medium text-foreground/90 hover:text-foreground transition-colors duration-200 hover:bg-muted/40 w-full"
+                    className="flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium text-foreground/90 hover:text-foreground transition-colors duration-150 hover:bg-muted/50 rounded-md w-full"
                   >
-                    <div className="h-4 w-4 text-muted-foreground/60">
-                      <ProfileIcon />
-                    </div>
+                    <User className="h-3.5 w-3.5 text-muted-foreground/70" />
                     <span>Profile</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild className="px-0 mx-0">
                   <Link 
                     to="/app/settings" 
-                    className="flex items-center gap-3 px-5 py-2.5 text-sm font-medium text-foreground/90 hover:text-foreground transition-colors duration-200 hover:bg-muted/40 w-full"
+                    className="flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium text-foreground/90 hover:text-foreground transition-colors duration-150 hover:bg-muted/50 rounded-md w-full"
                   >
-                    <Settings className="h-4 w-4 text-muted-foreground/60" />
+                    <Settings className="h-3.5 w-3.5 text-muted-foreground/70" />
                     <span>Settings</span>
                   </Link>
                 </DropdownMenuItem>
               </div>
 
               {/* Logout Section */}
-              <div className="border-t border-border/30 bg-muted/10">
+              <div className="border-t border-border/20 pt-1">
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-5 py-2.5 text-sm font-semibold text-destructive/90 hover:text-destructive transition-colors duration-200 hover:bg-destructive/10"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium text-destructive/90 hover:text-destructive transition-colors duration-150 hover:bg-destructive/10 rounded-md"
                 >
-                  <LogOut className="h-4 w-4" />
+                  <LogOut className="h-3.5 w-3.5" />
                   <span>Logout</span>
                 </button>
               </div>
             </DropdownMenuContent>
           </DropdownMenu>
+          )}
         </div>
       </div>
 

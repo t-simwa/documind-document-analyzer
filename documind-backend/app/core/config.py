@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "your-secret-key-change-in-production-use-openssl-rand-hex-32"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     
     # Rate Limiting
     RATE_LIMIT_ENABLED: bool = True
