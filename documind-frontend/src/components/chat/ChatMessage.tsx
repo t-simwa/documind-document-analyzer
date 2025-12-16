@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils";
 import { User, FileText, ExternalLink, Copy, Check, ThumbsUp, ThumbsDown, ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import type { QueryStatus } from "@/types/api";
 
 interface Citation {
   text: string;
@@ -15,6 +16,7 @@ interface ChatMessageProps {
   citations?: Citation[];
   isLoading?: boolean;
   timestamp?: Date;
+  status?: QueryStatus;
   onCitationClick?: (citation: Citation) => void;
 }
 
@@ -392,6 +394,7 @@ export const ChatMessage = ({
   citations,
   isLoading,
   timestamp,
+  status,
   onCitationClick,
 }: ChatMessageProps) => {
   const isUser = role === "user";

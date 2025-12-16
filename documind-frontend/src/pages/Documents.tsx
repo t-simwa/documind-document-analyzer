@@ -35,6 +35,8 @@ const processingSteps = [
   { id: "index", label: "Indexing", description: "Building retrieval index", status: "pending" as const },
 ];
 
+import type { QueryStatus } from "@/types/api";
+
 interface Message {
   id: string;
   role: "user" | "assistant";
@@ -45,6 +47,9 @@ interface Message {
     section?: string;
   }>;
   timestamp: Date;
+  status?: QueryStatus;
+  error?: string;
+  canRetry?: boolean;
 }
 
 const Documents = () => {
@@ -69,6 +74,10 @@ const Documents = () => {
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   
+  // Query cancellation
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
+  const [queryStatus, setQueryStatus] = useState<QueryStatus>("idle");
+  
   // Query configuration state (persisted to localStorage)
   const [queryConfig, setQueryConfig] = useState<QueryConfig>(() => {
     const saved = localStorage.getItem("queryConfig");
@@ -86,6 +95,15 @@ const Documents = () => {
   useEffect(() => {
     localStorage.setItem("queryConfig", JSON.stringify(queryConfig));
   }, [queryConfig]);
+
+  // Cleanup abort controller on unmount
+  useEffect(() => {
+    return () => {
+      if (abortController) {
+        abortController.abort();
+      }
+    };
+  }, [abortController]);
 
   const selectedDocument = documents.find((d) => d.id === selectedDocId);
 
@@ -517,7 +535,7 @@ const Documents = () => {
     }
   };
 
-  const handleSendMessage = async (message: string) => {
+  const handleSendMessage = async (message: string, retryMessageId?: string) => {
     if (!selectedDocument) return;
 
     // Check if document is ready (indexed)
@@ -547,20 +565,48 @@ const Documents = () => {
       // Continue anyway - backend will handle if not indexed
     }
 
-    // Add user message to UI immediately
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: message,
-      timestamp: new Date(),
-    };
+    // Cancel any existing query
+    if (abortController) {
+      abortController.abort();
+    }
 
-    setMessages((prev) => [...prev, userMessage]);
+    // Create new AbortController for this query
+    const controller = new AbortController();
+    setAbortController(controller);
+    setQueryStatus("retrieving");
+
+    // Remove retry message if retrying
+    if (retryMessageId) {
+      setMessages((prev) => prev.filter((msg) => msg.id !== retryMessageId));
+    }
+
+    // Add user message to UI immediately (if not retrying)
+    if (!retryMessageId) {
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        role: "user",
+        content: message,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, userMessage]);
+    }
+
+    // Create placeholder assistant message with status
+    const assistantMessageId = (Date.now() + 1).toString();
+    const placeholderMessage: Message = {
+      id: assistantMessageId,
+      role: "assistant",
+      content: "",
+      timestamp: new Date(),
+      status: "retrieving",
+    };
+    setMessages((prev) => [...prev, placeholderMessage]);
     setIsLoading(true);
 
     try {
-      // Prepare conversation history (last 10 messages)
+      // Prepare conversation history (last 10 messages, excluding the placeholder)
       const conversationHistory = messages
+        .filter((msg) => msg.id !== assistantMessageId)
         .slice(-10)
         .map((msg) => ({
           role: msg.role,
@@ -579,7 +625,27 @@ const Documents = () => {
       if (cachedResponse) {
         // Use cached response
         response = cachedResponse;
+        setQueryStatus("completed");
       } else {
+        // Update status to retrieving
+        setQueryStatus("retrieving");
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === assistantMessageId ? { ...msg, status: "retrieving" } : msg
+          )
+        );
+
+        // Simulate retrieval phase (backend doesn't provide phase info, so we estimate)
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        // Update status to generating
+        setQueryStatus("generating");
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === assistantMessageId ? { ...msg, status: "generating" } : msg
+          )
+        );
+
         // Prepare query request with config
         const queryRequest: QueryRequest = {
           query: message,
@@ -594,8 +660,8 @@ const Documents = () => {
           max_tokens: queryConfig.max_tokens,
         };
 
-        // Call query API
-        response = await queryApi.query(queryRequest);
+        // Call query API with abort signal
+        response = await queryApi.query(queryRequest, controller.signal);
         
         // Cache the response
         cacheQuery(
@@ -605,6 +671,7 @@ const Documents = () => {
           queryConfig,
           response
         );
+        setQueryStatus("completed");
       }
 
       // Map backend citations to frontend format
@@ -626,22 +693,26 @@ const Documents = () => {
         formattedAnswer = formattedAnswer.replace(/\*\*/g, '');
       }
 
-      // Add assistant response to messages
+      // Update assistant message with response
       const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
+        id: assistantMessageId,
         role: "assistant",
         content: formattedAnswer,
         citations: citations,
         timestamp: new Date(response.generated_at),
+        status: "completed",
       };
 
-      setMessages((prev) => [...prev, assistantMessage]);
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === assistantMessageId ? assistantMessage : msg))
+      );
     } catch (error) {
       console.error("Query failed:", error);
       const errorMessageText = error instanceof Error ? error.message : "Failed to get answer. Please try again.";
+      const isCancelled = errorMessageText === "Query cancelled";
       
       // Log detailed error for debugging
-      if (error instanceof Error) {
+      if (error instanceof Error && !isCancelled) {
         console.error("Error details:", {
           message: error.message,
           stack: error.stack,
@@ -649,22 +720,56 @@ const Documents = () => {
         });
       }
       
-      toast({
-        title: "Query Failed",
-        description: errorMessageText,
-        variant: "destructive",
-      });
+      if (!isCancelled) {
+        toast({
+          title: "Query Failed",
+          description: errorMessageText,
+          variant: "destructive",
+        });
+      }
 
-      // Optionally add error message to chat
+      // Update message with error status
       const errorMessage: Message = {
-      id: (Date.now() + 1).toString(),
-      role: "assistant",
-        content: "Sorry, I encountered an error while processing your query. Please try again.",
-      timestamp: new Date(),
-    };
-      setMessages((prev) => [...prev, errorMessage]);
+        id: assistantMessageId,
+        role: "assistant",
+        content: isCancelled
+          ? "Query was cancelled."
+          : "Sorry, I encountered an error while processing your query. Please try again.",
+        timestamp: new Date(),
+        status: isCancelled ? "cancelled" : "error",
+        error: errorMessageText,
+        canRetry: !isCancelled,
+      };
+      
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === assistantMessageId ? errorMessage : msg))
+      );
+      setQueryStatus(isCancelled ? "cancelled" : "error");
     } finally {
-    setIsLoading(false);
+      setIsLoading(false);
+      setAbortController(null);
+      setQueryStatus("idle");
+    }
+  };
+
+  const handleCancelQuery = () => {
+    if (abortController) {
+      abortController.abort();
+      setAbortController(null);
+      setQueryStatus("cancelled");
+      setIsLoading(false);
+    }
+  };
+
+  const handleRetryQuery = (messageId: string) => {
+    // Find the error message and the user message before it
+    const errorIndex = messages.findIndex((msg) => msg.id === messageId);
+    if (errorIndex > 0) {
+      const userMessage = messages[errorIndex - 1];
+      if (userMessage.role === "user") {
+        // Remove the error message and retry with the user's query
+        handleSendMessage(userMessage.content, messageId);
+      }
     }
   };
 
@@ -819,6 +924,9 @@ const Documents = () => {
             onSendMessage={handleSendMessage}
             onClearHistory={handleClearHistory}
             isLoading={isLoading}
+            queryStatus={queryStatus}
+            onCancelQuery={handleCancelQuery}
+            onRetryQuery={handleRetryQuery}
             onCitationClick={(citation) => {
               // Handle citation click - scroll to page in document viewer
               toast({

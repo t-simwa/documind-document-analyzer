@@ -1,5 +1,7 @@
 // API Types and Interfaces
 
+export type QueryStatus = "idle" | "retrieving" | "generating" | "completed" | "error" | "cancelled";
+
 export interface Project {
   id: string;
   name: string;

@@ -6,7 +6,7 @@ import { DocumentViewer } from "@/components/document-viewer/DocumentViewer";
 import { AnalysisTabs } from "./AnalysisTabs";
 import { cn } from "@/lib/utils";
 import { insightsApi } from "@/services/api";
-import type { Document, DocumentInsights } from "@/types/api";
+import type { Document, DocumentInsights, QueryStatus } from "@/types/api";
 import type { QueryConfig } from "@/types/query";
 
 interface Citation {
@@ -21,15 +21,21 @@ interface Message {
   content: string;
   citations?: Citation[];
   timestamp: Date;
+  status?: QueryStatus;
+  error?: string;
+  canRetry?: boolean;
 }
 
 interface SplitScreenAnalysisProps {
   document: Document | null;
   documentUrl?: string;
   messages: Message[];
-  onSendMessage: (message: string) => void;
+  onSendMessage: (message: string, retryMessageId?: string) => void;
   onClearHistory: () => void;
   isLoading?: boolean;
+  queryStatus?: QueryStatus;
+  onCancelQuery?: () => void;
+  onRetryQuery?: (messageId: string) => void;
   onCitationClick?: (citation: Citation) => void;
   queryConfig?: QueryConfig;
   onQueryConfigChange?: (config: QueryConfig) => void;
@@ -42,6 +48,9 @@ export const SplitScreenAnalysis = ({
   onSendMessage,
   onClearHistory,
   isLoading,
+  queryStatus,
+  onCancelQuery,
+  onRetryQuery,
   onCitationClick,
   queryConfig,
   onQueryConfigChange,
@@ -211,6 +220,9 @@ export const SplitScreenAnalysis = ({
                 onSendMessage={onSendMessage}
                 onClearHistory={onClearHistory}
                 isLoading={isLoading}
+                queryStatus={queryStatus}
+                onCancelQuery={onCancelQuery}
+                onRetryQuery={onRetryQuery}
                 documentId={document?.id}
                 documentName={document?.name}
                 onCitationClick={handleCitationClick}

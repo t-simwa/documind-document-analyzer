@@ -3,13 +3,22 @@ import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
 import { QueryHistory } from "./QueryHistory";
 import { QueryConfigDialog } from "./QueryConfigDialog";
+import { QueryStatusIndicator } from "./QueryStatusIndicator";
 import { Button } from "@/components/ui/button";
-import { RotateCcw, Download, FileSearch, Settings2 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { RotateCcw, Download, Settings2, MoreVertical } from "lucide-react";
 import { SuggestedQuestions } from "@/components/analysis/SuggestedQuestions";
 import { ExportDialog } from "@/components/sharing/ExportDialog";
 import { DEFAULT_COLLECTION_NAME } from "@/config/api";
 import type { DocumentSummary } from "@/types/api";
 import type { QueryConfig } from "@/types/query";
+import type { QueryStatus } from "@/types/api";
 import { DEFAULT_QUERY_CONFIG } from "@/types/query";
 
 interface Message {
@@ -22,13 +31,19 @@ interface Message {
     section?: string;
   }>;
   timestamp: Date;
+  status?: QueryStatus;
+  error?: string;
+  canRetry?: boolean;
 }
 
 interface ChatInterfaceProps {
   messages: Message[];
-  onSendMessage: (message: string) => void;
+  onSendMessage: (message: string, retryMessageId?: string) => void;
   onClearHistory: () => void;
   isLoading?: boolean;
+  queryStatus?: QueryStatus;
+  onCancelQuery?: () => void;
+  onRetryQuery?: (messageId: string) => void;
   documentId?: string;
   documentName?: string;
   summary?: DocumentSummary;
@@ -44,6 +59,9 @@ export const ChatInterface = ({
   onSendMessage,
   onClearHistory,
   isLoading,
+  queryStatus = "idle",
+  onCancelQuery,
+  onRetryQuery,
   documentId,
   documentName,
   summary,
@@ -68,31 +86,6 @@ export const ChatInterface = ({
         <div className="max-w-3xl mx-auto px-6 py-8">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12">
-              <div className="w-14 h-14 rounded-xl bg-muted/40 flex items-center justify-center mb-5 border border-border/50">
-                <FileSearch className="h-6 w-6 text-muted-foreground" />
-              </div>
-              <div className="text-center space-y-1 mb-6">
-                <h3 className="text-xl font-semibold tracking-tight text-foreground">Start your analysis</h3>
-                <p className="text-xs text-muted-foreground max-w-md">
-                  Ask questions about your document to extract insights and information
-                </p>
-              </div>
-
-              {/* Settings button in empty state */}
-              {onQueryConfigChange && (
-                <div className="mb-4">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setConfigDialogOpen(true)}
-                    className="h-8 text-xs"
-                  >
-                    <Settings2 className="h-3 w-3 mr-1.5" />
-                    Configure Query Settings
-                  </Button>
-                </div>
-              )}
-              
               {/* Suggested Questions */}
               {suggestedQuestions && suggestedQuestions.length > 0 && (
                 <div className="w-full max-w-2xl mb-6">
@@ -128,18 +121,50 @@ export const ChatInterface = ({
           ) : (
             <div className="space-y-6">
               {messages.map((message) => (
-                <ChatMessage
-                  key={message.id}
-                  role={message.role}
-                  content={message.content}
-                  citations={message.citations}
-                  timestamp={message.timestamp}
-                  onCitationClick={onCitationClick}
-                />
+                <div key={message.id} className="space-y-2">
+                  <ChatMessage
+                    role={message.role}
+                    content={message.content}
+                    citations={message.citations}
+                    timestamp={message.timestamp}
+                    onCitationClick={onCitationClick}
+                    status={message.status}
+                    isLoading={message.status === "retrieving" || message.status === "generating"}
+                  />
+                  {/* Status indicator for loading/error states */}
+                  {message.status && message.status !== "completed" && (
+                    <div className="max-w-3xl mx-auto px-6">
+                      <QueryStatusIndicator
+                        status={message.status}
+                        onCancel={message.status === "retrieving" || message.status === "generating" ? onCancelQuery : undefined}
+                      />
+                    </div>
+                  )}
+                  {/* Retry button for error messages */}
+                  {message.status === "error" && message.canRetry && onRetryQuery && (
+                    <div className="max-w-3xl mx-auto px-6">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onRetryQuery(message.id)}
+                        className="h-7 text-xs"
+                      >
+                        <RotateCcw className="h-3 w-3 mr-1.5" />
+                        Retry Query
+                      </Button>
+                    </div>
+                  )}
+                </div>
               ))}
 
-              {isLoading && (
-                <ChatMessage role="assistant" content="" isLoading={true} />
+              {/* Global status indicator when loading but no message yet */}
+              {isLoading && queryStatus !== "idle" && messages.length > 0 && !messages[messages.length - 1]?.status && (
+                <div className="max-w-3xl mx-auto px-6">
+                  <QueryStatusIndicator
+                    status={queryStatus}
+                    onCancel={onCancelQuery}
+                  />
+                </div>
               )}
 
               <div ref={messagesEndRef} />
@@ -148,61 +173,50 @@ export const ChatInterface = ({
         </div>
       </div>
 
-      {/* Footer Actions */}
-      {messages.length > 0 && (
-        <div className="flex items-center justify-between px-6 py-2.5 border-t border-border/50 bg-card/30 backdrop-blur-sm">
-          <div className="flex items-center gap-1.5">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onClearHistory}
-              className="h-7 text-xs text-muted-foreground hover:text-foreground"
-            >
-              <RotateCcw className="h-3 w-3 mr-1.5" />
-              Clear history
-            </Button>
-            {onQueryConfigChange && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setConfigDialogOpen(true)}
-                className="h-7 text-xs text-muted-foreground hover:text-foreground"
-              >
-                <Settings2 className="h-3 w-3 mr-1.5" />
-                Settings
-              </Button>
-            )}
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 text-xs text-muted-foreground hover:text-foreground"
-            onClick={() => setExportDialogOpen(true)}
-          >
-            <Download className="h-3 w-3 mr-1.5" />
-            Export conversation
-          </Button>
-        </div>
-      )}
-
-      {/* Settings button when no messages (always visible) */}
-      {messages.length === 0 && onQueryConfigChange && (
-        <div className="flex items-center justify-end px-6 py-2 border-t border-border/50 bg-card/30 backdrop-blur-sm">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setConfigDialogOpen(true)}
-            className="h-7 text-xs text-muted-foreground hover:text-foreground"
-          >
-            <Settings2 className="h-3 w-3 mr-1.5" />
-            Query Settings
-          </Button>
-        </div>
-      )}
-
       {/* Input */}
       <div className="border-t border-border/50 bg-card/30 backdrop-blur-sm">
-        <ChatInput onSendMessage={onSendMessage} isLoading={isLoading} />
+        <div className="flex items-center gap-2 px-6 py-2.5">
+          <div className="flex-1">
+            <ChatInput onSendMessage={onSendMessage} isLoading={isLoading} />
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+              >
+                <MoreVertical className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              {messages.length > 0 && (
+                <>
+                  <DropdownMenuItem onClick={onClearHistory}>
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Clear history
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              )}
+              {onQueryConfigChange && (
+                <>
+                  <DropdownMenuItem onClick={() => setConfigDialogOpen(true)}>
+                    <Settings2 className="h-4 w-4 mr-2" />
+                    Query Settings
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              )}
+              {messages.length > 0 && (
+                <DropdownMenuItem onClick={() => setExportDialogOpen(true)}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Export conversation
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* Query History */}

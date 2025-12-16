@@ -7,7 +7,7 @@ import { SummaryTab } from "./SummaryTab";
 import { ExtractsTab } from "./ExtractsTab";
 import { ShareAnalysisDialog } from "@/components/sharing/ShareAnalysisDialog";
 import { CommentsPanel } from "@/components/sharing/CommentsPanel";
-import type { DocumentInsights } from "@/types/api";
+import type { DocumentInsights, QueryStatus } from "@/types/api";
 import type { QueryConfig } from "@/types/query";
 
 interface Message {
@@ -20,13 +20,19 @@ interface Message {
     section?: string;
   }>;
   timestamp: Date;
+  status?: QueryStatus;
+  error?: string;
+  canRetry?: boolean;
 }
 
 interface AnalysisTabsProps {
   messages: Message[];
-  onSendMessage: (message: string) => void;
+  onSendMessage: (message: string, retryMessageId?: string) => void;
   onClearHistory: () => void;
   isLoading?: boolean;
+  queryStatus?: QueryStatus;
+  onCancelQuery?: () => void;
+  onRetryQuery?: (messageId: string) => void;
   documentId?: string;
   documentName?: string;
   onCitationClick?: (citation: { text: string; page?: number; section?: string }) => void;
@@ -43,6 +49,9 @@ export const AnalysisTabs = ({
   onSendMessage,
   onClearHistory,
   isLoading,
+  queryStatus,
+  onCancelQuery,
+  onRetryQuery,
   documentId,
   documentName,
   onCitationClick,
@@ -117,6 +126,9 @@ export const AnalysisTabs = ({
               onSendMessage={onSendMessage}
               onClearHistory={onClearHistory}
               isLoading={isLoading}
+              queryStatus={queryStatus}
+              onCancelQuery={onCancelQuery}
+              onRetryQuery={onRetryQuery}
               documentId={documentId}
               documentName={documentName}
               summary={insights?.summary}

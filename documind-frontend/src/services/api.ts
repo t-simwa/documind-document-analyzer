@@ -1235,8 +1235,10 @@ export const userProfileApi = {
 export const queryApi = {
   /**
    * Query documents using RAG pipeline
+   * @param request Query request
+   * @param signal Optional AbortSignal for cancellation
    */
-  async query(request: QueryRequest): Promise<QueryResponse> {
+  async query(request: QueryRequest, signal?: AbortSignal): Promise<QueryResponse> {
     try {
       const response = await fetch(`${API_BASE_URL}/api/v1/query/`, {
         method: "POST",
@@ -1245,6 +1247,7 @@ export const queryApi = {
           // Add authentication headers if needed
         },
         body: JSON.stringify(request),
+        signal, // Support cancellation
       });
 
       if (!response.ok) {
@@ -1254,6 +1257,10 @@ export const queryApi = {
 
       return response.json();
     } catch (error) {
+      // Handle cancellation
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error("Query cancelled");
+      }
       // Handle network errors (CORS, connection refused, etc.)
       if (error instanceof TypeError && error.message === "Failed to fetch") {
         throw new Error(
