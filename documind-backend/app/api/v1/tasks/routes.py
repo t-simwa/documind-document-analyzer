@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, status
 from typing import Optional
 
 from app.workers.tasks import task_queue
-from app.api.v1.documents.routes import documents_store
+from app.database.models import Document as DocumentModel
 
 router = APIRouter(tags=["Tasks"])
 
@@ -25,11 +25,11 @@ async def get_task_status(task_id: str):
         if task_id.startswith("doc_process_"):
             document_id = task_id.replace("doc_process_", "")
             
-            # Check in-memory store first
-            if document_id in documents_store:
-                doc = documents_store[document_id]
+            # Check MongoDB for document status
+            doc = await DocumentModel.get(document_id)
+            if doc:
                 # If document is ready, return a completed task status
-                if doc.get("status") == "ready":
+                if doc.status == "ready":
                     return {
                         "id": task_id,
                         "type": "document_processing",
@@ -42,7 +42,7 @@ async def get_task_status(task_id: str):
                         "metadata": {"document_id": document_id}
                     }
                 # If document is still processing, return processing status
-                elif doc.get("status") == "processing":
+                elif doc.status == "processing":
                     return {
                         "id": task_id,
                         "type": "document_processing",
@@ -54,7 +54,7 @@ async def get_task_status(task_id: str):
                         "metadata": {"document_id": document_id}
                     }
                 # If document has error status
-                elif doc.get("status") == "error":
+                elif doc.status == "error":
                     return {
                         "id": task_id,
                         "type": "document_processing",

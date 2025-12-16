@@ -9,6 +9,7 @@ from datetime import datetime
 import structlog
 import time
 
+from app.database.models import Tag as TagModel
 from .schemas import (
     TagCreate,
     TagUpdate,
@@ -19,39 +20,28 @@ logger = structlog.get_logger(__name__)
 
 router = APIRouter()
 
-# In-memory tag storage (in production, use a database)
-tags_store: dict = {}
-
-# Initialize default tags if store is empty
-def _initialize_default_tags():
+# Initialize default tags if none exist
+async def _initialize_default_tags():
     """Initialize default tags if none exist"""
-    if not tags_store:
+    count = await TagModel.count()
+    if count == 0:
         default_tags = [
-            {
-                "id": "1",
-                "name": "Important",
-                "color": "#ef4444",
-                "created_at": datetime.utcnow(),
-            },
-            {
-                "id": "2",
-                "name": "Review",
-                "color": "#f59e0b",
-                "created_at": datetime.utcnow(),
-            },
-            {
-                "id": "3",
-                "name": "Archive",
-                "color": "#6b7280",
-                "created_at": datetime.utcnow(),
-            },
+            TagModel(
+                name="Important",
+                color="#ef4444",
+            ),
+            TagModel(
+                name="Review",
+                color="#f59e0b",
+            ),
+            TagModel(
+                name="Archive",
+                color="#6b7280",
+            ),
         ]
         for tag in default_tags:
-            tags_store[tag["id"]] = tag
+            await tag.insert()
         logger.info("default_tags_initialized", count=len(default_tags))
-
-# Initialize on module load
-_initialize_default_tags()
 
 
 @router.get(
@@ -68,16 +58,19 @@ async def list_tags():
         List of all tags
     """
     try:
-        tags = [
+        # Initialize default tags if needed
+        await _initialize_default_tags()
+        
+        tags = await TagModel.find_all().to_list()
+        return [
             TagResponse(
-                id=tag["id"],
-                name=tag["name"],
-                color=tag.get("color"),
-                created_at=tag["created_at"]
+                id=str(tag.id),
+                name=tag.name,
+                color=tag.color,
+                created_at=tag.created_at
             )
-            for tag in tags_store.values()
+            for tag in tags
         ]
-        return tags
     except Exception as e:
         logger.exception("tag_list_failed", error=str(e))
         raise HTTPException(
@@ -105,33 +98,27 @@ async def create_tag(tag: TagCreate):
     """
     try:
         # Check if tag with same name already exists
-        for existing_tag in tags_store.values():
-            if existing_tag["name"].lower() == tag.name.lower():
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Tag with name '{tag.name}' already exists"
-                )
+        existing_tag = await TagModel.find_one(TagModel.name == tag.name)
+        if existing_tag:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Tag with name '{tag.name}' already exists"
+            )
         
-        # Generate tag ID
-        tag_id = str(int(time.time() * 1000))
+        # Create new tag
+        new_tag = TagModel(
+            name=tag.name,
+            color=tag.color or "#6b7280",  # Default gray color
+        )
+        await new_tag.insert()
         
-        # Create tag metadata
-        tag_data = {
-            "id": tag_id,
-            "name": tag.name,
-            "color": tag.color or "#6b7280",  # Default gray color
-            "created_at": datetime.utcnow(),
-        }
-        
-        tags_store[tag_id] = tag_data
-        
-        logger.info("tag_created", tag_id=tag_id, name=tag.name)
+        logger.info("tag_created", tag_id=str(new_tag.id), name=tag.name)
         
         return TagResponse(
-            id=tag_data["id"],
-            name=tag_data["name"],
-            color=tag_data["color"],
-            created_at=tag_data["created_at"]
+            id=str(new_tag.id),
+            name=new_tag.name,
+            color=new_tag.color,
+            created_at=new_tag.created_at
         )
     
     except HTTPException:
@@ -160,17 +147,23 @@ async def get_tag(tag_id: str):
     Returns:
         Tag details
     """
-    if tag_id not in tags_store:
+    try:
+        from bson import ObjectId
+        tag = await TagModel.get(ObjectId(tag_id))
+        if not tag:
+            raise HTTPException(status_code=404, detail="Tag not found")
+        
+        return TagResponse(
+            id=str(tag.id),
+            name=tag.name,
+            color=tag.color,
+            created_at=tag.created_at
+        )
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise
+        logger.exception("tag_get_failed", tag_id=tag_id, error=str(e))
         raise HTTPException(status_code=404, detail="Tag not found")
-    
-    tag_data = tags_store[tag_id]
-    
-    return TagResponse(
-        id=tag_data["id"],
-        name=tag_data["name"],
-        color=tag_data.get("color"),
-        created_at=tag_data["created_at"]
-    )
 
 
 @router.put(
@@ -190,34 +183,38 @@ async def update_tag(tag_id: str, tag_update: TagUpdate):
     Returns:
         Updated tag
     """
-    if tag_id not in tags_store:
-        raise HTTPException(status_code=404, detail="Tag not found")
-    
-    tag_data = tags_store[tag_id]
-    
     try:
+        tag = await TagModel.get(tag_id)
+        if not tag:
+            raise HTTPException(status_code=404, detail="Tag not found")
+        
         # Check if new name conflicts with existing tag
         if tag_update.name:
-            for existing_id, existing_tag in tags_store.items():
-                if existing_id != tag_id and existing_tag["name"].lower() == tag_update.name.lower():
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"Tag with name '{tag_update.name}' already exists"
-                    )
+            existing_tag = await TagModel.find_one(
+                TagModel.name == tag_update.name,
+                TagModel.id != tag.id
+            )
+            if existing_tag:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Tag with name '{tag_update.name}' already exists"
+                )
         
         # Update fields if provided
         if tag_update.name is not None:
-            tag_data["name"] = tag_update.name
+            tag.name = tag_update.name
         if tag_update.color is not None:
-            tag_data["color"] = tag_update.color
+            tag.color = tag_update.color
+        
+        await tag.save()
         
         logger.info("tag_updated", tag_id=tag_id)
         
         return TagResponse(
-            id=tag_data["id"],
-            name=tag_data["name"],
-            color=tag_data.get("color"),
-            created_at=tag_data["created_at"]
+            id=str(tag.id),
+            name=tag.name,
+            color=tag.color,
+            created_at=tag.created_at
         )
     
     except HTTPException:
@@ -245,21 +242,27 @@ async def delete_tag(tag_id: str):
     Returns:
         Success message
     """
-    if tag_id not in tags_store:
-        raise HTTPException(status_code=404, detail="Tag not found")
-    
     try:
+        from app.database.models import Document as DocumentModel
+        
+        tag = await TagModel.get(tag_id)
+        if not tag:
+            raise HTTPException(status_code=404, detail="Tag not found")
+        
         # Remove tag from all documents
-        from app.api.v1.documents.routes import documents_store
+        tag_id_str = str(tag.id)
+        # Find documents that contain this tag
+        all_documents = await DocumentModel.find_all().to_list()
         
         removed_count = 0
-        for doc in documents_store.values():
-            if "tags" in doc and tag_id in doc["tags"]:
-                doc["tags"].remove(tag_id)
+        for doc in all_documents:
+            if tag_id_str in doc.tags:
+                doc.tags.remove(tag_id_str)
+                await doc.save()
                 removed_count += 1
         
         # Delete the tag
-        del tags_store[tag_id]
+        await tag.delete()
         
         logger.info(
             "tag_deleted",

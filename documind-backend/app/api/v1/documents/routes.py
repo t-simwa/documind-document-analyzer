@@ -36,9 +36,6 @@ logger = structlog.get_logger(__name__)
 
 router = APIRouter()
 
-# In-memory document storage (in production, use a database)
-documents_store: dict = {}
-
 
 @router.post(
     "/upload",
@@ -90,17 +87,32 @@ async def upload_document(
                 detail=f"File size {file_size} exceeds maximum allowed size {settings.MAX_UPLOAD_SIZE}"
             )
         
-        # Generate document ID (use timestamp format to match frontend expectations)
-        import time
-        document_id = str(int(time.time() * 1000))  # Timestamp in milliseconds
-        
         # Create upload directory if it doesn't exist
         os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
         
-        # Save file
+        # Store document metadata in MongoDB first to get the ID
+        document = DocumentModel(
+            name=file.filename,
+            status="processing",
+            uploaded_by="user1",  # In production, get from auth context
+            size=file_size,
+            type=file_ext,
+            project_id=project_id,
+            file_path=None,  # Will be set after saving
+            tags=[],  # Initialize empty tags list
+            metadata={}
+        )
+        await document.insert()
+        document_id = str(document.id)
+        
+        # Save file with MongoDB-generated ID
         file_path = os.path.join(settings.UPLOAD_DIR, f"{document_id}_{file.filename}")
         with open(file_path, "wb") as f:
             f.write(file_content)
+        
+        # Update document with file path
+        document.file_path = file_path
+        await document.save()
         
         logger.info(
             "document_uploaded",
@@ -109,21 +121,6 @@ async def upload_document(
             size=file_size,
             file_type=file_ext
         )
-        
-        # Store document metadata
-        document_metadata = {
-            "id": document_id,
-            "name": file.filename,
-            "status": "processing",
-            "uploaded_at": datetime.utcnow(),
-            "size": file_size,
-            "type": file_ext,
-            "project_id": project_id,
-            "file_path": file_path,
-            "tags": [],  # Initialize empty tags list
-            "metadata": {}
-        }
-        documents_store[document_id] = document_metadata
         
         # Start security scan in background
         background_tasks.add_task(
@@ -147,7 +144,7 @@ async def upload_document(
             id=document_id,
             name=file.filename,
             status="processing",
-            uploaded_at=document_metadata["uploaded_at"],
+            uploaded_at=document.uploaded_at,
             size=file_size,
             type=file_ext,
             project_id=project_id,
@@ -193,10 +190,9 @@ async def get_document_insights(
         DocumentInsightsResponse with summary, entities, and suggested questions
     """
     # Check if document exists
-    if document_id not in documents_store:
+    doc = await DocumentModel.get(document_id)
+    if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
-    
-    doc = documents_store[document_id]
     
     # Check if document is ready
     from app.workers.tasks import task_queue
@@ -210,10 +206,10 @@ async def get_document_insights(
                 status_code=400, 
                 detail=f"Document is not ready. Current status: {task_status}"
             )
-    elif doc.get("status") != "ready":
+    elif doc.status != "ready":
         raise HTTPException(
             status_code=400,
-            detail=f"Document is not ready. Current status: {doc.get('status')}"
+            detail=f"Document is not ready. Current status: {doc.status}"
         )
     
     try:
@@ -315,10 +311,9 @@ async def get_document(document_id: str):
     Returns:
         DocumentResponse with document metadata
     """
-    if document_id not in documents_store:
+    doc = await DocumentModel.get(document_id)
+    if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
-    
-    doc = documents_store[document_id]
     
     # Check task status to get current processing status
     from app.workers.tasks import task_queue
@@ -329,23 +324,26 @@ async def get_document(document_id: str):
     if task:
         task_status = task.get("status")
         if task_status == "completed":
-            doc["status"] = "ready"
+            doc.status = "ready"
+            await doc.save()
         elif task_status == "failed":
-            doc["status"] = "error"
-        else:
-            doc["status"] = "processing"
+            doc.status = "error"
+            await doc.save()
+        elif task_status == "processing":
+            doc.status = "processing"
+            await doc.save()
     
     return DocumentResponse(
-        id=doc["id"],
-        name=doc["name"],
-        status=doc["status"],
-        uploaded_at=doc["uploaded_at"],
-        uploaded_by="user1",  # In production, get from auth context
-        size=doc["size"],
-        type=doc["type"],
-        project_id=doc.get("project_id"),
-        tags=doc.get("tags", []),
-        metadata=doc.get("metadata", {})
+        id=str(doc.id),
+        name=doc.name,
+        status=doc.status,
+        uploaded_at=doc.uploaded_at,
+        uploaded_by=doc.uploaded_by,
+        size=doc.size,
+        type=doc.type,
+        project_id=doc.project_id,
+        tags=doc.tags,
+        metadata=doc.metadata
     )
 
 
@@ -368,42 +366,50 @@ async def list_documents(
     Returns:
         List of documents
     """
-    documents = list(documents_store.values())
-    
-    # Apply filters
+    # Build query
+    query = {}
     if project_id:
-        documents = [d for d in documents if d.get("project_id") == project_id]
-    
+        query["project_id"] = project_id
     if status:
-        documents = [d for d in documents if d.get("status") == status]
+        query["status"] = status
+    
+    # Fetch documents from MongoDB
+    if query:
+        documents = await DocumentModel.find(query).to_list()
+    else:
+        documents = await DocumentModel.find_all().to_list()
     
     # Update status from task queue
     from app.workers.tasks import task_queue
     for doc in documents:
-        task_id = f"doc_process_{doc['id']}"
+        task_id = f"doc_process_{str(doc.id)}"
         task = task_queue.get_task(task_id)
         if task:
             # task is a dict, so access with bracket notation
-            if task.get("status") == "completed":
-                doc["status"] = "ready"
-            elif task.get("status") == "failed":
-                doc["status"] = "error"
-            elif task.get("status") == "processing":
-                doc["status"] = "processing"
+            task_status = task.get("status")
+            if task_status == "completed" and doc.status != "ready":
+                doc.status = "ready"
+                await doc.save()
+            elif task_status == "failed" and doc.status != "error":
+                doc.status = "error"
+                await doc.save()
+            elif task_status == "processing" and doc.status != "processing":
+                doc.status = "processing"
+                await doc.save()
     
     return {
         "documents": [
             DocumentResponse(
-                id=d["id"],
-                name=d["name"],
-                status=d["status"],
-                uploaded_at=d["uploaded_at"],
-                uploaded_by="user1",
-                size=d["size"],
-                type=d["type"],
-                project_id=d.get("project_id"),
-                tags=d.get("tags", []),
-                metadata=d.get("metadata", {})
+                id=str(d.id),
+                name=d.name,
+                status=d.status,
+                uploaded_at=d.uploaded_at,
+                uploaded_by=d.uploaded_by,
+                size=d.size,
+                type=d.type,
+                project_id=d.project_id,
+                tags=d.tags,
+                metadata=d.metadata
             )
             for d in documents
         ],
@@ -437,28 +443,34 @@ async def compare_documents(
             detail="At least 2 documents are required for comparison"
         )
     
-    # Check if all documents exist
-    missing_docs = [doc_id for doc_id in document_ids if doc_id not in documents_store]
-    if missing_docs:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Documents not found: {', '.join(missing_docs)}"
-        )
-    
-    # Check if all documents are ready
+    # Check if all documents exist and are ready
     from app.workers.tasks import task_queue
+    documents = []
+    missing_docs = []
     not_ready_docs = []
+    
     for doc_id in document_ids:
-        doc = documents_store[doc_id]
+        doc = await DocumentModel.get(doc_id)
+        if not doc:
+            missing_docs.append(doc_id)
+            continue
+        
+        documents.append(doc)
         task_id = f"doc_process_{doc_id}"
         task = task_queue.get_task(task_id)
         
         if task:
             task_status = task.get("status")
             if task_status != "completed":
-                not_ready_docs.append(f"{doc.get('name', doc_id)} (status: {task_status})")
-        elif doc.get("status") != "ready":
-            not_ready_docs.append(f"{doc.get('name', doc_id)} (status: {doc.get('status')})")
+                not_ready_docs.append(f"{doc.name} (status: {task_status})")
+        elif doc.status != "ready":
+            not_ready_docs.append(f"{doc.name} (status: {doc.status})")
+    
+    if missing_docs:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Documents not found: {', '.join(missing_docs)}"
+        )
     
     if not_ready_docs:
         raise HTTPException(
@@ -471,12 +483,7 @@ async def compare_documents(
         collection_name = getattr(settings, "VECTOR_STORE_COLLECTION_PREFIX", "documind_documents")
         
         # Build document name map
-        document_name_map = {}
-        for doc_id in document_ids:
-            if doc_id in documents_store:
-                document_name_map[doc_id] = documents_store[doc_id].get("name", doc_id)
-            else:
-                document_name_map[doc_id] = doc_id
+        document_name_map = {str(doc.id): doc.name for doc in documents}
         
         # Generate comparison
         comparison_data = await generation_service.generate_comparison(
@@ -558,14 +565,13 @@ async def delete_document(document_id: str):
         Success message
     """
     # Check if document exists
-    if document_id not in documents_store:
+    doc = await DocumentModel.get(document_id)
+    if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
-    
-    doc = documents_store[document_id]
     
     try:
         # Step 1: Delete file from disk
-        file_path = doc.get("file_path")
+        file_path = doc.file_path
         if file_path and os.path.exists(file_path):
             try:
                 os.remove(file_path)
@@ -584,7 +590,7 @@ async def delete_document(document_id: str):
             
             # Get collection name
             collection_name = getattr(settings, "VECTOR_STORE_COLLECTION_PREFIX", "documind_documents")
-            tenant_id = doc.get("metadata", {}).get("tenant_id") if doc.get("metadata") else None
+            tenant_id = doc.metadata.get("tenant_id") if doc.metadata else None
             
             # Find all chunks for this document using a search with metadata filter
             # We use a dummy embedding (all zeros) and a very high top_k to get all chunks
@@ -640,8 +646,8 @@ async def delete_document(document_id: str):
         except Exception as e:
             logger.warning("task_cleanup_failed", document_id=document_id, error=str(e))
         
-        # Step 4: Remove from documents store
-        del documents_store[document_id]
+        # Step 4: Remove from MongoDB
+        await doc.delete()
         
         logger.info("document_deleted", document_id=document_id)
         
@@ -680,18 +686,18 @@ async def assign_tags_to_document(
         Success message with assigned tags
     """
     # Check if document exists
-    if document_id not in documents_store:
+    doc = await DocumentModel.get(document_id)
+    if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
-    
-    doc = documents_store[document_id]
     
     try:
         # Validate that all tags exist
-        from app.api.v1.tags.routes import tags_store
+        from app.database.models import Tag as TagModel
         
         invalid_tags = []
         for tag_id in tag_request.tag_ids:
-            if tag_id not in tags_store:
+            tag = await TagModel.get(tag_id)
+            if not tag:
                 invalid_tags.append(tag_id)
         
         if invalid_tags:
@@ -700,16 +706,14 @@ async def assign_tags_to_document(
                 detail=f"Tags not found: {', '.join(invalid_tags)}"
             )
         
-        # Initialize tags list if it doesn't exist
-        if "tags" not in doc:
-            doc["tags"] = []
-        
         # Add tags (avoid duplicates)
         added_tags = []
         for tag_id in tag_request.tag_ids:
-            if tag_id not in doc["tags"]:
-                doc["tags"].append(tag_id)
+            if tag_id not in doc.tags:
+                doc.tags.append(tag_id)
                 added_tags.append(tag_id)
+        
+        await doc.save()
         
         logger.info(
             "tags_assigned_to_document",
@@ -723,7 +727,7 @@ async def assign_tags_to_document(
                 "message": "Tags assigned successfully",
                 "document_id": document_id,
                 "assigned_tags": added_tags,
-                "all_tags": doc["tags"]
+                "all_tags": doc.tags
             }
         )
     
@@ -757,25 +761,21 @@ async def remove_tag_from_document(
         Success message
     """
     # Check if document exists
-    if document_id not in documents_store:
+    doc = await DocumentModel.get(document_id)
+    if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     
-    doc = documents_store[document_id]
-    
     try:
-        # Initialize tags list if it doesn't exist
-        if "tags" not in doc:
-            doc["tags"] = []
-        
         # Check if tag is assigned to document
-        if tag_id not in doc["tags"]:
+        if tag_id not in doc.tags:
             raise HTTPException(
                 status_code=404,
                 detail=f"Tag '{tag_id}' is not assigned to this document"
             )
         
         # Remove tag
-        doc["tags"].remove(tag_id)
+        doc.tags.remove(tag_id)
+        await doc.save()
         
         logger.info(
             "tag_removed_from_document",

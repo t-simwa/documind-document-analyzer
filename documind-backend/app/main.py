@@ -20,6 +20,7 @@ from app.core.middleware import (
 )
 from app.core.exceptions import DocuMindException
 from app.api.v1.router import api_router
+from app.database import connect_to_mongo, close_mongo_connection
 
 # Setup logging
 setup_logging()
@@ -114,6 +115,15 @@ async def startup_event():
     import os
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
     logger.info("upload_directory_created", path=settings.UPLOAD_DIR)
+    
+    # Connect to MongoDB
+    try:
+        await connect_to_mongo()
+    except Exception as e:
+        logger.error("database_startup_failed", error=str(e))
+        # Don't fail startup if database connection fails (for development)
+        if settings.ENVIRONMENT == "production":
+            raise
 
 
 # Shutdown event
@@ -121,6 +131,9 @@ async def startup_event():
 async def shutdown_event():
     """Application shutdown event"""
     logger.info("application_shutdown")
+    
+    # Close MongoDB connection
+    await close_mongo_connection()
 
 
 if __name__ == "__main__":

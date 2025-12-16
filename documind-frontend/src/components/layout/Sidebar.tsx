@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Logo } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -7,6 +7,7 @@ import {
   Plus, 
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Trash2,
   Check,
   Loader2,
@@ -93,6 +94,7 @@ export const Sidebar = ({
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [projectDialogOpen, setProjectDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
   // Handle external trigger to open project dialog
@@ -103,23 +105,30 @@ export const Sidebar = ({
     }
   }, [openProjectDialog, onProjectDialogChange]);
 
+  // Load projects only once when component mounts (if onSelectProject is available)
   useEffect(() => {
     if (onSelectProject) {
       loadProjects();
     }
-  }, [onSelectProject]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency array - only run once on mount
 
-  const loadProjects = async () => {
+  const loadProjects = useCallback(async () => {
     try {
       setLoadingProjects(true);
       const response = await projectsApi.getHierarchy();
       setProjects(response);
     } catch (error) {
       console.error("Failed to load projects:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to load projects. Please refresh the page.",
+        variant: "destructive",
+      });
     } finally {
       setLoadingProjects(false);
     }
-  };
+  }, [toast]);
 
   const handleCreateProject = async (data: { name: string; description?: string; parentId?: string | null }) => {
     try {
@@ -142,6 +151,8 @@ export const Sidebar = ({
     if (!editingProject) return;
     try {
       await projectsApi.update(editingProject.id, data);
+      // Clear expanded state to ensure proper hierarchy refresh
+      setExpandedProjects(new Set());
       await loadProjects();
       setEditingProject(null);
       toast({
@@ -151,14 +162,14 @@ export const Sidebar = ({
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to update project",
+        description: error instanceof Error ? error.message : "Failed to update project",
         variant: "destructive",
       });
     }
   };
 
   const handleDeleteProject = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this project? Documents will be moved to the default project.")) {
+    if (!confirm("Are you sure you want to delete this project? Documents will be reassigned to another project if available.")) {
       return;
     }
     try {
@@ -177,9 +188,23 @@ export const Sidebar = ({
     }
   };
 
+  const toggleProjectExpanded = (projectId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedProjects((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(projectId)) {
+        newSet.delete(projectId);
+      } else {
+        newSet.add(projectId);
+      }
+      return newSet;
+    });
+  };
+
   const renderProject = (project: Project, level = 0): JSX.Element => {
     const isSelected = selectedProjectId === project.id;
     const hasChildren = project.children && project.children.length > 0;
+    const isExpanded = expandedProjects.has(project.id);
 
     return (
       <div key={project.id} className="space-y-0.5">
@@ -194,7 +219,11 @@ export const Sidebar = ({
           onClick={() => onSelectProject?.(project.id)}
         >
           {hasChildren ? (
-            <FolderOpen className="h-[15px] w-[15px] flex-shrink-0 text-foreground/70" />
+            isExpanded ? (
+              <FolderOpen className="h-[15px] w-[15px] flex-shrink-0 text-foreground/70" />
+            ) : (
+              <Folder className="h-[15px] w-[15px] flex-shrink-0 text-foreground/70" />
+            )
           ) : (
             <Folder className="h-[15px] w-[15px] flex-shrink-0 text-muted-foreground" />
           )}
@@ -205,6 +234,20 @@ export const Sidebar = ({
                 <span className="text-xs text-muted-foreground/70 font-medium tabular-nums">
                   {project.documentCount}
                 </span>
+              )}
+              {hasChildren && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={(e) => toggleProjectExpanded(project.id, e)}
+                  className="h-[22px] w-[22px] opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                >
+                  {isExpanded ? (
+                    <ChevronDown className="h-[13px] w-[13px]" />
+                  ) : (
+                    <ChevronRight className="h-[13px] w-[13px]" />
+                  )}
+                </Button>
               )}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
@@ -233,7 +276,7 @@ export const Sidebar = ({
             </>
           )}
         </div>
-        {hasChildren && !collapsed && (
+        {hasChildren && !collapsed && isExpanded && (
           <div className="space-y-0.5">
             {project.children!.map((child) => renderProject(child, level + 1))}
           </div>
@@ -306,65 +349,6 @@ export const Sidebar = ({
         </Button>
       </div>
 
-      {/* Projects Section */}
-      {onSelectProject && (
-        <div className={cn("flex-1 overflow-y-auto", !collapsed && "border-b border-border")}>
-          {!collapsed && (
-            <div className="flex items-center justify-between px-3 py-2.5">
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                Projects
-              </p>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setProjectDialogOpen(true)}
-                className="h-[22px] w-[22px] text-muted-foreground hover:text-foreground"
-              >
-                <Plus className="h-[13px] w-[13px]" />
-              </Button>
-            </div>
-          )}
-          
-          {collapsed && (
-            <div className="p-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setProjectDialogOpen(true)}
-                className="w-full h-8"
-                title="New Project"
-              >
-                <Folder className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
-
-          {!collapsed && (
-            <div className="px-1.5 pb-2 space-y-0.5">
-              <button
-                className={cn(
-                  "flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-md text-[13px] transition-colors text-left",
-                  selectedProjectId === null 
-                    ? "bg-accent text-accent-foreground font-medium" 
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-                )}
-                onClick={() => onSelectProject(null)}
-              >
-                <Folder className="h-[15px] w-[15px] flex-shrink-0" />
-                <span className="truncate">All Documents</span>
-              </button>
-              {loadingProjects ? (
-                <div className="px-2.5 py-3 text-center">
-                  <div className="h-4 w-4 border-2 border-muted border-t-foreground rounded-full animate-spin mx-auto" />
-                </div>
-              ) : (
-                projects.map((project) => renderProject(project))
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Documents List */}
       <div className="flex-1 overflow-y-auto">
         {!collapsed && documents.length > 0 && (
@@ -427,6 +411,69 @@ export const Sidebar = ({
           </div>
         )}
       </div>
+
+      {/* Projects Section */}
+      {onSelectProject && (
+        <div className={cn("flex-1 overflow-y-auto", !collapsed && "border-t border-border")}>
+          {!collapsed && (
+            <>
+              <div className="px-1.5 pt-2 pb-1">
+                <button
+                  className={cn(
+                    "flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-md text-[13px] transition-colors text-left",
+                    selectedProjectId === null 
+                      ? "bg-accent text-accent-foreground font-medium" 
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                  )}
+                  onClick={() => onSelectProject(null)}
+                >
+                  <Folder className="h-[15px] w-[15px] flex-shrink-0" />
+                  <span className="truncate">All Documents</span>
+                </button>
+              </div>
+              <div className="flex items-center justify-between px-3 py-2.5">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  Projects
+                </p>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setProjectDialogOpen(true)}
+                  className="h-[22px] w-[22px] text-muted-foreground hover:text-foreground"
+                >
+                  <Plus className="h-[13px] w-[13px]" />
+                </Button>
+              </div>
+            </>
+          )}
+          
+          {collapsed && (
+            <div className="p-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setProjectDialogOpen(true)}
+                className="w-full h-8"
+                title="New Project"
+              >
+                <Folder className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+
+          {!collapsed && (
+            <div className="px-1.5 pb-2 space-y-0.5">
+              {loadingProjects ? (
+                <div className="px-2.5 py-3 text-center">
+                  <div className="h-4 w-4 border-2 border-muted border-t-foreground rounded-full animate-spin mx-auto" />
+                </div>
+              ) : (
+                projects.map((project) => renderProject(project))
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Footer */}
       {!collapsed && (

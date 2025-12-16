@@ -43,19 +43,7 @@ import { processDocument, retryProcessing } from "./processingQueueService";
 import { API_BASE_URL, DEFAULT_COLLECTION_NAME } from "@/config/api";
 
 // Mock data storage (in a real app, this would be API calls)
-let mockProjects: Project[] = [
-  {
-    id: "1",
-    name: "Default Project",
-    description: "Default project for documents",
-    parentId: null,
-    createdAt: new Date("2024-01-01"),
-    updatedAt: new Date("2024-01-01"),
-    createdBy: "user1",
-    documentCount: 0,
-    children: [],
-  },
-];
+let mockProjects: Project[] = [];
 
 let mockDocuments: Document[] = [];
 // Store file blobs/URLs for mock documents
@@ -123,8 +111,11 @@ export const projectsApi = {
       const response = await fetch(`${API_BASE_URL}/api/v1/projects/?${queryParams.toString()}`, {
         method: "GET",
         headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache",
           // Add authentication headers if needed
         },
+        cache: "no-store", // Prevent browser caching
       });
 
       if (!response.ok) {
@@ -272,18 +263,27 @@ export const projectsApi = {
     }
   },
 
-  async update(id: string, data: { name?: string; description?: string }): Promise<Project> {
+  async update(id: string, data: { name?: string; description?: string; parentId?: string | null }): Promise<Project> {
     try {
+      const body: any = {
+        name: data.name,
+        description: data.description,
+      };
+      
+      // Always include parent_id if parentId is provided (even if null)
+      if (data.parentId !== undefined) {
+        body.parent_id = data.parentId;
+      }
+      
       const response = await fetch(`${API_BASE_URL}/api/v1/projects/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          "Cache-Control": "no-cache",
           // Add authentication headers if needed
         },
-        body: JSON.stringify({
-          name: data.name,
-          description: data.description,
-        }),
+        cache: "no-store",
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {
@@ -339,18 +339,18 @@ export const projectsApi = {
 
       // Remove from mock projects for compatibility
       mockProjects = mockProjects.filter((p) => p.id !== id);
-      // Move documents to default project
+      // Remove project association from documents (set to null)
       mockDocuments = mockDocuments.map((d) =>
-        d.projectId === id ? { ...d, projectId: "1" } : d
+        d.projectId === id ? { ...d, projectId: null } : d
       );
     } catch (error) {
       console.error("Failed to delete project in backend, using mock data:", error);
       // Fallback to mock data
       await delay(300);
       mockProjects = mockProjects.filter((p) => p.id !== id);
-      // Move documents to default project
+      // Remove project association from documents (set to null)
       mockDocuments = mockDocuments.map((d) =>
-        d.projectId === id ? { ...d, projectId: "1" } : d
+        d.projectId === id ? { ...d, projectId: null } : d
       );
     }
   },
@@ -360,8 +360,11 @@ export const projectsApi = {
       const response = await fetch(`${API_BASE_URL}/api/v1/projects/hierarchy`, {
         method: "GET",
         headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache",
           // Add authentication headers if needed
         },
+        cache: "no-store", // Prevent browser caching
       });
 
       if (!response.ok) {
@@ -384,31 +387,26 @@ export const projectsApi = {
         children: p.children ? p.children.map(convertProject) : [],
       });
 
-      return projects.map(convertProject);
-    } catch (error) {
-      console.error("Failed to fetch project hierarchy from backend, using mock data:", error);
-      // Fallback to mock data
-      await delay(200);
-      // Build hierarchical structure
-      const projectMap = new Map<string, Project>();
-      mockProjects.forEach((p) => {
-        projectMap.set(p.id, { ...p, children: [] });
-      });
-
-      const roots: Project[] = [];
-      projectMap.forEach((project) => {
-        if (!project.parentId) {
-          roots.push(project);
-        } else {
-          const parent = projectMap.get(project.parentId);
-          if (parent) {
-            if (!parent.children) parent.children = [];
-            parent.children.push(project);
+      const convertedProjects = projects.map(convertProject);
+      
+      // Update mock projects for compatibility (in case other parts use it)
+      const flattenProjects = (projs: Project[]): Project[] => {
+        const result: Project[] = [];
+        projs.forEach((p) => {
+          result.push(p);
+          if (p.children && p.children.length > 0) {
+            result.push(...flattenProjects(p.children));
           }
-        }
-      });
+        });
+        return result;
+      };
+      mockProjects = flattenProjects(convertedProjects);
 
-      return roots;
+      return convertedProjects;
+    } catch (error) {
+      console.error("Failed to fetch project hierarchy from backend:", error);
+      // Don't silently fall back to mock data - throw the error so the UI can handle it
+      throw error;
     }
   },
 };
@@ -888,11 +886,11 @@ export const documentsApi = {
     } catch (error) {
       console.error("Failed to update document via backend, using mock:", error);
       // Fallback to mock implementation
-      await delay(300);
-      const doc = mockDocuments.find((d) => d.id === id);
-      if (!doc) throw new Error("Document not found");
-      Object.assign(doc, data);
-      return doc;
+    await delay(300);
+    const doc = mockDocuments.find((d) => d.id === id);
+    if (!doc) throw new Error("Document not found");
+    Object.assign(doc, data);
+    return doc;
     }
   },
 
@@ -1007,32 +1005,32 @@ export const documentsApi = {
     } catch (error) {
       console.error("Failed to perform bulk action via backend, using mock:", error);
       // Fallback to mock implementation
-      await delay(500);
-      request.documentIds.forEach((docId) => {
-        const doc = mockDocuments.find((d) => d.id === docId);
-        if (!doc) return;
+    await delay(500);
+    request.documentIds.forEach((docId) => {
+      const doc = mockDocuments.find((d) => d.id === docId);
+      if (!doc) return;
 
-        switch (request.action) {
-          case "delete":
-            mockDocuments = mockDocuments.filter((d) => d.id !== docId);
-            break;
-          case "tag":
-            if (request.payload?.tags) {
-              doc.tags = [...new Set([...doc.tags, ...request.payload.tags])];
-            }
-            break;
-          case "untag":
-            if (request.payload?.tags) {
-              doc.tags = doc.tags.filter((t) => !request.payload!.tags!.includes(t));
-            }
-            break;
-          case "move":
-            if (request.payload?.projectId !== undefined) {
-              doc.projectId = request.payload.projectId;
-            }
-            break;
-        }
-      });
+      switch (request.action) {
+        case "delete":
+          mockDocuments = mockDocuments.filter((d) => d.id !== docId);
+          break;
+        case "tag":
+          if (request.payload?.tags) {
+            doc.tags = [...new Set([...doc.tags, ...request.payload.tags])];
+          }
+          break;
+        case "untag":
+          if (request.payload?.tags) {
+            doc.tags = doc.tags.filter((t) => !request.payload!.tags!.includes(t));
+          }
+          break;
+        case "move":
+          if (request.payload?.projectId !== undefined) {
+            doc.projectId = request.payload.projectId;
+          }
+          break;
+      }
+    });
     }
   },
 };

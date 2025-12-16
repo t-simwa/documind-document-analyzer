@@ -45,8 +45,9 @@ class Settings(BaseSettings):
     RATE_LIMIT_PER_MINUTE: int = 60
     RATE_LIMIT_PER_HOUR: int = 1000
     
-    # Database (optional for now)
-    DATABASE_URL: str = "postgresql://user:password@localhost:5432/documind_db"
+    # Database (MongoDB Atlas)
+    DATABASE_URL: str = "mongodb+srv://user:password@cluster.mongodb.net/documind_db?retryWrites=true&w=majority"
+    DATABASE_NAME: str = "documind_db"
     
     # Redis (optional for now)
     REDIS_URL: str = "redis://localhost:6379/0"

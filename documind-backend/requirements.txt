@@ -27,10 +27,10 @@ structlog==23.2.0
 celery==5.3.4
 redis==5.0.1
 
-# Database (PostgreSQL - optional for now)
-# sqlalchemy==2.0.23
-# alembic==1.12.1
-# psycopg2-binary==2.9.9
+# Database (MongoDB Atlas)
+motor==3.3.2  # Async MongoDB driver
+beanie==1.23.0  # ODM for MongoDB (async)
+pymongo==4.6.1  # MongoDB driver (required by motor)
 
 # HTTP Client
 httpx==0.25.2

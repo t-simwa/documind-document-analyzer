@@ -83,7 +83,7 @@ export const ProjectList = ({ selectedProjectId, onSelectProject }: ProjectListP
   };
 
   const handleDeleteProject = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this project? Documents will be moved to the default project.")) {
+    if (!confirm("Are you sure you want to delete this project? Documents will be reassigned to another project if available.")) {
       return;
     }
     try {

@@ -8,11 +8,25 @@ from datetime import datetime
 
 from app.core.config import settings
 from app.api.v1.health.schemas import HealthResponse, ReadinessResponse, LivenessResponse
+from app.database import get_client
 
 router = APIRouter(tags=["Health"])
 
 # Track application start time for uptime calculation
 _start_time = time.time()
+
+
+async def check_database() -> str:
+    """Check database connectivity"""
+    try:
+        client = get_client()
+        if client is None:
+            return "not_ready"
+        # Ping the database
+        await client.admin.command('ping')
+        return "ready"
+    except Exception:
+        return "not_ready"
 
 
 @router.get(
@@ -29,8 +43,8 @@ async def readiness_check() -> ReadinessResponse:
     """
     checks = {
         "api": "ready",
+        "database": await check_database(),
         # Add more checks as dependencies are added
-        # "database": check_database(),
         # "redis": check_redis(),
     }
     

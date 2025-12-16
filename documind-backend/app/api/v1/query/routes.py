@@ -108,11 +108,12 @@ async def query_documents(
         if request.document_ids and len(request.document_ids) > 1:
             try:
                 # Get document names for mapping
-                from app.api.v1.documents.routes import documents_store
+                from app.database.models import Document as DocumentModel
                 doc_name_map = {}
                 for doc_id in request.document_ids:
-                    if doc_id in documents_store:
-                        doc_name_map[doc_id] = documents_store[doc_id].get("name", doc_id)
+                    doc = await DocumentModel.get(doc_id)
+                    if doc:
+                        doc_name_map[doc_id] = doc.name
                     else:
                         doc_name_map[doc_id] = doc_id
                 
