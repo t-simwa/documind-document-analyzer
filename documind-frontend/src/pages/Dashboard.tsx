@@ -14,6 +14,8 @@ import { ArrowRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreateOrganizationDialog } from "@/components/organization/CreateOrganizationDialog";
 import { OrganizationIcon, TeamIcon, SecurityIcon, WorkspaceIcon } from "@/components/organization/OrganizationIcons";
+import { organizationsApi } from "@/services/api";
+import type { Organization } from "@/types/api";
 import { cn } from "@/lib/utils";
 
 // Mock user role - replace with actual auth context when available
@@ -29,6 +31,7 @@ export default function Dashboard() {
   const [createOrgDialogOpen, setCreateOrgDialogOpen] = useState(false);
   const [justCreatedOrg, setJustCreatedOrg] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0); // Force re-render key
+  const [organization, setOrganization] = useState<Organization | null>(null);
   const orgSectionRef = useRef<HTMLDivElement>(null);
   const userRole = getUserRole();
   const isAdmin = userRole === "admin";
@@ -44,6 +47,23 @@ export default function Dashboard() {
       return () => clearTimeout(timer);
     }
   }, [justCreatedOrg, hasOrganization]);
+
+  // Load organization data when user has an organization
+  useEffect(() => {
+    const loadOrganization = async () => {
+      if (user?.organization_id) {
+        try {
+          const org = await organizationsApi.get(user.organization_id);
+          setOrganization(org);
+        } catch (error) {
+          console.error("Failed to load organization:", error);
+        }
+      } else {
+        setOrganization(null);
+      }
+    };
+    loadOrganization();
+  }, [user?.organization_id]);
 
   // Force re-check organization status when user changes
   useEffect(() => {
@@ -98,7 +118,7 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between mb-4">
                     <div>
                       <h2 className="text-xl font-semibold text-[#171717] dark:text-[#fafafa] mb-1">
-                        Organization Management
+                        {organization?.name || "Organization Management"}
                       </h2>
                       <p className="text-[14px] text-[#737373] dark:text-[#a3a3a3]">
                         Manage your organization settings and team members
@@ -128,7 +148,7 @@ export default function Dashboard() {
                       </div>
                     </Button>
                     <Button
-                      onClick={() => navigate("/app/organization/members")}
+                      onClick={() => navigate("/app/organization/settings?tab=members")}
                       variant="outline"
                       className="w-full justify-start h-auto py-4 px-5 hover:bg-[#fafafa] dark:hover:bg-[#262626]"
                     >

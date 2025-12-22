@@ -1,15 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { GlobalNavBar } from "@/components/layout/GlobalNavBar";
-import { ProfilePictureUpload } from "@/components/settings/ProfilePictureUpload";
-import { PersonalInfoForm } from "@/components/settings/PersonalInfoForm";
 import { PasswordChangeForm } from "@/components/settings/PasswordChangeForm";
 import { NotificationPreferencesComponent } from "@/components/settings/NotificationPreferences";
-import { userProfileApi } from "@/services/api";
-import type { UserProfile } from "@/types/api";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { SettingsIcon, ProfileIcon, SecurityIcon, NotificationsIcon, OrganizationIcon } from "@/components/settings/SettingsIcons";
+import { SettingsIcon, SecurityIcon, NotificationsIcon, OrganizationIcon } from "@/components/settings/SettingsIcons";
 import { Users, ArrowRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreateOrganizationDialog } from "@/components/organization/CreateOrganizationDialog";
@@ -17,68 +12,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 
 export default function UserProfileSettings() {
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"profile" | "security" | "notifications" | "organization">("profile");
+  const [activeTab, setActiveTab] = useState<"security" | "notifications" | "organization">("security");
   const [createOrgDialogOpen, setCreateOrgDialogOpen] = useState(false);
   const { toast } = useToast();
   const { user, refreshUser } = useAuth();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    // If user is not authenticated, redirect to login
-    if (!user) {
-      navigate("/login");
-      return;
-    }
-    loadProfile();
-  }, [user, navigate]);
-
-  const loadProfile = async () => {
-    if (!user) return;
-    
-    setIsLoading(true);
-    try {
-      // Try to load profile from API, but fallback to auth user data if API fails
-      try {
-        const userProfile = await userProfileApi.getProfile();
-        setProfile(userProfile);
-      } catch (apiError) {
-        // If API fails, use auth user data as fallback
-        setProfile({
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          avatar: user.avatar,
-          phone: undefined,
-          bio: undefined,
-          email_notifications: true,
-          in_app_notifications: true,
-          push_notifications: false,
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Failed to load profile",
-        description: error instanceof Error ? error.message : "Could not load your profile",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleProfileUpdate = async (updatedProfile: UserProfile) => {
-    setProfile(updatedProfile);
-    // Refresh auth user data to sync changes
-    await refreshUser();
-  };
-
-  const handleAvatarChange = (avatarUrl: string) => {
-    if (profile) {
-      setProfile({ ...profile, avatar: avatarUrl || undefined });
-    }
-  };
 
   const handleGlobalSearch = (query: string) => {
     toast({
@@ -87,25 +26,7 @@ export default function UserProfileSettings() {
     });
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex h-screen bg-[#fafafa] dark:bg-[#0a0a0a] overflow-hidden">
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <GlobalNavBar onSearch={handleGlobalSearch} />
-          <main className="flex-1 overflow-y-auto bg-gradient-to-b from-transparent via-transparent to-[#f5f5f5]/50 dark:to-[#0f0f0f]/50">
-            <div className="max-w-[1200px] mx-auto px-6 sm:px-8 lg:px-12 py-10 lg:py-12">
-              <div className="flex items-center justify-center py-20">
-                <Loader2 className="h-8 w-8 animate-spin text-[#737373] dark:text-[#a3a3a3]" />
-              </div>
-            </div>
-          </main>
-        </div>
-      </div>
-    );
-  }
-
   const tabs = [
-    { id: "profile" as const, label: "Profile", icon: ProfileIcon },
     { id: "security" as const, label: "Security", icon: SecurityIcon },
     { id: "notifications" as const, label: "Notifications", icon: NotificationsIcon },
     { id: "organization" as const, label: "Organization", icon: OrganizationIcon },
@@ -159,42 +80,6 @@ export default function UserProfileSettings() {
 
             {/* Tab Content */}
             <div className="space-y-6 lg:space-y-8">
-              {activeTab === "profile" && (
-                <>
-                  <div className="bg-white dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#262626] rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300">
-                    <div className="px-6 py-5 border-b border-[#e5e5e5] dark:border-[#262626]">
-                      <h2 className="text-lg font-semibold text-[#171717] dark:text-[#fafafa] mb-1">
-                        Profile Picture
-                      </h2>
-                      <p className="text-[13px] text-[#737373] dark:text-[#a3a3a3]">
-                        Upload a profile picture to personalize your account
-                      </p>
-                    </div>
-                    <div className="p-6">
-                      <ProfilePictureUpload
-                        currentAvatar={profile?.avatar}
-                        userName={profile?.name || "User"}
-                        onAvatarChange={handleAvatarChange}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="bg-white dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#262626] rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300">
-                    <div className="px-6 py-5 border-b border-[#e5e5e5] dark:border-[#262626]">
-                      <h2 className="text-lg font-semibold text-[#171717] dark:text-[#fafafa] mb-1">
-                        Personal Information
-                      </h2>
-                      <p className="text-[13px] text-[#737373] dark:text-[#a3a3a3]">
-                        Update your personal information and contact details
-                      </p>
-                    </div>
-                    <div className="p-6">
-                      <PersonalInfoForm onUpdate={handleProfileUpdate} />
-                    </div>
-                  </div>
-                </>
-              )}
-
               {activeTab === "security" && (
                 <div className="bg-white dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#262626] rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300">
                   <div className="px-6 py-5 border-b border-[#e5e5e5] dark:border-[#262626]">
@@ -281,7 +166,7 @@ export default function UserProfileSettings() {
                             View all team members, invite new users, and manage roles and permissions.
                           </p>
                           <Button
-                            onClick={() => navigate("/app/organization/members")}
+                            onClick={() => navigate("/app/organization/settings?tab=members")}
                             className="w-full sm:w-auto"
                             variant="outline"
                           >

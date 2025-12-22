@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Building2, Shield, Users, UserPlus, Trash2, User, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,7 +46,13 @@ export default function OrganizationSettings() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingMembers, setIsLoadingMembers] = useState(false);
-  const [activeTab, setActiveTab] = useState<"general" | "security" | "members">("general");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState<"general" | "security" | "members">(
+    (tabParam === "members" || tabParam === "security" || tabParam === "general") 
+      ? tabParam 
+      : "general"
+  );
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<"admin" | "analyst" | "viewer">("analyst");
@@ -54,6 +60,15 @@ export default function OrganizationSettings() {
   const { toast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  // Update URL when tab changes
+  useEffect(() => {
+    if (activeTab !== "general") {
+      setSearchParams({ tab: activeTab });
+    } else {
+      setSearchParams({});
+    }
+  }, [activeTab, setSearchParams]);
 
   useEffect(() => {
     if (!user) {

@@ -20,8 +20,6 @@ import {
   Command,
   LayoutDashboard,
   User,
-  Building2,
-  Users,
 } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 
@@ -125,8 +123,12 @@ export const GlobalNavBar = ({ onSearch }: GlobalNavBarProps) => {
   const { toast } = useToast();
   const { user, logout: authLogout } = useAuth();
   
-  // Check if we're on dashboard or settings page (show logo only on these pages)
-  const showLogo = location.pathname === "/app" || location.pathname === "/app/" || location.pathname === "/app/settings";
+  // Check if we're on dashboard, settings, profile, or organization settings page (show logo only on these pages)
+  const showLogo = location.pathname === "/app" || 
+                   location.pathname === "/app/" || 
+                   location.pathname === "/app/settings" ||
+                   location.pathname === "/app/profile" ||
+                   location.pathname === "/app/organization/settings";
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -480,36 +482,6 @@ export const GlobalNavBar = ({ onSearch }: GlobalNavBarProps) => {
                 </DropdownMenuItem>
               </div>
 
-              {/* Organization Section - Only show if user has organization */}
-              {user?.organization_id && (
-                <>
-                  <div className="border-t border-border/20 pt-1 mt-1">
-                    <div className="px-3 py-2">
-                      <p className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider mb-1.5">
-                        Organization
-                      </p>
-                    </div>
-                    <DropdownMenuItem asChild className="px-0 mx-0">
-                      <Link 
-                        to="/app/organization/settings" 
-                        className="flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium text-foreground/90 hover:text-foreground transition-colors duration-150 hover:bg-muted/50 rounded-md w-full"
-                      >
-                        <Building2 className="h-3.5 w-3.5 text-muted-foreground/70" />
-                        <span>Organization Settings</span>
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild className="px-0 mx-0">
-                      <Link 
-                        to="/app/organization/members" 
-                        className="flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium text-foreground/90 hover:text-foreground transition-colors duration-150 hover:bg-muted/50 rounded-md w-full"
-                      >
-                        <Users className="h-3.5 w-3.5 text-muted-foreground/70" />
-                        <span>Team Members</span>
-                      </Link>
-                    </DropdownMenuItem>
-                  </div>
-                </>
-              )}
 
               {/* Logout Section */}
               <div className="border-t border-border/20 pt-1">
