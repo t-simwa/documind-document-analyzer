@@ -75,11 +75,28 @@ async def query_documents(
         # Validate that all document_ids belong to the user
         if request.document_ids:
             from app.database.models import Document as DocumentModel
+            from bson import ObjectId
+            from beanie.exceptions import DocumentNotFound
+            
             for doc_id in request.document_ids:
-                doc = await DocumentModel.find_one(
-                    DocumentModel.id == doc_id,
-                    DocumentModel.uploaded_by == user_id
-                )
+                doc = None
+                try:
+                    # Try ObjectId first
+                    try:
+                        object_id = ObjectId(doc_id)
+                        doc = await DocumentModel.find_one(
+                            DocumentModel.id == object_id,
+                            DocumentModel.uploaded_by == user_id
+                        )
+                    except (ValueError, TypeError, DocumentNotFound):
+                        # Fallback to string ID search
+                        doc = await DocumentModel.find_one(
+                            DocumentModel.id == doc_id,
+                            DocumentModel.uploaded_by == user_id
+                        )
+                except Exception as e:
+                    logger.error("error_finding_document_in_query", doc_id=doc_id, error=str(e))
+                
                 if not doc:
                     raise HTTPException(
                         status_code=403,
@@ -127,12 +144,29 @@ async def query_documents(
             try:
                 # Get document names for mapping (already validated above)
                 from app.database.models import Document as DocumentModel
+                from bson import ObjectId
+                from beanie.exceptions import DocumentNotFound
+                
                 doc_name_map = {}
                 for doc_id in request.document_ids:
-                    doc = await DocumentModel.find_one(
-                        DocumentModel.id == doc_id,
-                        DocumentModel.uploaded_by == user_id
-                    )
+                    doc = None
+                    try:
+                        # Try ObjectId first
+                        try:
+                            object_id = ObjectId(doc_id)
+                            doc = await DocumentModel.find_one(
+                                DocumentModel.id == object_id,
+                                DocumentModel.uploaded_by == user_id
+                            )
+                        except (ValueError, TypeError, DocumentNotFound):
+                            # Fallback to string ID search
+                            doc = await DocumentModel.find_one(
+                                DocumentModel.id == doc_id,
+                                DocumentModel.uploaded_by == user_id
+                            )
+                    except Exception:
+                        pass
+                    
                     if doc:
                         doc_name_map[doc_id] = doc.name
                     else:
@@ -289,11 +323,28 @@ async def query_documents_stream(
         # Validate that all document_ids belong to the user
         if request.document_ids:
             from app.database.models import Document as DocumentModel
+            from bson import ObjectId
+            from beanie.exceptions import DocumentNotFound
+            
             for doc_id in request.document_ids:
-                doc = await DocumentModel.find_one(
-                    DocumentModel.id == doc_id,
-                    DocumentModel.uploaded_by == user_id
-                )
+                doc = None
+                try:
+                    # Try ObjectId first
+                    try:
+                        object_id = ObjectId(doc_id)
+                        doc = await DocumentModel.find_one(
+                            DocumentModel.id == object_id,
+                            DocumentModel.uploaded_by == user_id
+                        )
+                    except (ValueError, TypeError, DocumentNotFound):
+                        # Fallback to string ID search
+                        doc = await DocumentModel.find_one(
+                            DocumentModel.id == doc_id,
+                            DocumentModel.uploaded_by == user_id
+                        )
+                except Exception as e:
+                    logger.error("error_finding_document_in_query_stream", doc_id=doc_id, error=str(e))
+                
                 if not doc:
                     raise HTTPException(
                         status_code=403,

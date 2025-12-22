@@ -91,11 +91,28 @@ async def create_or_update_saved_analysis(
         user_id = current_user["id"]
         
         # Validate that all documents belong to the user
+        from bson import ObjectId
+        from beanie.exceptions import DocumentNotFound
+        
         for doc_id in analysis.document_ids:
-            doc = await DocumentModel.find_one(
-                DocumentModel.id == doc_id,
-                DocumentModel.uploaded_by == user_id
-            )
+            doc = None
+            try:
+                # Try ObjectId first
+                try:
+                    object_id = ObjectId(doc_id)
+                    doc = await DocumentModel.find_one(
+                        DocumentModel.id == object_id,
+                        DocumentModel.uploaded_by == user_id
+                    )
+                except (ValueError, TypeError, DocumentNotFound):
+                    # Fallback to string ID search
+                    doc = await DocumentModel.find_one(
+                        DocumentModel.id == doc_id,
+                        DocumentModel.uploaded_by == user_id
+                    )
+            except Exception as e:
+                logger.error("error_finding_document_in_analysis", doc_id=doc_id, error=str(e))
+            
             if not doc:
                 raise HTTPException(
                     status_code=403,
