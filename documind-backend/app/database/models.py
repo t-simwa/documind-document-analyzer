@@ -115,3 +115,22 @@ class SavedAnalysis(BeanieDocument):
         name = "saved_analyses"
         indexes = ["user_id", "document_ids", "created_at"]
 
+
+class OrganizationMember(BeanieDocument):
+    """Organization member model for proper role management (Future Enhancement)"""
+    organization_id: str
+    user_id: str
+    role: str = "analyst"  # admin, analyst, viewer
+    joined_at: datetime = Field(default_factory=datetime.utcnow)
+    invited_by: Optional[str] = None  # User ID who invited this member
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    class Settings:
+        name = "organization_members"
+        indexes = [
+            ("organization_id", "user_id"),  # Compound index for unique membership
+            "organization_id",
+            "user_id",
+            "role"
+        ]

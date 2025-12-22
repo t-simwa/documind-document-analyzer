@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     API_V1_PREFIX: str = "/api/v1"
     
     # CORS - can be set as comma-separated string or list
-    CORS_ORIGINS: Union[str, List[str]] = "http://localhost:5173,http://localhost:3000,http://localhost:8081,http://127.0.0.1:5173,http://127.0.0.1:8081"
+    CORS_ORIGINS: Union[str, List[str]] = "http://localhost:5173,http://localhost:3000,http://localhost:8080,http://localhost:8081,http://127.0.0.1:5173,http://127.0.0.1:8080,http://127.0.0.1:8081"
     CORS_CREDENTIALS: bool = True
     CORS_METHODS: Union[str, List[str]] = "GET,POST,PUT,DELETE,PATCH,OPTIONS"
     CORS_HEADERS: Union[str, List[str]] = "*"

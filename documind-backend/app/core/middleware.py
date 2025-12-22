@@ -51,14 +51,16 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         start_time = time.time()
         
-        # Log request
-        logger.info(
-            "request_started",
-            method=request.method,
-            path=request.url.path,
-            client_ip=request.client.host if request.client else None,
-            user_agent=request.headers.get("user-agent"),
-        )
+        # Skip logging for OPTIONS requests (CORS preflight)
+        if request.method != "OPTIONS":
+            # Log request
+            logger.info(
+                "request_started",
+                method=request.method,
+                path=request.url.path,
+                client_ip=request.client.host if request.client else None,
+                user_agent=request.headers.get("user-agent"),
+            )
         
         # Process request
         response = await call_next(request)
@@ -66,14 +68,16 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         # Calculate duration
         duration = time.time() - start_time
         
-        # Log response
-        logger.info(
-            "request_completed",
-            method=request.method,
-            path=request.url.path,
-            status_code=response.status_code,
-            duration_ms=round(duration * 1000, 2),
-        )
+        # Skip logging for OPTIONS requests (CORS preflight)
+        if request.method != "OPTIONS":
+            # Log response
+            logger.info(
+                "request_completed",
+                method=request.method,
+                path=request.url.path,
+                status_code=response.status_code,
+                duration_ms=round(duration * 1000, 2),
+            )
         
         return response
 

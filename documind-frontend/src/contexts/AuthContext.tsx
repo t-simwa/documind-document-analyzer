@@ -88,11 +88,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const refreshUser = async () => {
     try {
       const response = await authApi.getMe();
+      console.log("AuthContext: Refreshed user data:", response.user);
+      console.log("AuthContext: organization_id value:", response.user?.organization_id);
+      console.log("AuthContext: organization_id type:", typeof response.user?.organization_id);
       setUser(response.user);
+      return response.user;
     } catch (error) {
       console.error("Failed to refresh user:", error);
       setUser(null);
       tokenStorage.clearTokens();
+      throw error;
     }
   };
 

@@ -37,6 +37,15 @@ import type {
   QueryRequest,
   QueryResponse,
   QueryHistoryResponse,
+  Organization,
+  OrganizationMember,
+  OrganizationMemberList,
+  CreateOrganizationRequest,
+  UpdateOrganizationRequest,
+  InviteMemberRequest,
+  UpdateMemberRoleRequest,
+  OrganizationSettings,
+  UpdateOrganizationSettingsRequest,
 } from "@/types/api";
 import type { SavedCrossDocumentAnalysis } from "@/utils/crossDocumentStorage";
 import { performSecurityScan } from "./securityScanService";
@@ -2158,6 +2167,326 @@ export const savedAnalysesApi = {
       }
     } catch (error) {
       console.error("Failed to delete saved analysis:", error);
+      throw error;
+    }
+  },
+};
+
+// Organizations API
+export const organizationsApi = {
+  /**
+   * Create a new organization
+   */
+  async create(request: CreateOrganizationRequest): Promise<Organization> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/organizations`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(request),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: `HTTP ${response.status}: ${response.statusText}` }));
+        throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return {
+        id: data.id,
+        name: data.name,
+        slug: data.slug,
+        plan: data.plan,
+        createdAt: new Date(data.created_at),
+        updatedAt: new Date(data.updated_at),
+      };
+    } catch (error) {
+      if (error instanceof TypeError && error.message === "Failed to fetch") {
+        throw new Error(
+          `Failed to connect to backend server at ${API_BASE_URL}. ` +
+          `Please ensure the backend server is running.`
+        );
+      }
+      throw error;
+    }
+  },
+
+  /**
+   * Get organization by ID
+   */
+  async get(orgId: string): Promise<Organization> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/organizations/${orgId}`, {
+        method: "GET",
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: `HTTP ${response.status}: ${response.statusText}` }));
+        throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return {
+        id: data.id,
+        name: data.name,
+        slug: data.slug,
+        plan: data.plan,
+        createdAt: new Date(data.created_at),
+        updatedAt: new Date(data.updated_at),
+      };
+    } catch (error) {
+      if (error instanceof TypeError && error.message === "Failed to fetch") {
+        throw new Error(
+          `Failed to connect to backend server at ${API_BASE_URL}. ` +
+          `Please ensure the backend server is running.`
+        );
+      }
+      throw error;
+    }
+  },
+
+  /**
+   * Update organization
+   */
+  async update(orgId: string, request: UpdateOrganizationRequest): Promise<Organization> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/organizations/${orgId}`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(request),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: `HTTP ${response.status}: ${response.statusText}` }));
+        throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return {
+        id: data.id,
+        name: data.name,
+        slug: data.slug,
+        plan: data.plan,
+        createdAt: new Date(data.created_at),
+        updatedAt: new Date(data.updated_at),
+      };
+    } catch (error) {
+      if (error instanceof TypeError && error.message === "Failed to fetch") {
+        throw new Error(
+          `Failed to connect to backend server at ${API_BASE_URL}. ` +
+          `Please ensure the backend server is running.`
+        );
+      }
+      throw error;
+    }
+  },
+
+  /**
+   * List organization members
+   */
+  async listMembers(orgId: string): Promise<OrganizationMemberList> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/organizations/${orgId}/members`, {
+        method: "GET",
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: `HTTP ${response.status}: ${response.statusText}` }));
+        throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return {
+        members: data.members.map((m: any) => ({
+          userId: m.user_id,
+          email: m.email,
+          name: m.name,
+          role: m.role,
+          joinedAt: new Date(m.joined_at),
+        })),
+        total: data.total,
+      };
+    } catch (error) {
+      if (error instanceof TypeError && error.message === "Failed to fetch") {
+        throw new Error(
+          `Failed to connect to backend server at ${API_BASE_URL}. ` +
+          `Please ensure the backend server is running.`
+        );
+      }
+      throw error;
+    }
+  },
+
+  /**
+   * Invite a member to the organization
+   */
+  async inviteMember(orgId: string, request: InviteMemberRequest): Promise<OrganizationMember> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/organizations/${orgId}/members`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(request),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: `HTTP ${response.status}: ${response.statusText}` }));
+        throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return {
+        userId: data.user_id,
+        email: data.email,
+        name: data.name,
+        role: data.role,
+        joinedAt: new Date(data.joined_at),
+      };
+    } catch (error) {
+      if (error instanceof TypeError && error.message === "Failed to fetch") {
+        throw new Error(
+          `Failed to connect to backend server at ${API_BASE_URL}. ` +
+          `Please ensure the backend server is running.`
+        );
+      }
+      throw error;
+    }
+  },
+
+  /**
+   * Remove a member from the organization
+   */
+  async removeMember(orgId: string, userId: string): Promise<void> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/organizations/${orgId}/members/${userId}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: `HTTP ${response.status}: ${response.statusText}` }));
+        throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`);
+      }
+    } catch (error) {
+      if (error instanceof TypeError && error.message === "Failed to fetch") {
+        throw new Error(
+          `Failed to connect to backend server at ${API_BASE_URL}. ` +
+          `Please ensure the backend server is running.`
+        );
+      }
+      throw error;
+    }
+  },
+
+  /**
+   * Update member role
+   */
+  async updateMemberRole(orgId: string, userId: string, request: UpdateMemberRoleRequest): Promise<OrganizationMember> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/organizations/${orgId}/members/${userId}/role`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(request),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: `HTTP ${response.status}: ${response.statusText}` }));
+        throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return {
+        userId: data.user_id,
+        email: data.email,
+        name: data.name,
+        role: data.role,
+        joinedAt: new Date(data.joined_at),
+      };
+    } catch (error) {
+      if (error instanceof TypeError && error.message === "Failed to fetch") {
+        throw new Error(
+          `Failed to connect to backend server at ${API_BASE_URL}. ` +
+          `Please ensure the backend server is running.`
+        );
+      }
+      throw error;
+    }
+  },
+
+  /**
+   * Get organization settings
+   */
+  async getSettings(orgId: string): Promise<OrganizationSettings> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/organizations/${orgId}/settings`, {
+        method: "GET",
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: `HTTP ${response.status}: ${response.statusText}` }));
+        throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return {
+        organizationId: data.organization_id,
+        dataRetentionDays: data.data_retention_days,
+        require2fa: data.require_2fa,
+        allowGuestAccess: data.allow_guest_access,
+        maxUsers: data.max_users,
+        createdAt: new Date(data.created_at),
+        updatedAt: new Date(data.updated_at),
+      };
+    } catch (error) {
+      if (error instanceof TypeError && error.message === "Failed to fetch") {
+        throw new Error(
+          `Failed to connect to backend server at ${API_BASE_URL}. ` +
+          `Please ensure the backend server is running.`
+        );
+      }
+      throw error;
+    }
+  },
+
+  /**
+   * Update organization settings
+   */
+  async updateSettings(orgId: string, request: UpdateOrganizationSettingsRequest): Promise<OrganizationSettings> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/organizations/${orgId}/settings`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          data_retention_days: request.dataRetentionDays,
+          require_2fa: request.require2fa,
+          allow_guest_access: request.allowGuestAccess,
+          max_users: request.maxUsers,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: `HTTP ${response.status}: ${response.statusText}` }));
+        throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return {
+        organizationId: data.organization_id,
+        dataRetentionDays: data.data_retention_days,
+        require2fa: data.require_2fa,
+        allowGuestAccess: data.allow_guest_access,
+        maxUsers: data.max_users,
+        createdAt: new Date(data.created_at),
+        updatedAt: new Date(data.updated_at),
+      };
+    } catch (error) {
+      if (error instanceof TypeError && error.message === "Failed to fetch") {
+        throw new Error(
+          `Failed to connect to backend server at ${API_BASE_URL}. ` +
+          `Please ensure the backend server is running.`
+        );
+      }
       throw error;
     }
   },

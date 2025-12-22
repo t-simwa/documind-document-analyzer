@@ -106,3 +106,15 @@ export const LockIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+export const OrganizationIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <rect x="3" y="4" width="14" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+    <path d="M7 4v12M13 4v12M3 8h14M3 12h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.3"/>
+    <circle cx="7" cy="7" r="1" fill="currentColor" opacity="0.4"/>
+    <circle cx="13" cy="7" r="1" fill="currentColor" opacity="0.4"/>
+    <circle cx="7" cy="11" r="1" fill="currentColor" opacity="0.4"/>
+    <circle cx="13" cy="11" r="1" fill="currentColor" opacity="0.4"/>
+    <path d="M10 2v2M10 16v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.3"/>
+  </svg>
+);
+

@@ -178,7 +178,10 @@ export const authApi = {
       throw new Error(error.detail || `HTTP ${response.status}`);
     }
 
-    return response.json();
+    const data = await response.json();
+    console.log("authService.getMe: Full API response:", JSON.stringify(data, null, 2));
+    console.log("authService.getMe: user.organization_id:", data?.user?.organization_id);
+    return data;
   },
 
   /**

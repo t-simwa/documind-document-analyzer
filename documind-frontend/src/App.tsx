@@ -19,6 +19,8 @@ import AnalyticsPage from "./pages/products/AnalyticsPage";
 import MobilePage from "./pages/products/MobilePage";
 import ResourcesPage from "./pages/ResourcesPage";
 import UserProfileSettings from "./pages/UserProfileSettings";
+import OrganizationSettings from "./pages/OrganizationSettings";
+import UserManagement from "./pages/UserManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -63,6 +65,22 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <UserProfileSettings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/app/organization/settings"
+              element={
+                <ProtectedRoute>
+                  <OrganizationSettings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/app/organization/members"
+              element={
+                <ProtectedRoute>
+                  <UserManagement />
                 </ProtectedRoute>
               }
             />

@@ -9,14 +9,18 @@ import type { UserProfile } from "@/types/api";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { SettingsIcon, ProfileIcon, SecurityIcon, NotificationsIcon } from "@/components/settings/SettingsIcons";
+import { SettingsIcon, ProfileIcon, SecurityIcon, NotificationsIcon, OrganizationIcon } from "@/components/settings/SettingsIcons";
+import { Users, ArrowRight, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { CreateOrganizationDialog } from "@/components/organization/CreateOrganizationDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 
 export default function UserProfileSettings() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"profile" | "security" | "notifications">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "security" | "notifications" | "organization">("profile");
+  const [createOrgDialogOpen, setCreateOrgDialogOpen] = useState(false);
   const { toast } = useToast();
   const { user, refreshUser } = useAuth();
   const navigate = useNavigate();
@@ -104,6 +108,7 @@ export default function UserProfileSettings() {
     { id: "profile" as const, label: "Profile", icon: ProfileIcon },
     { id: "security" as const, label: "Security", icon: SecurityIcon },
     { id: "notifications" as const, label: "Notifications", icon: NotificationsIcon },
+    { id: "organization" as const, label: "Organization", icon: OrganizationIcon },
   ];
 
   return (
@@ -128,7 +133,7 @@ export default function UserProfileSettings() {
 
             {/* Custom Tabs Navigation */}
             <div className="mb-8">
-              <div className="flex items-center gap-1 border-b border-[#e5e5e5] dark:border-[#262626]">
+              <div className="flex items-center gap-1 border-b border-[#e5e5e5] dark:border-[#262626] overflow-x-auto">
                 {tabs.map((tab) => {
                   const Icon = tab.icon;
                   const isActive = activeTab === tab.id;
@@ -137,7 +142,7 @@ export default function UserProfileSettings() {
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
                       className={cn(
-                        "relative flex items-center gap-2.5 px-5 py-3.5 text-[15px] font-medium transition-colors duration-200",
+                        "relative flex items-center gap-2.5 px-5 py-3.5 text-[15px] font-medium transition-colors duration-200 whitespace-nowrap",
                         "border-b-2 -mb-px",
                         isActive
                           ? "text-[#171717] dark:text-[#fafafa] border-[#171717] dark:border-[#fafafa]"
@@ -221,7 +226,113 @@ export default function UserProfileSettings() {
                   </div>
                 </div>
               )}
+
+              {activeTab === "organization" && (
+                <div className="space-y-6">
+                  {user?.organization_id ? (
+                    <>
+                      {/* Organization Settings Card */}
+                      <div className="bg-white dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#262626] rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300">
+                        <div className="px-6 py-5 border-b border-[#e5e5e5] dark:border-[#262626]">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h2 className="text-lg font-semibold text-[#171717] dark:text-[#fafafa] mb-1">
+                                Organization Settings
+                              </h2>
+                              <p className="text-[13px] text-[#737373] dark:text-[#a3a3a3]">
+                                Manage your organization details, plan, and security settings
+                              </p>
+                            </div>
+                            <OrganizationIcon className="h-5 w-5 text-[#737373] dark:text-[#a3a3a3]" />
+                          </div>
+                        </div>
+                        <div className="p-6">
+                          <p className="text-[14px] text-[#737373] dark:text-[#a3a3a3] mb-4">
+                            Configure your organization settings including name, subscription plan, and security preferences.
+                          </p>
+                          <Button
+                            onClick={() => navigate("/app/organization/settings")}
+                            className="w-full sm:w-auto"
+                            variant="outline"
+                          >
+                            Open Organization Settings
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Team Members Card */}
+                      <div className="bg-white dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#262626] rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300">
+                        <div className="px-6 py-5 border-b border-[#e5e5e5] dark:border-[#262626]">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h2 className="text-lg font-semibold text-[#171717] dark:text-[#fafafa] mb-1">
+                                Team Members
+                              </h2>
+                              <p className="text-[13px] text-[#737373] dark:text-[#a3a3a3]">
+                                Invite, manage, and organize your team members
+                              </p>
+                            </div>
+                            <Users className="h-5 w-5 text-[#737373] dark:text-[#a3a3a3]" />
+                          </div>
+                        </div>
+                        <div className="p-6">
+                          <p className="text-[14px] text-[#737373] dark:text-[#a3a3a3] mb-4">
+                            View all team members, invite new users, and manage roles and permissions.
+                          </p>
+                          <Button
+                            onClick={() => navigate("/app/organization/members")}
+                            className="w-full sm:w-auto"
+                            variant="outline"
+                          >
+                            Manage Team Members
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="bg-white dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#262626] rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300">
+                      <div className="px-6 py-5 border-b border-[#e5e5e5] dark:border-[#262626]">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h2 className="text-lg font-semibold text-[#171717] dark:text-[#fafafa] mb-1">
+                              Create Your Organization
+                            </h2>
+                            <p className="text-[13px] text-[#737373] dark:text-[#a3a3a3]">
+                              Set up an organization to manage your team and collaborate
+                            </p>
+                          </div>
+                          <OrganizationIcon className="h-5 w-5 text-[#737373] dark:text-[#a3a3a3]" />
+                        </div>
+                      </div>
+                      <div className="p-6">
+                        <p className="text-[14px] text-[#737373] dark:text-[#a3a3a3] mb-4">
+                          Organizations help you manage team members, set permissions, and organize your workspace. Create one to get started.
+                        </p>
+                        <Button
+                          onClick={() => setCreateOrgDialogOpen(true)}
+                          className="w-full sm:w-auto"
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                          Create Organization
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
+
+            {/* Create Organization Dialog */}
+            <CreateOrganizationDialog
+              open={createOrgDialogOpen}
+              onOpenChange={setCreateOrgDialogOpen}
+              onSuccess={async () => {
+                await refreshUser();
+                setActiveTab("organization");
+              }}
+            />
           </div>
         </main>
       </div>

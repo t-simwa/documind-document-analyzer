@@ -554,3 +554,62 @@ export interface AnalysisShareLink {
   isActive: boolean;
 }
 
+// Organization Types
+export interface Organization {
+  id: string;
+  name: string;
+  slug: string;
+  plan: "free" | "pro" | "enterprise";
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface OrganizationMember {
+  userId: string;
+  email: string;
+  name: string;
+  role: "admin" | "analyst" | "viewer";
+  joinedAt: Date;
+}
+
+export interface OrganizationMemberList {
+  members: OrganizationMember[];
+  total: number;
+}
+
+export interface CreateOrganizationRequest {
+  name: string;
+  slug?: string;
+}
+
+export interface UpdateOrganizationRequest {
+  name?: string;
+  plan?: "free" | "pro" | "enterprise";
+}
+
+export interface InviteMemberRequest {
+  email: string;
+  role: "admin" | "analyst" | "viewer";
+}
+
+export interface UpdateMemberRoleRequest {
+  role: "admin" | "analyst" | "viewer";
+}
+
+export interface OrganizationSettings {
+  organizationId: string;
+  dataRetentionDays?: number;
+  require2fa: boolean;
+  allowGuestAccess: boolean;
+  maxUsers?: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface UpdateOrganizationSettingsRequest {
+  dataRetentionDays?: number;
+  require2fa?: boolean;
+  allowGuestAccess?: boolean;
+  maxUsers?: number;
+}
+

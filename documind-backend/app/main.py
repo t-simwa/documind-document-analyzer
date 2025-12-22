@@ -26,11 +26,8 @@ from app.database import connect_to_mongo, close_mongo_connection
 setup_logging()
 logger = get_logger(__name__)
 
-# Initialize rate limiter
-limiter = Limiter(
-    key_func=get_remote_address,
-    default_limits=[f"{settings.RATE_LIMIT_PER_MINUTE}/minute"] if settings.RATE_LIMIT_ENABLED else [],
-)
+# Initialize rate limiter (import from rate_limit module)
+from app.core.rate_limit import limiter
 
 # Create FastAPI application
 app = FastAPI(
@@ -74,6 +71,23 @@ async def documind_exception_handler(request: Request, exc: DocuMindException):
 cors_origins = settings.CORS_ORIGINS
 if isinstance(cors_origins, str):
     cors_origins = [origin.strip() for origin in cors_origins.split(",") if origin.strip()]
+
+# In development, allow all localhost origins for easier testing
+if settings.DEBUG:
+    # Add common localhost ports if not already present
+    common_localhost_origins = [
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://localhost:8080",
+        "http://localhost:8081",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:8080",
+        "http://127.0.0.1:8081",
+    ]
+    for origin in common_localhost_origins:
+        if origin not in cors_origins:
+            cors_origins.append(origin)
 
 cors_methods = settings.CORS_METHODS
 if isinstance(cors_methods, str):

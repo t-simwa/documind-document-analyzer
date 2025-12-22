@@ -217,6 +217,15 @@ async def get_current_user_info(
     if not user:
         raise AuthenticationError("User not found")
     
+    # Log the organization_id for debugging
+    import structlog
+    logger = structlog.get_logger(__name__)
+    logger.debug(
+        "get_current_user_info",
+        user_id=str(user.id),
+        organization_id=user.organization_id
+    )
+    
     return UserMeResponse(
         user={
             "id": str(user.id),
