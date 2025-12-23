@@ -20,15 +20,15 @@ export const SecurityScanResults = ({ scanResult, className }: SecurityScanResul
   const getStatusIcon = (status: SecurityScanResult["status"]) => {
     switch (status) {
       case "clean":
-        return <SecurityCleanIcon className="h-5 w-5 text-[#10b981] dark:text-[#10b981]" />;
+        return <SecurityCleanIcon className="h-4 w-4 text-[#10b981] dark:text-[#10b981]" />;
       case "threat_detected":
-        return <SecurityThreatIcon className="h-5 w-5 text-red-600 dark:text-red-400" />;
+        return <SecurityThreatIcon className="h-4 w-4 text-red-600 dark:text-red-400" />;
       case "scanning":
-        return <SecurityScanningIcon className="h-5 w-5 text-[#171717] dark:text-[#fafafa]" />;
+        return <SecurityScanningIcon className="h-4 w-4 text-[#171717] dark:text-[#fafafa]" />;
       case "error":
-        return <SecurityErrorIcon className="h-5 w-5 text-red-600 dark:text-red-400" />;
+        return <SecurityErrorIcon className="h-4 w-4 text-red-600 dark:text-red-400" />;
       default:
-        return <SecurityPendingIcon className="h-5 w-5 text-[#737373] dark:text-[#a3a3a3]" />;
+        return <SecurityPendingIcon className="h-4 w-4 text-[#737373] dark:text-[#a3a3a3]" />;
     }
   };
 
@@ -83,20 +83,20 @@ export const SecurityScanResults = ({ scanResult, className }: SecurityScanResul
   ];
 
   return (
-    <div className={cn("space-y-2", className)}>
+    <div className={cn("space-y-1.5", className)}>
       {/* Overall Status Card */}
       <div className={cn(
-        "p-2 rounded-md border",
+        "p-1.5 rounded-md border",
         getStatusColor(scanResult.status)
       )}>
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-md bg-white/50 dark:bg-[#171717]/50 flex items-center justify-center flex-shrink-0">
+        <div className="flex items-center gap-1.5">
+          <div className="w-5 h-5 rounded-md bg-white/50 dark:bg-[#171717]/50 flex items-center justify-center flex-shrink-0">
             {getStatusIcon(scanResult.status)}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[11px] font-semibold leading-tight">{getStatusText(scanResult.status)}</p>
+            <p className="text-[10px] font-medium leading-tight">{getStatusText(scanResult.status)}</p>
             {scanResult.scannedAt && (
-              <p className="text-[10px] text-[#737373] dark:text-[#a3a3a3] mt-0.5">
+              <p className="text-[9px] text-[#737373] dark:text-[#a3a3a3] mt-0.5">
                 {new Date(scanResult.scannedAt).toLocaleTimeString()}
               </p>
             )}
@@ -105,29 +105,29 @@ export const SecurityScanResults = ({ scanResult, className }: SecurityScanResul
       </div>
 
       {/* Scan Details */}
-      <div className="grid grid-cols-2 gap-1.5">
+      <div className="grid grid-cols-2 gap-1">
         {/* Malware Scan */}
         {scanResult.malwareScan && (
-          <div className="p-2 rounded-md border border-[#e5e5e5] dark:border-[#262626] bg-[#fafafa]/50 dark:bg-[#0a0a0a]/50">
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-1.5">
-                <div className="w-5 h-5 rounded-md bg-[#f5f5f5] dark:bg-[#262626] flex items-center justify-center">
-                  <MalwareIcon className="h-3 w-3 text-[#737373] dark:text-[#a3a3a3]" />
+          <div className="p-1.5 rounded-md border border-[#e5e5e5] dark:border-[#262626] bg-[#fafafa]/50 dark:bg-[#0a0a0a]/50">
+            <div className="flex items-center justify-between mb-0.5">
+              <div className="flex items-center gap-1">
+                <div className="w-4 h-4 rounded-md bg-[#f5f5f5] dark:bg-[#262626] flex items-center justify-center">
+                  <MalwareIcon className="h-2.5 w-2.5 text-[#737373] dark:text-[#a3a3a3]" />
                 </div>
-                <span className="text-[10px] font-medium text-[#171717] dark:text-[#fafafa]">Malware</span>
+                <span className="text-[9px] font-medium text-[#171717] dark:text-[#fafafa]">Malware</span>
               </div>
               {scanResult.malwareScan.status === "clean" && (
-                <SecurityCleanIcon className="h-3 w-3 text-[#10b981] dark:text-[#10b981]" />
+                <SecurityCleanIcon className="h-2.5 w-2.5 text-[#10b981] dark:text-[#10b981]" />
               )}
               {scanResult.malwareScan.status === "threat_detected" && (
-                <ThreatAlertIcon className="h-3 w-3 text-red-600 dark:text-red-400" />
+                <ThreatAlertIcon className="h-2.5 w-2.5 text-red-600 dark:text-red-400" />
               )}
               {scanResult.malwareScan.status === "scanning" && (
-                <SecurityScanningIcon className="h-3 w-3 text-[#171717] dark:text-[#fafafa]" />
+                <SecurityScanningIcon className="h-2.5 w-2.5 text-[#171717] dark:text-[#fafafa]" />
               )}
             </div>
             {scanResult.malwareScan.scannedAt && (
-              <p className="text-[9px] text-[#737373] dark:text-[#a3a3a3]">
+              <p className="text-[8px] text-[#737373] dark:text-[#a3a3a3]">
                 {new Date(scanResult.malwareScan.scannedAt).toLocaleTimeString()}
               </p>
             )}
@@ -136,26 +136,26 @@ export const SecurityScanResults = ({ scanResult, className }: SecurityScanResul
 
         {/* Virus Scan */}
         {scanResult.virusScan && (
-          <div className="p-2 rounded-md border border-[#e5e5e5] dark:border-[#262626] bg-[#fafafa]/50 dark:bg-[#0a0a0a]/50">
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-1.5">
-                <div className="w-5 h-5 rounded-md bg-[#f5f5f5] dark:bg-[#262626] flex items-center justify-center">
-                  <VirusIcon className="h-3 w-3 text-[#737373] dark:text-[#a3a3a3]" />
+          <div className="p-1.5 rounded-md border border-[#e5e5e5] dark:border-[#262626] bg-[#fafafa]/50 dark:bg-[#0a0a0a]/50">
+            <div className="flex items-center justify-between mb-0.5">
+              <div className="flex items-center gap-1">
+                <div className="w-4 h-4 rounded-md bg-[#f5f5f5] dark:bg-[#262626] flex items-center justify-center">
+                  <VirusIcon className="h-2.5 w-2.5 text-[#737373] dark:text-[#a3a3a3]" />
                 </div>
-                <span className="text-[10px] font-medium text-[#171717] dark:text-[#fafafa]">Virus</span>
+                <span className="text-[9px] font-medium text-[#171717] dark:text-[#fafafa]">Virus</span>
               </div>
               {scanResult.virusScan.status === "clean" && (
-                <SecurityCleanIcon className="h-3 w-3 text-[#10b981] dark:text-[#10b981]" />
+                <SecurityCleanIcon className="h-2.5 w-2.5 text-[#10b981] dark:text-[#10b981]" />
               )}
               {scanResult.virusScan.status === "threat_detected" && (
-                <ThreatAlertIcon className="h-3 w-3 text-red-600 dark:text-red-400" />
+                <ThreatAlertIcon className="h-2.5 w-2.5 text-red-600 dark:text-red-400" />
               )}
               {scanResult.virusScan.status === "scanning" && (
-                <SecurityScanningIcon className="h-3 w-3 text-[#171717] dark:text-[#fafafa]" />
+                <SecurityScanningIcon className="h-2.5 w-2.5 text-[#171717] dark:text-[#fafafa]" />
               )}
             </div>
             {scanResult.virusScan.scannedAt && (
-              <p className="text-[9px] text-[#737373] dark:text-[#a3a3a3]">
+              <p className="text-[8px] text-[#737373] dark:text-[#a3a3a3]">
                 {new Date(scanResult.virusScan.scannedAt).toLocaleTimeString()}
               </p>
             )}
@@ -165,33 +165,33 @@ export const SecurityScanResults = ({ scanResult, className }: SecurityScanResul
 
       {/* Threats List */}
       {allThreats.length > 0 && (
-        <div className="space-y-1.5">
-          <p className="text-[11px] font-semibold text-[#171717] dark:text-[#fafafa]">Detected Threats</p>
+        <div className="space-y-1">
+          <p className="text-[10px] font-medium text-[#171717] dark:text-[#fafafa]">Detected Threats</p>
           {allThreats.map((threat, index) => (
             <div
               key={index}
               className={cn(
-                "p-2 rounded-md border",
+                "p-1.5 rounded-md border",
                 getThreatSeverityColor(threat.severity)
               )}
             >
-              <div className="flex items-start gap-1.5">
-                <div className="w-5 h-5 rounded-md bg-white/50 dark:bg-[#171717]/50 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <ThreatAlertIcon className="h-3 w-3" />
+              <div className="flex items-start gap-1">
+                <div className="w-4 h-4 rounded-md bg-white/50 dark:bg-[#171717]/50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <ThreatAlertIcon className="h-2.5 w-2.5" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-semibold mb-0.5 leading-tight">{threat.name}</p>
-                  <p className="text-[9px] text-[#737373] dark:text-[#a3a3a3] mb-1.5 leading-tight">
+                  <p className="text-[9px] font-medium mb-0.5 leading-tight">{threat.name}</p>
+                  <p className="text-[8px] text-[#737373] dark:text-[#a3a3a3] mb-1 leading-tight">
                     {threat.description}
                   </p>
                   <div className="flex items-center gap-1">
                     <span className={cn(
-                      "text-[9px] px-1 py-0.5 rounded-md font-medium uppercase tracking-wider",
+                      "text-[8px] px-1 py-0.5 rounded-md font-medium uppercase tracking-wider",
                       getThreatSeverityColor(threat.severity)
                     )}>
                       {threat.severity}
                     </span>
-                    <span className="text-[9px] text-[#737373] dark:text-[#a3a3a3]">
+                    <span className="text-[8px] text-[#737373] dark:text-[#a3a3a3]">
                       {threat.type}
                     </span>
                   </div>
@@ -204,12 +204,12 @@ export const SecurityScanResults = ({ scanResult, className }: SecurityScanResul
 
       {/* Error Message */}
       {scanResult.error && (
-        <div className="p-2 rounded-md border border-red-200 dark:border-red-900/30 bg-red-50/50 dark:bg-red-950/20">
-          <div className="flex items-center gap-1.5">
-            <div className="w-5 h-5 rounded-md bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
-              <SecurityErrorIcon className="h-3 w-3 text-red-600 dark:text-red-400" />
+        <div className="p-1.5 rounded-md border border-red-200 dark:border-red-900/30 bg-red-50/50 dark:bg-red-950/20">
+          <div className="flex items-center gap-1">
+            <div className="w-4 h-4 rounded-md bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+              <SecurityErrorIcon className="h-2.5 w-2.5 text-red-600 dark:text-red-400" />
             </div>
-            <p className="text-[10px] text-red-900 dark:text-red-100 leading-tight">{scanResult.error}</p>
+            <p className="text-[9px] text-red-900 dark:text-red-100 leading-tight">{scanResult.error}</p>
           </div>
         </div>
       )}

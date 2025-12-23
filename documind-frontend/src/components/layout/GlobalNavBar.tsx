@@ -24,15 +24,15 @@ import {
 import { Logo } from "@/components/brand/Logo";
 
 // Custom unique icons for world-class SaaS platform
-const SearchIcon = () => (
-  <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+const SearchIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className={className || "w-full h-full"}>
     <circle cx="9" cy="9" r="5.5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
     <path d="m13.5 13.5 3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 
-const NotificationIcon = () => (
-  <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+const NotificationIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className={className || "w-full h-full"}>
     <path 
       d="M10 2a5 5 0 0 1 5 5v2.586l1.293 1.293a1 1 0 0 1 .707 1.707H3a1 1 0 0 1-.707-1.707L3.586 9.586V7a5 5 0 0 1 5-5z" 
       stroke="currentColor" 
@@ -52,8 +52,8 @@ const NotificationIcon = () => (
   </svg>
 );
 
-const HelpIcon = () => (
-  <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+const HelpIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className={className || "w-full h-full"}>
     <path 
       d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16z" 
       stroke="currentColor" 
@@ -74,8 +74,8 @@ const HelpIcon = () => (
   </svg>
 );
 
-const ProfileIcon = () => (
-  <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+const ProfileIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className={className || "w-full h-full"}>
     <circle cx="10" cy="7" r="3" stroke="currentColor" strokeWidth="1.5" fill="none"/>
     <path d="M5 16.5c0-2.5 2-4.5 5-4.5s5 2 5 4.5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
   </svg>
@@ -182,11 +182,11 @@ export const GlobalNavBar = ({ onSearch }: GlobalNavBarProps) => {
   };
 
   return (
-    <nav className="h-[64px] border-b border-[#e5e5e5] dark:border-[#262626] bg-white/80 dark:bg-[#171717]/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/50 dark:supports-[backdrop-filter]:bg-[#171717]/50 sticky top-0 z-50">
-      <div className="flex h-full items-center justify-between px-6">
+    <nav className="h-12 border-b border-[#e5e5e5] dark:border-[#262626] bg-white/80 dark:bg-[#171717]/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/50 dark:supports-[backdrop-filter]:bg-[#171717]/50 sticky top-0 z-50">
+      <div className="flex h-full items-center justify-between px-4">
         {/* Left Section: Logo (Dashboard and Settings only) */}
         {showLogo && (
-          <div className="flex-shrink-0 mr-6">
+          <div className="flex-shrink-0 mr-4">
             <Link to="/app" className="flex items-center">
               <Logo showText={true} />
             </Link>
@@ -196,12 +196,12 @@ export const GlobalNavBar = ({ onSearch }: GlobalNavBarProps) => {
         {/* Center Section: Global Search Bar */}
         <div className={cn(
           "flex-1 flex justify-center min-w-0",
-          showLogo ? "px-4" : "px-8"
+          showLogo ? "px-3" : "px-6"
         )}>
           <form onSubmit={handleSearch} className="relative hidden md:block w-full max-w-[600px]">
             <div className="relative group">
               <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-foreground/5 via-foreground/3 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none" />
-              <div className="absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-muted-foreground/60 transition-colors duration-200 group-hover:text-muted-foreground">
+              <div className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60 transition-colors duration-200 group-hover:text-muted-foreground">
                 <SearchIcon />
               </div>
               <Input
@@ -212,23 +212,23 @@ export const GlobalNavBar = ({ onSearch }: GlobalNavBarProps) => {
                 onFocus={() => setIsSearchFocused(true)}
                 onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
                 className={cn(
-                  "w-full pl-10 pr-20 h-[36px] bg-muted/30 border border-border/50 rounded-lg",
-                  "text-sm placeholder:text-muted-foreground/50",
+                  "w-full pl-9 pr-16 h-8 bg-muted/30 border border-border/50 rounded-lg",
+                  "text-xs placeholder:text-muted-foreground/50",
                   "transition-all duration-200",
                   "hover:bg-muted/40 hover:border-border/70",
                   isSearchFocused && "bg-muted/50 border-foreground/20 ring-1 ring-foreground/10 shadow-sm"
                 )}
               />
-              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
                 {searchQuery && (
-                  <kbd className="pointer-events-none inline-flex h-6 select-none items-center gap-1 rounded-md border border-border/50 bg-background/80 px-2 font-mono text-[11px] font-medium text-muted-foreground/70 shadow-sm">
-                    <Command className="h-3 w-3" />
+                  <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-0.5 rounded-md border border-border/50 bg-background/80 px-1.5 font-mono text-[10px] font-medium text-muted-foreground/70 shadow-sm">
+                    <Command className="h-2.5 w-2.5" />
                     K
                   </kbd>
                 )}
                 {!searchQuery && (
-                  <kbd className="pointer-events-none hidden lg:inline-flex h-6 select-none items-center gap-1 rounded-md border border-border/30 bg-background/60 px-2 font-mono text-[11px] font-medium text-muted-foreground/50">
-                    <Command className="h-3 w-3" />
+                  <kbd className="pointer-events-none hidden lg:inline-flex h-5 select-none items-center gap-0.5 rounded-md border border-border/30 bg-background/60 px-1.5 font-mono text-[10px] font-medium text-muted-foreground/50">
+                    <Command className="h-2.5 w-2.5" />
                     K
                   </kbd>
                 )}
@@ -238,12 +238,12 @@ export const GlobalNavBar = ({ onSearch }: GlobalNavBarProps) => {
         </div>
 
         {/* Right Section: Actions */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {/* Mobile Search Button */}
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden h-9 w-9 rounded-lg hover:bg-muted/50 transition-colors duration-200"
+            className="md:hidden h-7 w-7 rounded-lg hover:bg-muted/50 transition-colors duration-200"
             onClick={() => {
               toast({
                 title: "Search",
@@ -251,7 +251,7 @@ export const GlobalNavBar = ({ onSearch }: GlobalNavBarProps) => {
               });
             }}
           >
-            <SearchIcon />
+            <SearchIcon className="h-3.5 w-3.5" />
           </Button>
 
           {/* Help & Support */}
@@ -260,9 +260,9 @@ export const GlobalNavBar = ({ onSearch }: GlobalNavBarProps) => {
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="relative h-9 w-9 rounded-lg hover:bg-muted/50 transition-colors duration-200"
+                className="relative h-7 w-7 rounded-lg hover:bg-muted/50 transition-colors duration-200"
               >
-                <HelpIcon />
+                <HelpIcon className="h-3.5 w-3.5" />
                 <span className="sr-only">Help & Support</span>
               </Button>
             </DropdownMenuTrigger>
@@ -316,12 +316,12 @@ export const GlobalNavBar = ({ onSearch }: GlobalNavBarProps) => {
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="relative h-9 w-9 rounded-lg hover:bg-[#fafafa] dark:hover:bg-[#262626] transition-colors duration-200"
+                className="relative h-7 w-7 rounded-lg hover:bg-[#fafafa] dark:hover:bg-[#262626] transition-colors duration-200"
               >
-                <NotificationIcon />
+                <NotificationIcon className="h-3.5 w-3.5" />
                 {unreadCount > 0 && (
-                  <div className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-md bg-[#171717] dark:bg-[#fafafa] border border-[#e5e5e5] dark:border-[#262626] shadow-sm">
-                    <span className="text-[10px] font-bold text-[#fafafa] dark:text-[#171717] leading-none">
+                  <div className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[16px] h-4 px-1 rounded-md bg-[#171717] dark:bg-[#fafafa] border border-[#e5e5e5] dark:border-[#262626] shadow-sm">
+                    <span className="text-[9px] font-bold text-[#fafafa] dark:text-[#171717] leading-none">
                       {unreadCount > 9 ? "9+" : unreadCount}
                     </span>
                   </div>
@@ -355,7 +355,7 @@ export const GlobalNavBar = ({ onSearch }: GlobalNavBarProps) => {
                 {notifications.length === 0 ? (
                   <div className="px-4 py-12 text-center">
                     <div className="h-10 w-10 text-[#e5e5e5] dark:text-[#404040] mx-auto mb-3 flex items-center justify-center">
-                      <NotificationIcon />
+                      <NotificationIcon className="h-5 w-5" />
                     </div>
                     <p className="text-xs font-medium text-[#171717] dark:text-[#fafafa] mb-0.5">No notifications</p>
                     <p className="text-[10px] text-[#737373] dark:text-[#a3a3a3]">You're all caught up</p>
@@ -420,10 +420,10 @@ export const GlobalNavBar = ({ onSearch }: GlobalNavBarProps) => {
           {user && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <button className="relative h-8 w-8 rounded-lg hover:bg-[#fafafa] dark:hover:bg-[#262626] transition-all duration-200 focus:outline-none focus:ring-1 focus:ring-[#171717]/10 dark:focus:ring-[#fafafa]/10 focus:ring-offset-1">
-                  <Avatar className="h-8 w-8 ring-1 ring-[#e5e5e5] dark:ring-[#262626] ring-offset-0 transition-all duration-200 hover:ring-[#d4d4d4] dark:hover:ring-[#404040]">
+                <button className="relative h-7 w-7 rounded-lg hover:bg-[#fafafa] dark:hover:bg-[#262626] transition-all duration-200 focus:outline-none focus:ring-1 focus:ring-[#171717]/10 dark:focus:ring-[#fafafa]/10 focus:ring-offset-1">
+                  <Avatar className="h-7 w-7 ring-1 ring-[#e5e5e5] dark:ring-[#262626] ring-offset-0 transition-all duration-200 hover:ring-[#d4d4d4] dark:hover:ring-[#404040]">
                   <AvatarImage src={user.avatar} alt={user.name} />
-                    <AvatarFallback className="bg-[#f5f5f5] dark:bg-[#262626] text-[#171717] dark:text-[#fafafa] font-medium text-xs">
+                    <AvatarFallback className="bg-[#f5f5f5] dark:bg-[#262626] text-[#171717] dark:text-[#fafafa] font-medium text-[10px]">
                     {user.name
                       .split(" ")
                       .map((n) => n[0])
@@ -507,9 +507,9 @@ export const GlobalNavBar = ({ onSearch }: GlobalNavBarProps) => {
       </div>
 
       {/* Mobile Search Bar */}
-      <div className="md:hidden border-t border-border/50 px-4 py-3 bg-muted/20">
+      <div className="md:hidden border-t border-border/50 px-3 py-2 bg-muted/20">
         <form onSubmit={handleSearch} className="relative">
-          <div className="absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-muted-foreground/60">
+          <div className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60">
             <SearchIcon />
           </div>
           <Input
@@ -517,7 +517,7 @@ export const GlobalNavBar = ({ onSearch }: GlobalNavBarProps) => {
             placeholder="Search documents, projects..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 pr-4 h-[36px] bg-background/50 border-border/50 rounded-lg text-sm placeholder:text-muted-foreground/50"
+            className="pl-9 pr-4 h-8 bg-background/50 border-border/50 rounded-lg text-xs placeholder:text-muted-foreground/50"
           />
         </form>
       </div>

@@ -306,14 +306,18 @@ export const Sidebar = ({
           style={{ paddingLeft: `${level * 12 + 10}px` }}
           onClick={() => onSelectProject?.(project.id)}
         >
+          {!collapsed && (
+            <>
           {hasChildren ? (
             isExpanded ? (
-            <FolderOpen className="h-3.5 w-3.5 flex-shrink-0 text-[#737373] dark:text-[#a3a3a3]" />
+                <FolderOpen className="h-3.5 w-3.5 flex-shrink-0 text-[#737373] dark:text-[#a3a3a3]" />
             ) : (
-              <Folder className="h-3.5 w-3.5 flex-shrink-0 text-[#737373] dark:text-[#a3a3a3]" />
+                  <Folder className="h-3.5 w-3.5 flex-shrink-0 text-[#737373] dark:text-[#a3a3a3]" />
             )
           ) : (
-            <Folder className="h-3.5 w-3.5 flex-shrink-0 text-[#737373] dark:text-[#a3a3a3]" />
+                <Folder className="h-3.5 w-3.5 flex-shrink-0 text-[#737373] dark:text-[#a3a3a3]" />
+              )}
+            </>
           )}
           {!collapsed && (
             <>
@@ -469,9 +473,11 @@ export const Sidebar = ({
               )}
             >
               {/* File Icon */}
+              {!collapsed && (
               <div className="flex-shrink-0">
                 {getFileIcon(doc.type)}
               </div>
+              )}
 
               {!collapsed && (
                 <>
