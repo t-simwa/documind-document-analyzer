@@ -17,6 +17,7 @@ from app.core.config import settings
 from app.core.dependencies import require_auth
 from app.workers.tasks import process_document_async, security_scan_async
 from app.database.models import Document as DocumentModel, Tag as TagModel
+from app.services.storage import get_storage_service, StorageService
 from .schemas import (
     DocumentUploadResponse, 
     DocumentResponse,
@@ -39,6 +40,20 @@ from app.services.generation.exceptions import GenerationError
 logger = structlog.get_logger(__name__)
 
 router = APIRouter()
+
+
+def get_storage() -> StorageService:
+    """Dependency to get storage service instance"""
+    return get_storage_service(
+        provider=settings.STORAGE_PROVIDER,
+        base_path=settings.STORAGE_BASE_PATH,
+        endpoint=settings.STORAGE_ENDPOINT,
+        access_key=settings.STORAGE_ACCESS_KEY,
+        secret_key=settings.STORAGE_SECRET_KEY,
+        bucket_name=settings.STORAGE_BUCKET_NAME,
+        secure=settings.STORAGE_SECURE,
+        region=settings.STORAGE_REGION
+    )
 
 
 async def _get_user_document(document_id: str, user_id: str) -> DocumentModel:
@@ -204,28 +219,21 @@ async def upload_document(
         await document.insert()
         document_id = str(document.id)
         
-        # Save file with MongoDB-generated ID
-        # Use absolute path to avoid path resolution issues
-        upload_dir = os.path.abspath(settings.UPLOAD_DIR)
-        os.makedirs(upload_dir, exist_ok=True)
-        file_path = os.path.join(upload_dir, f"{document_id}_{file.filename}")
+        # Get storage service
+        storage = get_storage()
         
-        # Write file content to disk
-        with open(file_path, "wb") as f:
-            f.write(file_content)
+        # Generate storage path (use document_id as prefix for organization)
+        storage_path = f"{document_id}/{file.filename}"
         
-        # Verify file was written
-        if not os.path.exists(file_path):
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to save file to disk. Path: {file_path}"
-            )
+        # Upload file to storage (local, MinIO, S3, or R2)
+        stored_path = await storage.upload_file(
+            file_content=file_content,
+            file_path=storage_path,
+            content_type=file.content_type or "application/octet-stream"
+        )
         
-        # Get absolute path
-        absolute_file_path = os.path.abspath(file_path)
-        
-        # Update document with absolute file path
-        document.file_path = absolute_file_path
+        # Update document with storage path
+        document.file_path = stored_path
         await document.save()
         
         logger.info(
@@ -234,16 +242,32 @@ async def upload_document(
             filename=file.filename,
             size=file_size,
             file_type=file_ext,
-            file_path=absolute_file_path,
-            file_exists=os.path.exists(absolute_file_path)
+            storage_path=stored_path,
+            storage_provider=settings.STORAGE_PROVIDER
         )
+        
+        # For background tasks, we need to download the file temporarily
+        # or pass the storage service. For now, download it for processing.
+        # In production, you might want to refactor workers to use storage service directly.
+        temp_file_path = None
+        if settings.STORAGE_PROVIDER != "local":
+            # For cloud storage, download to temp file for processing
+            import tempfile
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=f"_{file.filename}")
+            temp_file_path = temp_file.name
+            file_data = await storage.download_file(stored_path)
+            temp_file.write(file_data)
+            temp_file.close()
+        else:
+            # For local storage, use the actual path
+            temp_file_path = os.path.join(settings.STORAGE_BASE_PATH, stored_path)
         
         # Start security scan in background
         background_tasks.add_task(
             security_scan_async,
             document_id=document_id,
-            file_path=file_path,
-            metadata={"project_id": validated_project_id}
+            file_path=temp_file_path,
+            metadata={"project_id": validated_project_id, "storage_path": stored_path}
         )
         
         # Start document processing in background (after security scan)
@@ -251,9 +275,9 @@ async def upload_document(
         background_tasks.add_task(
             process_document_async,
             document_id=document_id,
-            file_path=file_path,
+            file_path=temp_file_path,
             file_type=file_ext,
-            metadata={"project_id": validated_project_id, "filename": file.filename}
+            metadata={"project_id": validated_project_id, "filename": file.filename, "storage_path": stored_path}
         )
         
         return DocumentUploadResponse(
@@ -515,87 +539,66 @@ async def download_document_options(request: Request):
 async def download_document(
     document_id: str,
     request: Request,
-    current_user: dict = Depends(require_auth)
+    current_user: dict = Depends(require_auth),
+    storage: StorageService = Depends(get_storage)
 ):
     """
     Download or view document file (filtered by authenticated user)
+    Returns signed URL for cloud storage or direct file for local storage
     
     Args:
         document_id: Document ID
         
     Returns:
-        File response with document content
+        Redirect to signed URL (cloud storage) or File response (local storage)
     """
     user_id = current_user["id"]
     doc = await _get_user_document(document_id, user_id)
+    
+    if not doc.file_path:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Document file path not set for document {document_id}"
+        )
     
     logger.info(
         "document_download_requested",
         document_id=document_id,
         document_name=doc.name,
-        stored_file_path=doc.file_path,
-        upload_dir=os.path.abspath(settings.UPLOAD_DIR)
+        storage_path=doc.file_path,
+        storage_provider=settings.STORAGE_PROVIDER
     )
     
-    # Convert relative path to absolute path if needed
-    file_path = doc.file_path
-    if file_path:
-        if not os.path.isabs(file_path):
-            # Convert relative path to absolute
-            file_path = os.path.abspath(file_path)
+    # Check if file exists in storage
+    file_exists = await storage.file_exists(doc.file_path)
+    if not file_exists:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Document file not found in storage: {doc.file_path}"
+        )
     
-    # Check if file exists, if not try to find it in upload directory
-    if not file_path or not os.path.exists(file_path):
-        logger.warning(
-            "document_file_path_not_found",
-            document_id=document_id,
-            stored_path=doc.file_path,
-            resolved_path=file_path,
-            path_exists=os.path.exists(file_path) if file_path else False
+    # For cloud storage (MinIO, S3, R2), return signed URL
+    if settings.STORAGE_PROVIDER in ["minio", "s3", "r2"]:
+        signed_url = await storage.get_signed_url(
+            file_path=doc.file_path,
+            expiration=settings.STORAGE_SIGNED_URL_EXPIRATION
         )
         
-        # Try to find file in upload directory by document ID
-        upload_dir = os.path.abspath(settings.UPLOAD_DIR)
-        if os.path.exists(upload_dir):
-            # Look for files matching the document ID pattern
-            pattern = os.path.join(upload_dir, f"{document_id}_*")
-            matches = glob.glob(pattern)
-            if matches:
-                file_path = matches[0]  # Use first match
-                logger.info(
-                    "document_file_found_by_pattern",
-                    document_id=document_id,
-                    found_path=file_path,
-                    original_path=doc.file_path
-                )
-            else:
-                # List all files in upload directory for debugging
-                all_files = os.listdir(upload_dir) if os.path.exists(upload_dir) else []
-                logger.error(
-                    "document_file_not_found",
-                    document_id=document_id,
-                    file_path=file_path,
-                    stored_file_path=doc.file_path,
-                    upload_dir=upload_dir,
-                    files_in_upload_dir=all_files[:10]  # Log first 10 files for debugging
-                )
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"Document file not found on server. Document ID: {document_id}, Stored path: {doc.file_path or 'not set'}, Upload dir: {upload_dir}"
-                )
-        else:
-            logger.error(
-                "upload_directory_not_found",
-                document_id=document_id,
-                upload_dir=upload_dir
-            )
-            raise HTTPException(
-                status_code=404,
-                detail=f"Upload directory not found: {upload_dir}"
-            )
+        logger.info(
+            "signed_url_generated",
+            document_id=document_id,
+            storage_path=doc.file_path
+        )
+        
+        # Redirect to signed URL
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url=signed_url, status_code=302)
+    
+    # For local storage, download and serve file directly
+    file_content = await storage.download_file(doc.file_path)
     
     # Determine media type based on file extension
-    file_ext = Path(file_path).suffix.lower()
+    file_ext = Path(doc.name).suffix.lower()
     media_types = {
         '.pdf': 'application/pdf',
         '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -614,12 +617,8 @@ async def download_document(
         "document_downloaded",
         document_id=document_id,
         filename=doc.name,
-        file_path=file_path
+        storage_path=doc.file_path
     )
-    
-    # Read file content
-    with open(file_path, "rb") as f:
-        file_content = f.read()
     
     # Get origin from request for CORS header
     origin = request.headers.get("origin")
@@ -1039,7 +1038,8 @@ async def compare_documents(
 )
 async def delete_document(
     document_id: str,
-    current_user: dict = Depends(require_auth)
+    current_user: dict = Depends(require_auth),
+    storage: StorageService = Depends(get_storage)
 ):
     """
     Delete a document and all its associated data (filtered by authenticated user)
@@ -1054,14 +1054,17 @@ async def delete_document(
     doc = await _get_user_document(document_id, user_id)
     
     try:
-        # Step 1: Delete file from disk
-        file_path = doc.file_path
-        if file_path and os.path.exists(file_path):
+        # Step 1: Delete file from storage
+        storage_path = doc.file_path
+        if storage_path:
             try:
-                os.remove(file_path)
-                logger.info("document_file_deleted", document_id=document_id, file_path=file_path)
+                deleted = await storage.delete_file(storage_path)
+                if deleted:
+                    logger.info("document_file_deleted", document_id=document_id, storage_path=storage_path)
+                else:
+                    logger.warning("document_file_deletion_failed", document_id=document_id, storage_path=storage_path)
             except Exception as e:
-                logger.warning("document_file_deletion_failed", document_id=document_id, file_path=file_path, error=str(e))
+                logger.warning("document_file_deletion_failed", document_id=document_id, storage_path=storage_path, error=str(e))
         
         # Step 2: Delete chunks from vector store
         try:

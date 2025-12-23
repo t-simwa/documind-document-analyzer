@@ -62,6 +62,19 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "./uploads"
     ALLOWED_EXTENSIONS: Union[str, List[str]] = "pdf,docx,txt,md,png,jpg,jpeg,tiff,bmp"
     
+    # Storage Configuration
+    STORAGE_PROVIDER: str = "local"  # local, minio, s3, r2
+    STORAGE_BASE_PATH: str = "./uploads"  # For local storage
+    
+    # MinIO/S3/R2 Configuration (S3-compatible storage)
+    STORAGE_ENDPOINT: str = "localhost:9000"  # MinIO default, or s3.amazonaws.com for AWS S3
+    STORAGE_ACCESS_KEY: str = "minioadmin"  # MinIO default, or AWS Access Key
+    STORAGE_SECRET_KEY: str = "minioadmin"  # MinIO default, or AWS Secret Key
+    STORAGE_BUCKET_NAME: str = "documind"  # Bucket name
+    STORAGE_SECURE: bool = False  # Use HTTPS (True) or HTTP (False)
+    STORAGE_REGION: Optional[str] = None  # AWS region (for S3) or None for MinIO
+    STORAGE_SIGNED_URL_EXPIRATION: int = 3600  # Signed URL expiration in seconds (1 hour)
+    
     # Document Loader Configuration
     USE_GEMINI_LOADERS: bool = False  # Use Gemini native document understanding instead of traditional loaders
     GEMINI_LOADER_MODEL: str = "gemini-2.5-flash"  # Model to use for Gemini document loading
