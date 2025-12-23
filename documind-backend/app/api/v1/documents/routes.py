@@ -907,6 +907,157 @@ async def list_documents(
     }
 
 
+@router.get(
+    "/recent",
+    summary="Get recent documents",
+    description="Get recently uploaded documents for the current user (sorted by upload date, most recent first)"
+)
+async def get_recent_documents(
+    limit: int = 10,
+    current_user: dict = Depends(require_auth)
+):
+    """
+    Get recent documents for the current user
+    
+    Args:
+        limit: Maximum number of documents to return (default: 10)
+        
+    Returns:
+        List of recent documents
+    """
+    user_id = current_user["id"]
+    
+    # Get recent documents sorted by upload date (most recent first)
+    documents = await DocumentModel.find(
+        DocumentModel.uploaded_by == user_id
+    ).sort(-DocumentModel.uploaded_at).limit(limit).to_list()
+    
+    # Update status from task queue
+    from app.workers.tasks import task_queue
+    for doc in documents:
+        task_id = f"doc_process_{str(doc.id)}"
+        task = task_queue.get_task(task_id)
+        if task:
+            task_status = task.get("status")
+            if task_status == "completed" and doc.status != "ready":
+                doc.status = "ready"
+                await doc.save()
+            elif task_status == "failed" and doc.status != "error":
+                doc.status = "error"
+                await doc.save()
+            elif task_status == "processing" and doc.status != "processing":
+                doc.status = "processing"
+                await doc.save()
+    
+    return {
+        "documents": [
+            DocumentResponse(
+                id=str(d.id),
+                name=d.name,
+                status=d.status,
+                uploaded_at=d.uploaded_at,
+                uploaded_by=d.uploaded_by,
+                size=d.size,
+                type=d.type,
+                project_id=d.project_id,
+                tags=d.tags,
+                metadata=d.metadata
+            )
+            for d in documents
+        ],
+        "total": len(documents)
+    }
+
+
+@router.get(
+    "/health",
+    summary="Get document health status",
+    description="Get document health metrics including errors, stuck documents, and failed uploads"
+)
+async def get_document_health(
+    current_user: dict = Depends(require_auth)
+):
+    """
+    Get document health status for the current user
+    
+    Returns:
+        Document health metrics including:
+        - Processing errors
+        - Stuck documents (processing >1 hour)
+        - Failed uploads
+        - Storage warnings
+    """
+    user_id = current_user["id"]
+    from datetime import timedelta
+    
+    now = datetime.utcnow()
+    one_hour_ago = now - timedelta(hours=1)
+    
+    # Get all user documents
+    all_documents = await DocumentModel.find(
+        DocumentModel.uploaded_by == user_id
+    ).to_list()
+    
+    # Update status from task queue
+    from app.workers.tasks import task_queue
+    for doc in all_documents:
+        task_id = f"doc_process_{str(doc.id)}"
+        task = task_queue.get_task(task_id)
+        if task:
+            task_status = task.get("status")
+            if task_status == "completed" and doc.status != "ready":
+                doc.status = "ready"
+                await doc.save()
+            elif task_status == "failed" and doc.status != "error":
+                doc.status = "error"
+                await doc.save()
+            elif task_status == "processing" and doc.status != "processing":
+                doc.status = "processing"
+                await doc.save()
+    
+    # Find processing errors
+    error_documents = [d for d in all_documents if d.status == "error"]
+    
+    # Find stuck documents (processing for >1 hour)
+    stuck_documents = [
+        d for d in all_documents
+        if d.status == "processing" and d.uploaded_at < one_hour_ago
+    ]
+    
+    # Calculate storage usage
+    total_storage_bytes = sum(d.size for d in all_documents)
+    storage_limit_bytes = 10 * 1024 * 1024 * 1024  # 10 GB default
+    storage_percentage = (total_storage_bytes / storage_limit_bytes) * 100 if storage_limit_bytes > 0 else 0
+    storage_warning = storage_percentage > 80
+    
+    return {
+        "total_documents": len(all_documents),
+        "error_count": len(error_documents),
+        "stuck_count": len(stuck_documents),
+        "storage_warning": storage_warning,
+        "storage_percentage": round(storage_percentage, 2),
+        "errors": [
+            {
+                "id": str(d.id),
+                "name": d.name,
+                "status": d.status,
+                "uploaded_at": d.uploaded_at.isoformat(),
+            }
+            for d in error_documents[:10]  # Limit to 10 most recent errors
+        ],
+        "stuck": [
+            {
+                "id": str(d.id),
+                "name": d.name,
+                "status": d.status,
+                "uploaded_at": d.uploaded_at.isoformat(),
+                "hours_stuck": round((now - d.uploaded_at).total_seconds() / 3600, 1),
+            }
+            for d in stuck_documents[:10]  # Limit to 10 most recent stuck documents
+        ],
+    }
+
+
 @router.post(
     "/compare",
     response_model=DocumentComparisonResponse,

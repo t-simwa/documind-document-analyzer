@@ -17,6 +17,7 @@ from app.api.v1.auth import routes as auth_routes
 from app.api.v1.analyses import routes as analyses_routes
 from app.api.v1.organizations import routes as organizations_routes
 from app.api.v1.activity import routes as activity_routes
+from app.api.v1.metrics import routes as metrics_routes
 from app.core.config import settings
 
 # Create main v1 router
@@ -97,5 +98,11 @@ api_router.include_router(
     activity_routes.router,
     prefix="/activity",
     tags=["Activity"]
+)
+
+api_router.include_router(
+    metrics_routes.router,
+    prefix="/metrics",
+    tags=["Metrics"]
 )
 

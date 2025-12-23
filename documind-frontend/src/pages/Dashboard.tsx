@@ -2,6 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { GlobalNavBar } from "@/components/layout/GlobalNavBar";
 import { QuickActions } from "@/components/dashboard/QuickActions";
+import { PersonalizedWelcome } from "@/components/dashboard/PersonalizedWelcome";
+import { RecentWork } from "@/components/dashboard/RecentWork";
+import { DocumentHealthMonitor } from "@/components/dashboard/DocumentHealthMonitor";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
 import { FavoriteProjects } from "@/components/dashboard/FavoriteProjects";
 import { UsageStatistics } from "@/components/dashboard/UsageStatistics";
@@ -90,29 +93,18 @@ export default function Dashboard() {
     <div className="flex h-screen bg-[#fafafa] dark:bg-[#0a0a0a] overflow-hidden">
       <div className="flex-1 flex flex-col overflow-hidden">
         <GlobalNavBar onSearch={handleGlobalSearch} />
-        <main className="flex-1 overflow-y-auto bg-gradient-to-b from-transparent via-transparent to-[#f5f5f5]/50 dark:to-[#0f0f0f]/50">
-          <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-12 py-10 lg:py-12">
-            {/* Header Section */}
-            <div className="mb-10 lg:mb-12">
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <h1 className="text-4xl lg:text-5xl font-semibold tracking-tight text-[#171717] dark:text-[#fafafa] mb-3">
-                    Dashboard
-                  </h1>
-                  <p className="text-[15px] text-[#737373] dark:text-[#a3a3a3] font-normal">
-                    Overview of your workspace activity and metrics
-                  </p>
-                </div>
-              </div>
-            </div>
+        <main className="flex-1 overflow-y-auto bg-[#fafafa] dark:bg-[#0a0a0a]">
+          <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-6 lg:py-8">
+            {/* Personalized Welcome Section */}
+            <PersonalizedWelcome onSearch={handleGlobalSearch} />
 
             {/* Quick Actions */}
-            <div className="mb-10 lg:mb-12">
+            <div className="mb-6">
               <QuickActions />
             </div>
 
             {/* Organization Section */}
-            <div key={`org-section-${user?.organization_id || 'none'}-${refreshKey}`} ref={orgSectionRef} className="mb-10 lg:mb-12">
+            <div key={`org-section-${user?.organization_id || 'none'}-${refreshKey}`} ref={orgSectionRef} className="mb-6">
               {hasOrganization ? (
                 <div className="bg-white dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#262626] rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 p-6">
                   <div className="flex items-center justify-between mb-4">
@@ -280,15 +272,17 @@ export default function Dashboard() {
             />
 
             {/* Main Content Grid */}
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 lg:gap-8 mb-10 lg:mb-12">
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 mb-6">
               {/* Left Column - 8 columns */}
               <div className="xl:col-span-8 space-y-6 lg:space-y-8">
+                <RecentWork />
                 <RecentActivity />
                 <FavoriteProjects />
               </div>
 
               {/* Right Column - 4 columns */}
               <div className="xl:col-span-4 space-y-6 lg:space-y-8">
+                <DocumentHealthMonitor />
                 <DocumentVolumeMetrics />
                 {isAdmin && <ActiveUsers />}
               </div>

@@ -49,6 +49,8 @@ import type {
   Activity,
   ActivityListResponse,
   ActivityFilterParams,
+  DocumentMetricsResponse,
+  StorageMetricsResponse,
 } from "@/types/api";
 import type { SavedCrossDocumentAnalysis } from "@/utils/crossDocumentStorage";
 import { performSecurityScan } from "./securityScanService";
@@ -718,6 +720,86 @@ export const documentsApi = {
         hasPrev: page > 1,
       },
     };
+  },
+
+  async listRecent(limit: number = 10): Promise<DocumentListResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/documents/recent?limit=${limit}`, {
+        method: "GET",
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: `HTTP ${response.status}: ${response.statusText}` }));
+        throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const documents: Document[] = (data.documents || []).map((doc: any) => ({
+        id: doc.id,
+        name: doc.name,
+        status: doc.status as "processing" | "ready" | "error",
+        uploadedAt: new Date(doc.uploaded_at),
+        uploadedBy: doc.uploaded_by,
+        size: doc.size,
+        type: doc.type,
+        projectId: doc.project_id || null,
+        tags: doc.tags || [],
+        metadata: doc.metadata || {},
+      }));
+
+      return {
+        documents,
+        pagination: {
+          page: 1,
+          limit,
+          total: data.total || documents.length,
+          totalPages: 1,
+          hasNext: false,
+          hasPrev: false,
+        },
+      };
+    } catch (error) {
+      if (error instanceof TypeError && error.message === "Failed to fetch") {
+        throw new Error(
+          `Failed to connect to backend server at ${API_BASE_URL}. ` +
+          `Please ensure the backend server is running.`
+        );
+      }
+      throw error;
+    }
+  },
+
+  async getHealth(): Promise<{
+    totalDocuments: number;
+    errorCount: number;
+    stuckCount: number;
+    storageWarning: boolean;
+    storagePercentage: number;
+    errors: Array<{ id: string; name: string; status: string; uploaded_at: string }>;
+    stuck: Array<{ id: string; name: string; status: string; uploaded_at: string; hours_stuck: number }>;
+  }> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/documents/health`, {
+        method: "GET",
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: `HTTP ${response.status}: ${response.statusText}` }));
+        throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error instanceof TypeError && error.message === "Failed to fetch") {
+        throw new Error(
+          `Failed to connect to backend server at ${API_BASE_URL}. ` +
+          `Please ensure the backend server is running.`
+        );
+      }
+      throw error;
+    }
   },
 
   async get(id: string): Promise<Document> {
@@ -2630,6 +2712,84 @@ export const activityApi = {
         page: data.page,
         limit: data.limit,
         hasMore: data.has_more,
+      };
+    } catch (error) {
+      if (error instanceof TypeError && error.message === "Failed to fetch") {
+        throw new Error(
+          `Failed to connect to backend server at ${API_BASE_URL}. ` +
+          `Please ensure the backend server is running.`
+        );
+      }
+      throw error;
+    }
+  },
+};
+
+// Metrics API
+export const metricsApi = {
+  /**
+   * Get document metrics
+   */
+  async getDocumentMetrics(): Promise<DocumentMetricsResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/metrics/documents`, {
+        method: "GET",
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: `HTTP ${response.status}: ${response.statusText}` }));
+        throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return {
+        metrics: data.metrics.map((m: any) => ({
+          label: m.label,
+          value: m.value,
+          change: m.change,
+          trend: m.trend,
+        })),
+        totalDocuments: data.total_documents,
+        processedThisMonth: data.processed_this_month,
+        storageUsedGb: data.storage_used_gb,
+      };
+    } catch (error) {
+      if (error instanceof TypeError && error.message === "Failed to fetch") {
+        throw new Error(
+          `Failed to connect to backend server at ${API_BASE_URL}. ` +
+          `Please ensure the backend server is running.`
+        );
+      }
+      throw error;
+    }
+  },
+
+  /**
+   * Get storage metrics
+   */
+  async getStorageMetrics(): Promise<StorageMetricsResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/metrics/storage`, {
+        method: "GET",
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: `HTTP ${response.status}: ${response.statusText}` }));
+        throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return {
+        storage: {
+          usedGb: data.storage.used_gb,
+          limitGb: data.storage.limit_gb,
+          percentage: data.storage.percentage,
+          usedFormatted: data.storage.used_formatted,
+          limitFormatted: data.storage.limit_formatted,
+        },
+        breakdown: data.breakdown,
       };
     } catch (error) {
       if (error instanceof TypeError && error.message === "Failed to fetch") {

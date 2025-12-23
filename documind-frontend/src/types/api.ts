@@ -651,3 +651,30 @@ export interface ActivityFilterParams {
   limit?: number;
 }
 
+export interface DocumentMetric {
+  label: string;
+  value: string;
+  change: number;
+  trend: "up" | "down" | "neutral";
+}
+
+export interface StorageMetric {
+  usedGb: number;
+  limitGb: number;
+  percentage: number;
+  usedFormatted: string;
+  limitFormatted: string;
+}
+
+export interface DocumentMetricsResponse {
+  metrics: DocumentMetric[];
+  totalDocuments: number;
+  processedThisMonth: number;
+  storageUsedGb: number;
+}
+
+export interface StorageMetricsResponse {
+  storage: StorageMetric;
+  breakdown?: Record<string, any>;
+}
+

@@ -1,7 +1,11 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { FileTextIcon, TrendingUpIcon, TrendingDownIcon } from "./DashboardIcons";
+import { metricsApi } from "@/services/api";
+import { useToast } from "@/hooks/use-toast";
+import type { DocumentMetric } from "@/types/api";
 
 interface Metric {
   label: string;
@@ -9,28 +13,6 @@ interface Metric {
   change: number;
   trend: "up" | "down" | "neutral";
 }
-
-// Mock metrics data - replace with actual API call
-const mockMetrics: Metric[] = [
-  {
-    label: "Total Documents",
-    value: "1,247",
-    change: 12.5,
-    trend: "up",
-  },
-  {
-    label: "Processed This Month",
-    value: "342",
-    change: 8.2,
-    trend: "up",
-  },
-  {
-    label: "Storage Used",
-    value: "2.4 GB",
-    change: -3.1,
-    trend: "down",
-  },
-];
 
 const getTrendIcon = (trend: Metric["trend"]) => {
   switch (trend) {
@@ -55,11 +37,50 @@ const getTrendColor = (trend: Metric["trend"]) => {
 };
 
 export function DocumentVolumeMetrics() {
-  // TODO: Replace with actual API call
-  const metrics = mockMetrics;
-  const storageUsed = 2.4; // GB
-  const storageLimit = 10; // GB
-  const storagePercentage = (storageUsed / storageLimit) * 100;
+  const { toast } = useToast();
+  const [metrics, setMetrics] = useState<Metric[]>([]);
+  const [storageUsed, setStorageUsed] = useState(0);
+  const [storageLimit, setStorageLimit] = useState(10);
+  const [storagePercentage, setStoragePercentage] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchMetrics();
+  }, []);
+
+  const fetchMetrics = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch both document and storage metrics
+      const [docMetrics, storageMetrics] = await Promise.all([
+        metricsApi.getDocumentMetrics(),
+        metricsApi.getStorageMetrics(),
+      ]);
+      
+      // Set document metrics
+      setMetrics(docMetrics.metrics);
+      
+      // Set storage metrics
+      setStorageUsed(storageMetrics.storage.usedGb);
+      setStorageLimit(storageMetrics.storage.limitGb);
+      setStoragePercentage(storageMetrics.storage.percentage);
+    } catch (error) {
+      console.error("Failed to fetch metrics:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load metrics",
+        variant: "destructive",
+      });
+      // Set empty metrics on error
+      setMetrics([]);
+      setStorageUsed(0);
+      setStorageLimit(10);
+      setStoragePercentage(0);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="bg-white dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#262626] rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300">
@@ -72,9 +93,15 @@ export function DocumentVolumeMetrics() {
         </p>
       </div>
       <div className="p-6">
-        {/* Metrics Grid */}
-        <div className="space-y-3 mb-6">
-          {metrics.map((metric, index) => (
+        {loading ? (
+          <div className="text-center py-12">
+            <p className="text-sm text-[#737373] dark:text-[#a3a3a3]">Loading metrics...</p>
+          </div>
+        ) : (
+          <>
+            {/* Metrics Grid */}
+            <div className="space-y-3 mb-6">
+              {metrics.map((metric, index) => (
             <div
               key={index}
               className="group relative p-4 rounded-xl border border-[#f5f5f5] dark:border-[#262626] bg-[#fafafa]/50 dark:bg-[#0a0a0a]/50 hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a] hover:border-[#e5e5e5] dark:hover:border-[#404040] transition-all duration-200"
@@ -138,7 +165,9 @@ export function DocumentVolumeMetrics() {
               className="h-2.5 bg-[#f5f5f5] dark:bg-[#262626] rounded-full overflow-hidden [&>div]:bg-[#0071ce]" 
             />
           </div>
-        </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
