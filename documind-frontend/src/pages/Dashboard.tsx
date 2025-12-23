@@ -3,12 +3,17 @@ import { useNavigate } from "react-router-dom";
 import { GlobalNavBar } from "@/components/layout/GlobalNavBar";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { PersonalizedWelcome } from "@/components/dashboard/PersonalizedWelcome";
+import { MetricsRow } from "@/components/dashboard/MetricsRow";
 import { RecentWork } from "@/components/dashboard/RecentWork";
 import { DocumentHealthMonitor } from "@/components/dashboard/DocumentHealthMonitor";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
+import { QuickInsights } from "@/components/dashboard/QuickInsights";
+import { ProjectHealth } from "@/components/dashboard/ProjectHealth";
 import { FavoriteProjects } from "@/components/dashboard/FavoriteProjects";
+import { ProcessingStatusWidget } from "@/components/dashboard/ProcessingStatusWidget";
+import { QueryPerformanceMetrics } from "@/components/dashboard/QueryPerformanceMetrics";
+import { StorageBreakdown } from "@/components/dashboard/StorageBreakdown";
 import { UsageStatistics } from "@/components/dashboard/UsageStatistics";
-import { DocumentVolumeMetrics } from "@/components/dashboard/DocumentVolumeMetrics";
 import { APIUsageTracking } from "@/components/dashboard/APIUsageTracking";
 import { ActiveUsers } from "@/components/dashboard/ActiveUsers";
 import { useToast } from "@/hooks/use-toast";
@@ -21,12 +26,6 @@ import { organizationsApi } from "@/services/api";
 import type { Organization } from "@/types/api";
 import { cn } from "@/lib/utils";
 
-// Mock user role - replace with actual auth context when available
-const getUserRole = (): "admin" | "user" => {
-  // TODO: Replace with actual user role from auth context
-  return "admin"; // For demo purposes, showing admin view
-};
-
 export default function Dashboard() {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -36,8 +35,7 @@ export default function Dashboard() {
   const [refreshKey, setRefreshKey] = useState(0); // Force re-render key
   const [organization, setOrganization] = useState<Organization | null>(null);
   const orgSectionRef = useRef<HTMLDivElement>(null);
-  const userRole = getUserRole();
-  const isAdmin = userRole === "admin";
+  const isAdmin = user?.is_superuser || false;
   const hasOrganization = !!user?.organization_id;
 
   // Scroll to organization section when it appears after creation
@@ -102,6 +100,9 @@ export default function Dashboard() {
             <div className="mb-6">
               <QuickActions />
             </div>
+
+            {/* Metrics Row */}
+            <MetricsRow />
 
             {/* Organization Section */}
             <div key={`org-section-${user?.organization_id || 'none'}-${refreshKey}`} ref={orgSectionRef} className="mb-6">
@@ -266,14 +267,22 @@ export default function Dashboard() {
               <div className="xl:col-span-8 space-y-6 lg:space-y-8">
                 <RecentWork />
                 <RecentActivity />
-                <FavoriteProjects />
+                <ProcessingStatusWidget />
+                {/* Admin-only sections */}
+                {isAdmin && (
+                  <>
+                    <ProjectHealth />
+                    <QueryPerformanceMetrics />
+                  </>
+                )}
               </div>
 
               {/* Right Column - 4 columns */}
               <div className="xl:col-span-4 space-y-6 lg:space-y-8">
                 <DocumentHealthMonitor />
-                <DocumentVolumeMetrics />
-                {isAdmin && <ActiveUsers />}
+                <QuickInsights />
+                <FavoriteProjects />
+                <StorageBreakdown />
               </div>
             </div>
 
@@ -282,6 +291,7 @@ export default function Dashboard() {
               <div className="space-y-6 lg:space-y-8">
                 <UsageStatistics />
                 <APIUsageTracking />
+                <ActiveUsers />
               </div>
             )}
           </div>
