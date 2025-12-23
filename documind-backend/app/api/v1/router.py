@@ -16,6 +16,7 @@ from app.api.v1.tags import routes as tags_routes
 from app.api.v1.auth import routes as auth_routes
 from app.api.v1.analyses import routes as analyses_routes
 from app.api.v1.organizations import routes as organizations_routes
+from app.api.v1.activity import routes as activity_routes
 from app.core.config import settings
 
 # Create main v1 router
@@ -90,5 +91,11 @@ api_router.include_router(
     organizations_routes.router,
     prefix="/organizations",
     tags=["Organizations"]
+)
+
+api_router.include_router(
+    activity_routes.router,
+    prefix="/activity",
+    tags=["Activity"]
 )
 

@@ -3,6 +3,9 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { User } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useEffect, useState } from "react";
+import { activityApi } from "@/services/api";
+import type { Activity } from "@/types/api";
 import {
   ActivityUploadIcon,
   ActivityProcessIcon,
@@ -122,8 +125,36 @@ const formatTimeAgo = (date: Date): string => {
 };
 
 export function RecentActivity() {
-  // TODO: Replace with actual API call
-  const activities = mockActivities;
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchActivities() {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await activityApi.list({
+          page: 1,
+          limit: 20,
+        });
+        setActivities(response.activities);
+      } catch (err) {
+        console.error("Failed to fetch activities:", err);
+        setError(err instanceof Error ? err.message : "Failed to load activities");
+        // Fallback to empty array on error
+        setActivities([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchActivities();
+    
+    // Refresh activities every 30 seconds
+    const interval = setInterval(fetchActivities, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="bg-white dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#262626] rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300">
@@ -138,7 +169,22 @@ export function RecentActivity() {
       <div className="p-6">
         <ScrollArea className="h-[420px] pr-4">
           <div className="space-y-3">
-            {activities.length === 0 ? (
+            {loading ? (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#f5f5f5] dark:bg-[#262626] flex items-center justify-center animate-pulse">
+                  <FileTextIcon className="h-7 w-7 text-[#a3a3a3] dark:text-[#525252]" />
+                </div>
+                <p className="text-sm font-medium text-[#737373] dark:text-[#a3a3a3] mb-1">Loading activities...</p>
+              </div>
+            ) : error ? (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
+                  <ActivityErrorIcon className="h-7 w-7 text-red-500" />
+                </div>
+                <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-1">Failed to load activities</p>
+                <p className="text-xs text-[#a3a3a3] dark:text-[#737373]">{error}</p>
+              </div>
+            ) : activities.length === 0 ? (
               <div className="text-center py-12">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#f5f5f5] dark:bg-[#262626] flex items-center justify-center">
                   <FileTextIcon className="h-7 w-7 text-[#a3a3a3] dark:text-[#525252]" />
@@ -172,18 +218,18 @@ export function RecentActivity() {
                         {activity.title}
                       </h4>
                       <span className="text-[12px] text-[#a3a3a3] dark:text-[#525252] whitespace-nowrap flex-shrink-0 font-medium">
-                        {formatTimeAgo(activity.timestamp)}
+                        {formatTimeAgo(activity.createdAt)}
                       </span>
                     </div>
                     <p className="text-[13px] text-[#737373] dark:text-[#a3a3a3] mb-3 leading-relaxed">
                       {activity.description}
                     </p>
                     <div className="flex items-center gap-3">
-                      {activity.user && (
+                      {activity.userName && (
                         <div className="flex items-center gap-1.5">
                           <User className="h-3.5 w-3.5 text-[#a3a3a3] dark:text-[#525252]" />
                           <span className="text-[12px] text-[#737373] dark:text-[#a3a3a3] font-medium">
-                            {activity.user}
+                            {activity.userName}
                           </span>
                         </div>
                       )}

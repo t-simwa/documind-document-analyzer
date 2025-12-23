@@ -46,6 +46,9 @@ import type {
   UpdateMemberRoleRequest,
   OrganizationSettings,
   UpdateOrganizationSettingsRequest,
+  Activity,
+  ActivityListResponse,
+  ActivityFilterParams,
 } from "@/types/api";
 import type { SavedCrossDocumentAnalysis } from "@/utils/crossDocumentStorage";
 import { performSecurityScan } from "./securityScanService";
@@ -2479,6 +2482,72 @@ export const organizationsApi = {
         maxUsers: data.max_users,
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.updated_at),
+      };
+    } catch (error) {
+      if (error instanceof TypeError && error.message === "Failed to fetch") {
+        throw new Error(
+          `Failed to connect to backend server at ${API_BASE_URL}. ` +
+          `Please ensure the backend server is running.`
+        );
+      }
+      throw error;
+    }
+  },
+};
+
+// Activity API
+export const activityApi = {
+  /**
+   * Get activity feed
+   */
+  async list(filters?: ActivityFilterParams): Promise<ActivityListResponse> {
+    try {
+      const params = new URLSearchParams();
+      
+      if (filters?.page) params.append("page", filters.page.toString());
+      if (filters?.limit) params.append("limit", filters.limit.toString());
+      if (filters?.type) params.append("type", filters.type);
+      if (filters?.userId) params.append("user_id", filters.userId);
+      if (filters?.organizationId) params.append("organization_id", filters.organizationId);
+      if (filters?.documentId) params.append("document_id", filters.documentId);
+      if (filters?.projectId) params.append("project_id", filters.projectId);
+      if (filters?.status) params.append("status", filters.status);
+      if (filters?.startDate) params.append("start_date", filters.startDate.toISOString());
+      if (filters?.endDate) params.append("end_date", filters.endDate.toISOString());
+      
+      const queryString = params.toString();
+      const url = `${API_BASE_URL}/api/v1/activity${queryString ? `?${queryString}` : ""}`;
+      
+      const response = await fetch(url, {
+        method: "GET",
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: `HTTP ${response.status}: ${response.statusText}` }));
+        throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return {
+        activities: data.activities.map((a: any) => ({
+          id: a.id,
+          type: a.type,
+          title: a.title,
+          description: a.description,
+          userId: a.user_id,
+          userName: a.user_name,
+          organizationId: a.organization_id,
+          documentId: a.document_id,
+          projectId: a.project_id,
+          status: a.status,
+          metadata: a.metadata || {},
+          createdAt: new Date(a.created_at),
+        })),
+        total: data.total,
+        page: data.page,
+        limit: data.limit,
+        hasMore: data.has_more,
       };
     } catch (error) {
       if (error instanceof TypeError && error.message === "Failed to fetch") {

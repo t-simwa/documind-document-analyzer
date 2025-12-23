@@ -336,6 +336,30 @@ async def process_document_async(
         except Exception as e:
             logger.warning("Failed to update document status in store", document_id=document_id, error=str(e))
         
+        # Update document status in database
+        try:
+            from app.database.models import Document as DocumentModel
+            doc = await DocumentModel.get(document_id)
+            if doc:
+                doc.status = "ready"
+                await doc.save()
+                
+                # Log activity for document processing completion
+                from app.utils.activity_logger import log_activity
+                await log_activity(
+                    activity_type="complete",
+                    title="Document processed successfully",
+                    description=f"{doc.name} has been processed and is ready for analysis",
+                    user_id=doc.uploaded_by,
+                    organization_id=doc.organization_id,
+                    document_id=document_id,
+                    project_id=doc.project_id,
+                    status="success",
+                    metadata={"chunk_count": len(chunks), "embedding_count": len(embedding_result.embeddings)}
+                )
+        except Exception as e:
+            logger.warning("Failed to update document status in database", document_id=document_id, error=str(e))
+        
         logger.info("document_processing_completed", document_id=document_id)
         
     except Exception as e:
@@ -357,6 +381,30 @@ async def process_document_async(
                 documents_store[document_id]["status"] = "error"
         except Exception as store_error:
             logger.warning("Failed to update document status in store", document_id=document_id, error=str(store_error))
+        
+        # Update document status in database and log error activity
+        try:
+            from app.database.models import Document as DocumentModel
+            doc = await DocumentModel.get(document_id)
+            if doc:
+                doc.status = "error"
+                await doc.save()
+                
+                # Log activity for processing error
+                from app.utils.activity_logger import log_activity
+                await log_activity(
+                    activity_type="error",
+                    title="Processing failed",
+                    description=f"Failed to process {doc.name} - {str(e)}",
+                    user_id=doc.uploaded_by,
+                    organization_id=doc.organization_id,
+                    document_id=document_id,
+                    project_id=doc.project_id,
+                    status="error",
+                    metadata={"error": str(e)}
+                )
+        except Exception as db_error:
+            logger.warning("Failed to update document status in database", document_id=document_id, error=str(db_error))
 
 
 async def security_scan_async(

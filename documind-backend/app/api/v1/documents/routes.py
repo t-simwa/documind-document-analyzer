@@ -17,6 +17,7 @@ from app.core.config import settings
 from app.core.dependencies import require_auth
 from app.workers.tasks import process_document_async, security_scan_async
 from app.database.models import Document as DocumentModel, Tag as TagModel
+from app.utils.activity_logger import log_activity
 from app.services.storage import get_storage_service, StorageService
 from .schemas import (
     DocumentUploadResponse, 
@@ -244,6 +245,19 @@ async def upload_document(
             file_type=file_ext,
             storage_path=stored_path,
             storage_provider=settings.STORAGE_PROVIDER
+        )
+        
+        # Log activity
+        await log_activity(
+            activity_type="upload",
+            title="New document uploaded",
+            description=f"{file.filename} was uploaded",
+            user_id=user_id,
+            organization_id=current_user.get("organization_id"),
+            document_id=document_id,
+            project_id=validated_project_id,
+            status="success",
+            metadata={"filename": file.filename, "size": file_size, "type": file_ext}
         )
         
         # For background tasks, we need to download the file temporarily

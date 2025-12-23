@@ -613,3 +613,40 @@ export interface UpdateOrganizationSettingsRequest {
   maxUsers?: number;
 }
 
+// Activity Types
+export interface Activity {
+  id: string;
+  type: "upload" | "process" | "complete" | "error" | "project" | "query";
+  title: string;
+  description: string;
+  userId: string;
+  userName?: string;
+  organizationId?: string;
+  documentId?: string;
+  projectId?: string;
+  status?: "success" | "error" | "processing";
+  metadata?: Record<string, any>;
+  createdAt: Date;
+}
+
+export interface ActivityListResponse {
+  activities: Activity[];
+  total: number;
+  page: number;
+  limit: number;
+  hasMore: boolean;
+}
+
+export interface ActivityFilterParams {
+  type?: string;
+  userId?: string;
+  organizationId?: string;
+  documentId?: string;
+  projectId?: string;
+  status?: string;
+  startDate?: Date;
+  endDate?: Date;
+  page?: number;
+  limit?: number;
+}
+

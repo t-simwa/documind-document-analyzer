@@ -134,3 +134,29 @@ class OrganizationMember(BeanieDocument):
             "user_id",
             "role"
         ]
+
+
+class Activity(BeanieDocument):
+    """Activity log model for tracking user and system events"""
+    type: str  # upload, process, query, project, error, complete, etc.
+    title: str
+    description: str
+    user_id: str  # User who performed the action
+    user_name: Optional[str] = None  # Cached user name for faster queries
+    organization_id: Optional[str] = None
+    document_id: Optional[str] = None
+    project_id: Optional[str] = None
+    status: Optional[str] = None  # success, error, processing
+    metadata: dict = Field(default_factory=dict)  # Additional context
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    class Settings:
+        name = "activities"
+        indexes = [
+            "user_id",
+            "organization_id",
+            "type",
+            "created_at",
+            ("user_id", "created_at"),  # Compound index for user activity queries
+            ("organization_id", "created_at"),  # Compound index for org activity queries
+        ]

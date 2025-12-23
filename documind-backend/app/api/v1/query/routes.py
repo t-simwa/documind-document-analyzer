@@ -14,6 +14,7 @@ from app.core.dependencies import require_auth
 from app.services.retrieval import RetrievalService, RetrievalConfig, SearchType
 from app.services.llm import LLMService, LLMConfig, LLMProvider
 from app.services.generation import GenerationService
+from app.utils.activity_logger import log_activity
 from .schemas import (
     QueryRequest,
     QueryResponse,
@@ -288,6 +289,38 @@ async def query_documents(
             query=request.query[:100],
             collection=request.collection_name,
             answer_length=len(response.answer)
+        )
+        
+        # Log activity
+        doc_names = []
+        if request.document_ids:
+            from app.database.models import Document as DocumentModel
+            from bson import ObjectId
+            for doc_id in request.document_ids[:3]:  # Get first 3 document names
+                try:
+                    doc = await DocumentModel.get(ObjectId(doc_id) if len(doc_id) == 24 else doc_id)
+                    if doc:
+                        doc_names.append(doc.name)
+                except:
+                    pass
+        
+        doc_description = f" on {', '.join(doc_names)}" if doc_names else ""
+        if len(request.document_ids or []) > 3:
+            doc_description += f" and {len(request.document_ids) - 3} more"
+        
+        await log_activity(
+            activity_type="query",
+            title="AI query executed",
+            description=f"Query executed{doc_description}",
+            user_id=user_id,
+            organization_id=current_user.get("organization_id"),
+            document_id=request.document_ids[0] if request.document_ids else None,
+            status="success",
+            metadata={
+                "query": request.query[:100],  # Truncate for storage
+                "document_count": len(request.document_ids or []),
+                "answer_length": len(response.answer)
+            }
         )
         
         return query_response

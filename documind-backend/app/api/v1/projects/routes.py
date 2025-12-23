@@ -10,6 +10,7 @@ import structlog
 
 from app.database.models import Project as ProjectModel, Document as DocumentModel
 from app.core.dependencies import require_auth
+from app.utils.activity_logger import log_activity
 from .schemas import (
     ProjectCreate,
     ProjectUpdate,
@@ -101,6 +102,18 @@ async def create_project(
             name=new_project.name,
             parent_id=parent_id_str,
             user_id=user_id
+        )
+        
+        # Log activity
+        await log_activity(
+            activity_type="project",
+            title="Project created",
+            description=f"New project '{new_project.name}' was created",
+            user_id=user_id,
+            organization_id=current_user.get("organization_id"),
+            project_id=str(new_project.id),
+            status="success",
+            metadata={"project_name": new_project.name, "parent_id": parent_id_str}
         )
         
         document_count = await _count_documents_for_project(str(new_project.id), user_id)
