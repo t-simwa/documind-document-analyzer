@@ -81,15 +81,15 @@ export const ProjectDialog = ({ open, onOpenChange, onSave, project, projects = 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[520px] p-0 gap-0 overflow-hidden">
+      <DialogContent className="sm:max-w-[520px] p-0 gap-0 overflow-hidden border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717]">
         {/* Header */}
-        <div className="px-6 pt-6 pb-4 border-b">
+        <div className="px-4 pt-4 pb-3 border-b border-[#e5e5e5] dark:border-[#262626]">
           <DialogHeader>
-            <DialogTitle className="text-lg font-semibold tracking-tight">
+            <DialogTitle className="text-sm font-medium text-[#171717] dark:text-[#fafafa]">
               {project ? "Edit project" : "New project"}
             </DialogTitle>
             {project && (
-              <DialogDescription className="text-sm text-muted-foreground mt-1">
+              <DialogDescription className="text-xs text-[#737373] dark:text-[#a3a3a3] mt-0.5">
                 Update your project details
               </DialogDescription>
             )}
@@ -97,13 +97,13 @@ export const ProjectDialog = ({ open, onOpenChange, onSave, project, projects = 
         </div>
 
         {/* Form Content */}
-        <div className="px-6 py-5 space-y-5 overflow-y-auto max-h-[calc(90vh-180px)]">
+        <div className="px-4 py-4 space-y-4 overflow-y-auto max-h-[calc(90vh-180px)]">
           {/* Project Name */}
-          <div className="space-y-2">
-            <Label htmlFor="name" className="text-sm font-medium text-foreground">
+          <div className="space-y-1.5">
+            <Label htmlFor="name" className="text-xs font-medium text-[#171717] dark:text-[#fafafa]">
               Project name
             </Label>
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <Input
                 id="name"
                 value={name}
@@ -111,8 +111,8 @@ export const ProjectDialog = ({ open, onOpenChange, onSave, project, projects = 
                 onBlur={() => validateName(name)}
                 disabled={isSaving}
                 className={cn(
-                  "h-10 text-sm",
-                  nameError && "border-destructive focus-visible:ring-destructive"
+                  "h-8 text-xs border-[#e5e5e5] dark:border-[#262626]",
+                  nameError && "border-red-500 dark:border-red-400 focus-visible:ring-red-500"
                 )}
                 autoFocus
                 onKeyDown={(e) => {
@@ -123,18 +123,18 @@ export const ProjectDialog = ({ open, onOpenChange, onSave, project, projects = 
                 }}
               />
                {nameError && (
-                 <p className="text-xs text-destructive font-medium">{nameError}</p>
+                 <p className="text-[10px] text-red-600 dark:text-red-400 font-medium">{nameError}</p>
                )}
             </div>
           </div>
 
           {/* Description */}
-          <div className="space-y-2">
-            <Label htmlFor="description" className="text-sm font-medium text-foreground">
+          <div className="space-y-1.5">
+            <Label htmlFor="description" className="text-xs font-medium text-[#171717] dark:text-[#fafafa]">
               Description
-              <span className="text-xs font-normal text-muted-foreground ml-1.5">(optional)</span>
+              <span className="text-[10px] font-normal text-[#737373] dark:text-[#a3a3a3] ml-1.5">(optional)</span>
             </Label>
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <Textarea
                 id="description"
                 value={description}
@@ -142,11 +142,11 @@ export const ProjectDialog = ({ open, onOpenChange, onSave, project, projects = 
                 placeholder="Add a brief description of this project's purpose..."
                 rows={3}
                 disabled={isSaving}
-                className="resize-none text-sm min-h-[80px]"
+                className="resize-none text-xs min-h-[70px] border-[#e5e5e5] dark:border-[#262626]"
                 maxLength={500}
               />
                {description.length > 0 && (
-                 <p className="text-xs text-muted-foreground tabular-nums text-right">
+                 <p className="text-[10px] text-[#737373] dark:text-[#a3a3a3] tabular-nums text-right">
                    {description.length}/500
                  </p>
                )}
@@ -154,22 +154,22 @@ export const ProjectDialog = ({ open, onOpenChange, onSave, project, projects = 
           </div>
 
           {/* Parent Project */}
-          <div className="space-y-2">
-            <Label htmlFor="parent" className="text-sm font-medium text-foreground">
+          <div className="space-y-1.5">
+            <Label htmlFor="parent" className="text-xs font-medium text-[#171717] dark:text-[#fafafa]">
               Parent project
-              <span className="text-xs font-normal text-muted-foreground ml-1.5">(optional)</span>
+              <span className="text-[10px] font-normal text-[#737373] dark:text-[#a3a3a3] ml-1.5">(optional)</span>
             </Label>
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <Select
                 value={parentId || "none"}
                 onValueChange={(value) => setParentId(value === "none" ? null : value)}
                 disabled={isSaving}
               >
-                <SelectTrigger id="parent" className="h-10 text-sm">
+                <SelectTrigger id="parent" className="h-8 text-xs border-[#e5e5e5] dark:border-[#262626]">
                   <SelectValue placeholder="Select a parent project">
                     {selectedParent ? (
-                      <div className="flex items-center gap-2">
-                        <FolderTree className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex items-center gap-1.5">
+                        <FolderTree className="h-3 w-3 text-[#737373] dark:text-[#a3a3a3]" />
                         <span>{selectedParent.name}</span>
                       </div>
                     ) : (
@@ -177,11 +177,11 @@ export const ProjectDialog = ({ open, onOpenChange, onSave, project, projects = 
                     )}
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">
-                    <div className="flex items-center gap-2">
-                      <div className="h-4 w-4 flex items-center justify-center">
-                        <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
+                <SelectContent className="border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717]">
+                  <SelectItem value="none" className="text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <div className="h-3 w-3 flex items-center justify-center">
+                        <div className="h-1.5 w-1.5 rounded-full bg-[#737373]/40 dark:bg-[#a3a3a3]/40" />
                       </div>
                       <span>None (root level)</span>
                     </div>
@@ -189,9 +189,9 @@ export const ProjectDialog = ({ open, onOpenChange, onSave, project, projects = 
                   {availableProjects.length > 0 && (
                     <>
                       {availableProjects.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          <div className="flex items-center gap-2">
-                            <FolderTree className="h-4 w-4 text-muted-foreground" />
+                        <SelectItem key={p.id} value={p.id} className="text-xs">
+                          <div className="flex items-center gap-1.5">
+                            <FolderTree className="h-3 w-3 text-[#737373] dark:text-[#a3a3a3]" />
                             <span>{p.name}</span>
                           </div>
                         </SelectItem>
@@ -205,23 +205,23 @@ export const ProjectDialog = ({ open, onOpenChange, onSave, project, projects = 
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t bg-muted/30 flex items-center justify-end gap-3">
+        <div className="px-4 py-3 border-t border-[#e5e5e5] dark:border-[#262626] bg-[#fafafa] dark:bg-[#0a0a0a] flex items-center justify-end gap-2">
           <Button 
             variant="ghost" 
             onClick={() => onOpenChange(false)} 
             disabled={isSaving}
-            className="h-9"
+            className="h-7 text-xs text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
           >
             Cancel
           </Button>
           <Button 
             onClick={handleSave} 
             disabled={isSaving || !name.trim() || !!nameError}
-            className="h-9 min-w-[100px]"
+            className="h-7 text-xs min-w-[90px] bg-[#171717] dark:bg-[#fafafa] text-[#fafafa] dark:text-[#171717] hover:bg-[#262626] dark:hover:bg-[#e5e5e5]"
           >
             {isSaving ? (
               <>
-                <span className="mr-2 h-3.5 w-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                <span className="mr-1.5 h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
                 Saving...
               </>
             ) : project ? (

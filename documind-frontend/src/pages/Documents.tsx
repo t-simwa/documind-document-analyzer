@@ -1391,7 +1391,7 @@ const Documents = () => {
   };
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
+    <div className="flex h-screen bg-[#fafafa] dark:bg-[#0a0a0a] overflow-hidden">
       <Sidebar
         documents={documents}
         selectedDocId={selectedDocId}
@@ -1410,23 +1410,23 @@ const Documents = () => {
         <GlobalNavBar onSearch={handleGlobalSearch} />
         
         {/* Main Content */}
-        <main className="flex-1 overflow-hidden bg-background">
+        <main className="flex-1 overflow-hidden bg-[#fafafa] dark:bg-[#0a0a0a]">
           {/* Render directly for multi-select and cross-document views */}
           {(viewState === "multi-select" || viewState === "cross-document") ? (
             renderContent()
           ) : (
             <Tabs value={viewState} onValueChange={(v) => setViewState(v as ViewState)} className="h-full flex flex-col">
               {viewState === "list" || (viewState === "chat" && selectedDocument) ? (
-                <div className="border-b border-border px-6 pt-3 pb-0">
-                  <TabsList className="bg-transparent">
-                    <TabsTrigger value="list" className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-foreground data-[state=active]:rounded-none w-[100px] justify-center">
+                <div className="border-b border-[#e5e5e5] dark:border-[#262626] px-4 pt-2 pb-0">
+                  <TabsList className="bg-transparent h-8">
+                    <TabsTrigger value="list" className="text-xs data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-[#171717] dark:data-[state=active]:border-[#fafafa] data-[state=active]:rounded-none w-[100px] justify-center h-7">
                       {selectedProject ? selectedProject.name : "Documents"}
                     </TabsTrigger>
                     {selectedDocument && (
                       <TabsTrigger 
                         value="chat" 
                         disabled={selectedDocument.status !== "ready"}
-                        className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-foreground data-[state=active]:rounded-none w-[100px] justify-center"
+                        className="text-xs data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-[#171717] dark:data-[state=active]:border-[#fafafa] data-[state=active]:rounded-none w-[100px] justify-center h-7"
                       >
                         Chat
                       </TabsTrigger>

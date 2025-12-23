@@ -116,67 +116,71 @@ export function CreateOrganizationDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] p-0 gap-0 overflow-hidden">
+      <DialogContent className="sm:max-w-[520px] p-0 gap-0 overflow-hidden border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717]">
         {/* Header */}
-        <div className="px-6 pt-6 pb-4 border-b border-border/50">
+        <div className="px-4 pt-4 pb-3 border-b border-[#e5e5e5] dark:border-[#262626]">
           <DialogHeader>
-            <DialogTitle className="text-lg font-semibold tracking-tight">
+            <DialogTitle className="text-sm font-medium text-[#171717] dark:text-[#fafafa]">
               Create organization
             </DialogTitle>
           </DialogHeader>
         </div>
 
-        {/* Content */}
-        <div className="px-6 py-5 space-y-5 overflow-y-auto max-h-[calc(90vh-200px)]">
+        {/* Form Content */}
+        <div className="px-4 py-4 space-y-4 overflow-y-auto max-h-[calc(90vh-180px)]">
           {/* Organization Details */}
-          <div className="space-y-3">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="org-name" className="text-sm font-medium text-foreground">
-                  Organization name
-                </Label>
-                <Input
-                  id="org-name"
-                  placeholder="Acme Corporation"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !isCreating && name.trim()) {
-                      handleCreate();
-                    }
-                  }}
-                  disabled={isCreating}
-                  autoFocus
-                  className="h-10 text-sm"
-                />
-                <p className="text-xs text-muted-foreground">
-                  This name will be used to identify your organization across the platform
-                </p>
-              </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="org-name" className="text-xs font-medium text-[#171717] dark:text-[#fafafa]">
+              Organization name
+            </Label>
+            <div className="space-y-1">
+              <Input
+                id="org-name"
+                placeholder="Acme Corporation"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !isCreating && name.trim()) {
+                    handleCreate();
+                  }
+                }}
+                disabled={isCreating}
+                autoFocus
+                className="h-8 text-xs border-[#e5e5e5] dark:border-[#262626]"
+              />
+              <p className="text-[10px] text-[#737373] dark:text-[#a3a3a3]">
+                This name will be used to identify your organization across the platform
+              </p>
             </div>
           </div>
 
         </div>
 
         {/* Footer */}
-        <DialogFooter className="px-6 py-4 border-t border-border/50 bg-card/30">
+        <div className="px-4 py-3 border-t border-[#e5e5e5] dark:border-[#262626] bg-[#fafafa] dark:bg-[#0a0a0a] flex items-center justify-end gap-2">
           <Button 
-            variant="outline" 
+            variant="ghost" 
             onClick={() => onOpenChange(false)}
             disabled={isCreating}
-            className="h-9"
+            className="h-7 text-xs text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
           >
             Cancel
           </Button>
           <Button 
             onClick={handleCreate} 
             disabled={isCreating || !name.trim()}
-            className="h-9"
+            className="h-7 text-xs min-w-[90px] bg-[#171717] dark:bg-[#fafafa] text-[#fafafa] dark:text-[#171717] hover:bg-[#262626] dark:hover:bg-[#e5e5e5]"
           >
-            {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Create organization
+            {isCreating ? (
+              <>
+                <span className="mr-1.5 h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                Creating...
+              </>
+            ) : (
+              "Create organization"
+            )}
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

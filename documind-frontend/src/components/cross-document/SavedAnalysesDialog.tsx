@@ -93,13 +93,13 @@ export const SavedAnalysesDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[640px] p-0 gap-0 overflow-hidden">
+      <DialogContent className="sm:max-w-[640px] p-0 gap-0 overflow-hidden border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717]">
         {/* Header */}
-        <div className="px-6 pt-6 pb-4 border-b border-border/50 bg-gradient-to-b from-background to-background/95">
+        <div className="px-4 pt-4 pb-3 border-b border-[#e5e5e5] dark:border-[#262626]">
           <DialogHeader>
-            <DialogTitle className="text-xl font-semibold tracking-tight flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-primary/10">
-                <FileSearch className="h-4 w-4 text-primary" />
+            <DialogTitle className="text-sm font-medium text-[#171717] dark:text-[#fafafa] flex items-center gap-1.5">
+              <div className="p-1 rounded-lg bg-[#fafafa] dark:bg-[#0a0a0a] border border-[#e5e5e5] dark:border-[#262626]">
+                <FileSearch className="h-3 w-3 text-[#171717] dark:text-[#fafafa]" />
               </div>
               Saved Analyses
             </DialogTitle>
@@ -107,51 +107,46 @@ export const SavedAnalysesDialog = ({
         </div>
 
         {/* Content */}
-        <div className="px-6 py-6 overflow-y-auto max-h-[calc(90vh-220px)]">
+        <div className="px-4 py-4 overflow-y-auto max-h-[calc(90vh-180px)]">
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-16">
+            <div className="flex flex-col items-center justify-center py-12">
               <div className="relative">
-                <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" />
-                <div className="relative inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10">
-                  <Loader2 className="h-5 w-5 text-primary animate-spin" />
+                <div className="relative inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#fafafa] dark:bg-[#0a0a0a] border border-[#e5e5e5] dark:border-[#262626]">
+                  <Loader2 className="h-3.5 w-3.5 text-[#737373] dark:text-[#a3a3a3] animate-spin" />
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground font-medium mt-4">Loading analyses...</p>
+              <p className="text-xs text-[#737373] dark:text-[#a3a3a3] font-medium mt-3">Loading analyses...</p>
             </div>
           ) : analyses.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 px-4">
-              <div className="relative mb-6">
-                <div className="absolute inset-0 bg-primary/5 rounded-full blur-xl" />
-                <div className="relative inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/10">
-                  <Sparkles className="h-10 w-10 text-primary/60" strokeWidth={1.5} />
+            <div className="flex flex-col items-center justify-center py-12 px-4">
+              <div className="relative mb-4">
+                <div className="relative inline-flex items-center justify-center w-12 h-12 rounded-lg bg-[#fafafa] dark:bg-[#0a0a0a] border border-[#e5e5e5] dark:border-[#262626]">
+                  <Sparkles className="h-5 w-5 text-[#737373] dark:text-[#a3a3a3]" strokeWidth={1.5} />
                 </div>
               </div>
-              <h3 className="text-base font-semibold text-foreground mb-2">No saved analyses yet</h3>
-              <p className="text-sm text-muted-foreground text-center max-w-sm leading-relaxed">
+              <h3 className="text-xs font-medium text-[#171717] dark:text-[#fafafa] mb-1.5">No saved analyses yet</h3>
+              <p className="text-[10px] text-[#737373] dark:text-[#a3a3a3] text-center max-w-sm leading-relaxed">
                 Start comparing documents to see your saved analyses here.
               </p>
             </div>
           ) : (
             <ScrollArea className="h-full">
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {analyses.map((analysis) => (
                   <div
                     key={analysis.id}
                     onClick={() => handleSelect(analysis)}
-                    className="group relative p-5 rounded-xl border border-border/50 bg-card/50 hover:bg-card hover:border-border hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 cursor-pointer overflow-hidden"
+                    className="group relative p-3 rounded-lg border border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a] transition-all duration-200 cursor-pointer"
                   >
-                    {/* Gradient overlay on hover */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-primary/0 via-primary/0 to-primary/0 group-hover:from-primary/5 group-hover:via-primary/2 group-hover:to-transparent transition-all duration-300 pointer-events-none" />
-                    
-                    <div className="relative flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0 space-y-3">
+                    <div className="relative flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0 space-y-2">
                         {/* Document names */}
-                        <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           {analysis.documentNames.map((name, idx) => (
                             <Badge 
                               key={idx} 
                               variant="secondary" 
-                              className="text-xs font-medium px-2.5 py-1 bg-muted/60 hover:bg-muted border-border/50"
+                              className="text-[10px] font-normal px-1.5 py-0.5 bg-[#fafafa] dark:bg-[#0a0a0a] border-[#e5e5e5] dark:border-[#262626]"
                             >
                               {name}
                             </Badge>
@@ -159,35 +154,35 @@ export const SavedAnalysesDialog = ({
                         </div>
                         
                         {/* Analysis features */}
-                        <div className="flex items-center gap-4 flex-wrap">
+                        <div className="flex items-center gap-3 flex-wrap">
                           {analysis.hasComparison && (
-                            <div className="flex items-center gap-2 text-xs font-medium text-foreground/80">
-                              <div className="p-1 rounded-md bg-blue-500/10">
-                                <GitCompare className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                            <div className="flex items-center gap-1.5 text-[10px] font-medium text-[#737373] dark:text-[#a3a3a3]">
+                              <div className="p-0.5 rounded-md bg-blue-500/10">
+                                <GitCompare className="h-2.5 w-2.5 text-blue-600 dark:text-blue-400" />
                               </div>
                               <span>Comparison</span>
                             </div>
                           )}
                           {analysis.hasPatterns && (
-                            <div className="flex items-center gap-2 text-xs font-medium text-foreground/80">
-                              <div className="p-1 rounded-md bg-purple-500/10">
-                                <TrendingUp className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+                            <div className="flex items-center gap-1.5 text-[10px] font-medium text-[#737373] dark:text-[#a3a3a3]">
+                              <div className="p-0.5 rounded-md bg-purple-500/10">
+                                <TrendingUp className="h-2.5 w-2.5 text-purple-600 dark:text-purple-400" />
                               </div>
                               <span>Patterns</span>
                             </div>
                           )}
                           {analysis.hasContradictions && (
-                            <div className="flex items-center gap-2 text-xs font-medium text-foreground/80">
-                              <div className="p-1 rounded-md bg-orange-500/10">
-                                <AlertTriangle className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400" />
+                            <div className="flex items-center gap-1.5 text-[10px] font-medium text-[#737373] dark:text-[#a3a3a3]">
+                              <div className="p-0.5 rounded-md bg-orange-500/10">
+                                <AlertTriangle className="h-2.5 w-2.5 text-orange-600 dark:text-orange-400" />
                               </div>
                               <span>Contradictions</span>
                             </div>
                           )}
                           {analysis.hasMessages && (
-                            <div className="flex items-center gap-2 text-xs font-medium text-foreground/80">
-                              <div className="p-1 rounded-md bg-green-500/10">
-                                <MessageSquare className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                            <div className="flex items-center gap-1.5 text-[10px] font-medium text-[#737373] dark:text-[#a3a3a3]">
+                              <div className="p-0.5 rounded-md bg-green-500/10">
+                                <MessageSquare className="h-2.5 w-2.5 text-green-600 dark:text-green-400" />
                               </div>
                               <span>Chat</span>
                             </div>
@@ -195,8 +190,8 @@ export const SavedAnalysesDialog = ({
                         </div>
                         
                         {/* Timestamp */}
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Clock className="h-3.5 w-3.5" />
+                        <div className="flex items-center gap-1.5 text-[10px] text-[#737373] dark:text-[#a3a3a3]">
+                          <Clock className="h-2.5 w-2.5" />
                           <span>
                             Saved {format(new Date(analysis.savedAt), "MMM d, yyyy 'at' h:mm a")}
                           </span>
@@ -209,12 +204,12 @@ export const SavedAnalysesDialog = ({
                         size="sm"
                         onClick={(e) => handleDelete(analysis, e)}
                         disabled={deletingId === analysis.id}
-                        className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
+                        className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-[#737373] dark:text-[#a3a3a3] hover:text-red-600 dark:hover:text-red-400 hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a] shrink-0"
                       >
                         {deletingId === analysis.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <Loader2 className="h-3 w-3 animate-spin" />
                         ) : (
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3 w-3" />
                         )}
                       </Button>
                     </div>
@@ -226,8 +221,8 @@ export const SavedAnalysesDialog = ({
         </div>
 
         {/* Footer */}
-        <DialogFooter className="px-6 py-4 border-t border-border/50 bg-card/30">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="h-9">
+        <DialogFooter className="px-4 py-3 border-t border-[#e5e5e5] dark:border-[#262626] bg-[#fafafa] dark:bg-[#0a0a0a]">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="h-7 text-xs border-[#e5e5e5] dark:border-[#262626]">
             Close
           </Button>
         </DialogFooter>

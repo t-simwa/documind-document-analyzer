@@ -148,41 +148,41 @@ export const NotificationPreferencesComponent = () => {
   ];
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
+    <form onSubmit={handleSubmit} className="space-y-6">
       {notificationSections.map((section, sectionIndex) => {
         const Icon = section.icon;
         const categoryKey = section.id === "email" ? "emailNotifications" : section.id === "inApp" ? "inAppNotifications" : "pushNotifications";
         
         return (
-          <div key={section.id} className={cn(sectionIndex > 0 && "pt-8 border-t border-[#e5e5e5] dark:border-[#262626]")}>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-[#f5f5f5] dark:bg-[#262626] flex items-center justify-center">
-                <Icon className="h-5 w-5 text-[#171717] dark:text-[#fafafa]" />
+          <div key={section.id} className={cn(sectionIndex > 0 && "pt-6 border-t border-[#e5e5e5] dark:border-[#262626]")}>
+            <div className="flex items-center gap-2.5 mb-4">
+              <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-[#fafafa] dark:bg-[#0a0a0a] flex items-center justify-center border border-[#e5e5e5] dark:border-[#262626]">
+                <Icon className="h-3.5 w-3.5 text-[#171717] dark:text-[#fafafa]" />
               </div>
               <div>
-                <h3 className="text-[15px] font-semibold text-[#171717] dark:text-[#fafafa] mb-0.5">
+                <h3 className="text-xs font-medium text-[#171717] dark:text-[#fafafa] mb-0.5">
                   {section.title}
                 </h3>
-                <p className="text-[13px] text-[#737373] dark:text-[#a3a3a3]">
+                <p className="text-[10px] text-[#737373] dark:text-[#a3a3a3]">
                   {section.description}
                 </p>
               </div>
             </div>
 
-            <div className="space-y-4 pl-[52px]">
+            <div className="space-y-3 pl-[52px]">
               {section.items.map((item) => (
                 <div
                   key={item.key}
-                  className="flex items-start justify-between gap-4 py-2"
+                  className="flex items-start justify-between gap-3 py-1.5"
                 >
                   <div className="flex-1 min-w-0">
                     <Label
                       htmlFor={`${section.id}-${item.key}`}
-                      className="text-[15px] font-medium text-[#171717] dark:text-[#fafafa] cursor-pointer mb-1 block"
+                      className="text-xs font-medium text-[#171717] dark:text-[#fafafa] cursor-pointer mb-0.5 block"
                     >
                       {item.label}
                     </Label>
-                    <p className="text-[13px] text-[#737373] dark:text-[#a3a3a3]">
+                    <p className="text-[10px] text-[#737373] dark:text-[#a3a3a3]">
                       {item.description}
                     </p>
                   </div>
@@ -192,7 +192,7 @@ export const NotificationPreferencesComponent = () => {
                     onCheckedChange={(checked) =>
                       handleToggle(categoryKey as keyof NotificationPreferences, item.key, checked)
                     }
-                    className="flex-shrink-0 mt-1"
+                    className="flex-shrink-0 mt-0.5"
                   />
                 </div>
               ))}
@@ -201,12 +201,12 @@ export const NotificationPreferencesComponent = () => {
         );
       })}
 
-      <div className="flex justify-end pt-6 border-t border-[#e5e5e5] dark:border-[#262626]">
+      <div className="flex justify-end pt-4 border-t border-[#e5e5e5] dark:border-[#262626]">
         <Button
           type="submit"
           disabled={isSaving}
           className={cn(
-            "h-10 px-5 text-[13px] font-medium",
+            "h-8 px-4 text-xs font-medium",
             "bg-[#171717] dark:bg-[#fafafa]",
             "text-[#fafafa] dark:text-[#171717]",
             "hover:bg-[#262626] dark:hover:bg-[#e5e5e5]",
@@ -216,12 +216,12 @@ export const NotificationPreferencesComponent = () => {
         >
           {isSaving ? (
             <>
-              <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
+              <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />
               Saving...
             </>
           ) : (
             <>
-              <SaveIcon className="h-3.5 w-3.5 mr-2" />
+              <SaveIcon className="h-3 w-3 mr-1.5" />
               Save Preferences
             </>
           )}

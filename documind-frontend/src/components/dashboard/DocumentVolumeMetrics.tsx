@@ -17,11 +17,11 @@ interface Metric {
 const getTrendIcon = (trend: Metric["trend"]) => {
   switch (trend) {
     case "up":
-      return <TrendingUpIcon className="h-4 w-4 text-green-500" />;
+      return <TrendingUpIcon className="h-3 w-3 text-green-500" />;
     case "down":
-      return <TrendingDownIcon className="h-4 w-4 text-red-500" />;
+      return <TrendingDownIcon className="h-3 w-3 text-red-500" />;
     default:
-      return <div className="h-4 w-4 border-t-2 border-[#737373] dark:border-[#a3a3a3]" />;
+      return <div className="h-3 w-3 border-t-2 border-[#737373] dark:border-[#a3a3a3]" />;
   }
 };
 
@@ -83,43 +83,40 @@ export function DocumentVolumeMetrics() {
   };
 
   return (
-    <div className="bg-white dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#262626] rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300">
-      <div className="px-6 py-5 border-b border-[#e5e5e5] dark:border-[#262626]">
-        <h2 className="text-lg font-semibold text-[#171717] dark:text-[#fafafa] mb-1">
+    <div className="bg-white dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#262626] rounded-lg">
+      <div className="px-4 py-3 border-b border-[#e5e5e5] dark:border-[#262626]">
+        <h2 className="text-sm font-medium text-[#171717] dark:text-[#fafafa]">
           Document Volume
         </h2>
-        <p className="text-[13px] text-[#737373] dark:text-[#a3a3a3]">
-          Overview of your document metrics
-        </p>
       </div>
-      <div className="p-6">
+      <div className="p-4">
         {loading ? (
-          <div className="text-center py-12">
-            <p className="text-sm text-[#737373] dark:text-[#a3a3a3]">Loading metrics...</p>
+          <div className="text-center py-8">
+            <p className="text-xs text-[#737373] dark:text-[#a3a3a3]">Loading...</p>
           </div>
         ) : (
           <>
-            {/* Metrics Grid */}
-            <div className="space-y-3 mb-6">
-              {metrics.map((metric, index) => (
+        {/* Metrics Grid */}
+        <div className="space-y-2 mb-4">
+          {metrics.map((metric, index) => (
             <div
               key={index}
-              className="group relative p-4 rounded-xl border border-[#f5f5f5] dark:border-[#262626] bg-[#fafafa]/50 dark:bg-[#0a0a0a]/50 hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a] hover:border-[#e5e5e5] dark:hover:border-[#404040] transition-all duration-200"
+              className="p-2.5 rounded-md border border-[#e5e5e5] dark:border-[#262626] bg-[#fafafa] dark:bg-[#0a0a0a]"
             >
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center justify-between gap-3">
                 <div className="flex-1 min-w-0">
-                  <span className="text-[13px] text-[#737373] dark:text-[#a3a3a3] font-medium leading-tight block mb-2">
+                  <span className="text-[10px] text-[#737373] dark:text-[#a3a3a3] font-medium block mb-1">
                     {metric.label}
                   </span>
-                  <p className="text-2xl font-semibold text-[#171717] dark:text-[#fafafa] tracking-tight leading-none">
+                  <p className="text-base font-semibold text-[#171717] dark:text-[#fafafa] leading-none">
                     {metric.value}
                   </p>
                 </div>
-                <div className="flex items-center gap-1.5 flex-shrink-0">
+                <div className="flex items-center gap-1 flex-shrink-0">
                   {getTrendIcon(metric.trend)}
                   <span
                     className={cn(
-                      "text-[12px] font-semibold whitespace-nowrap",
+                      "text-[10px] font-medium whitespace-nowrap",
                       metric.trend === "up" && "text-green-500",
                       metric.trend === "down" && "text-red-500",
                       metric.trend === "neutral" && "text-[#737373] dark:text-[#a3a3a3]"
@@ -135,37 +132,20 @@ export function DocumentVolumeMetrics() {
         </div>
 
         {/* Storage Progress */}
-        <div className="pt-5 border-t border-[#e5e5e5] dark:border-[#262626]">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-[#f5f5f5] dark:bg-[#262626] flex items-center justify-center">
-                <FileTextIcon className="h-4 w-4 text-[#737373] dark:text-[#a3a3a3]" />
-              </div>
-              <div>
-                <span className="text-[13px] font-semibold text-[#171717] dark:text-[#fafafa] block leading-tight">
-                  Storage Usage
-                </span>
-                <span className="text-[11px] text-[#737373] dark:text-[#a3a3a3] mt-0.5 block">
-                  {storagePercentage.toFixed(1)}% of limit used
-                </span>
-              </div>
-            </div>
-            <div className="text-right flex-shrink-0">
-              <span className="text-[14px] font-semibold text-[#171717] dark:text-[#fafafa] block leading-tight">
-                {storageUsed} GB
-              </span>
-              <span className="text-[11px] text-[#737373] dark:text-[#a3a3a3] mt-0.5 block">
-                of {storageLimit} GB
-              </span>
-            </div>
+        <div className="pt-3 border-t border-[#e5e5e5] dark:border-[#262626]">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-[#171717] dark:text-[#fafafa]">
+              Storage
+            </span>
+            <span className="text-xs text-[#737373] dark:text-[#a3a3a3]">
+              {storageUsed} / {storageLimit} GB
+            </span>
           </div>
-          <div className="relative">
-            <Progress 
-              value={storagePercentage} 
-              className="h-2.5 bg-[#f5f5f5] dark:bg-[#262626] rounded-full overflow-hidden [&>div]:bg-[#0071ce]" 
-            />
-          </div>
-            </div>
+          <Progress 
+            value={storagePercentage} 
+            className="h-1.5 bg-[#f5f5f5] dark:bg-[#262626] rounded-full overflow-hidden [&>div]:bg-[#0071ce]" 
+          />
+        </div>
           </>
         )}
       </div>

@@ -41,9 +41,9 @@ export const LoginForm = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Toggle between Login and Register */}
-      <div className="flex items-center gap-2 p-1 bg-muted/50 rounded-lg border border-border/50">
+      <div className="flex items-center gap-1 p-0.5 bg-[#fafafa] dark:bg-[#0a0a0a] rounded-lg border border-[#e5e5e5] dark:border-[#262626]">
         <button
           type="button"
           onClick={() => {
@@ -51,10 +51,10 @@ export const LoginForm = () => {
             setError(null);
           }}
           className={cn(
-            "flex-1 py-2 px-3 text-sm font-medium rounded-md transition-all",
+            "flex-1 py-1.5 px-2.5 text-xs font-medium rounded-md transition-all",
             !isRegistering
-              ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
+              ? "bg-white dark:bg-[#171717] text-[#171717] dark:text-[#fafafa] shadow-sm"
+              : "text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa]"
           )}
           disabled={isLoading}
         >
@@ -67,10 +67,10 @@ export const LoginForm = () => {
             setError(null);
           }}
           className={cn(
-            "flex-1 py-2 px-3 text-sm font-medium rounded-md transition-all",
+            "flex-1 py-1.5 px-2.5 text-xs font-medium rounded-md transition-all",
             isRegistering
-              ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
+              ? "bg-white dark:bg-[#171717] text-[#171717] dark:text-[#fafafa] shadow-sm"
+              : "text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa]"
           )}
           disabled={isLoading}
         >
@@ -78,97 +78,103 @@ export const LoginForm = () => {
         </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <Alert variant="destructive" className="py-3">
-            <AlertDescription className="text-sm">{error}</AlertDescription>
+          <Alert variant="destructive" className="py-2 border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/20">
+            <AlertDescription className="text-xs text-red-900 dark:text-red-100">{error}</AlertDescription>
           </Alert>
         )}
 
         {isRegistering && (
-          <div className="space-y-2">
-            <Label htmlFor="name" className="text-sm font-medium text-foreground">
+          <div className="space-y-1.5">
+            <Label htmlFor="name" className="text-xs font-medium text-[#171717] dark:text-[#fafafa]">
               Full name
             </Label>
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="name"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                placeholder="John Doe"
-                disabled={isLoading}
-                className="h-10 pl-9 text-sm"
-              />
+            <div className="space-y-1">
+              <div className="relative">
+                <User className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-[#737373] dark:text-[#a3a3a3]" />
+                <Input
+                  id="name"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  placeholder="John Doe"
+                  disabled={isLoading}
+                  className="h-8 pl-7 text-xs border-[#e5e5e5] dark:border-[#262626]"
+                />
+              </div>
             </div>
           </div>
         )}
         
-        <div className="space-y-2">
-          <Label htmlFor="email" className="text-sm font-medium text-foreground">
+        <div className="space-y-1.5">
+          <Label htmlFor="email" className="text-xs font-medium text-[#171717] dark:text-[#fafafa]">
             Email address
           </Label>
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              placeholder="you@company.com"
-              disabled={isLoading}
-              className="h-10 pl-9 text-sm"
-            />
+          <div className="space-y-1">
+            <div className="relative">
+              <Mail className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-[#737373] dark:text-[#a3a3a3]" />
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                placeholder="you@company.com"
+                disabled={isLoading}
+                className="h-8 pl-7 text-xs border-[#e5e5e5] dark:border-[#262626]"
+              />
+            </div>
           </div>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <Label htmlFor="password" className="text-sm font-medium text-foreground">
+            <Label htmlFor="password" className="text-xs font-medium text-[#171717] dark:text-[#fafafa]">
               Password
             </Label>
             {!isRegistering && (
               <button
                 type="button"
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                className="text-[10px] text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] transition-colors"
                 disabled={isLoading}
               >
                 Forgot password?
               </button>
             )}
           </div>
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={8}
-              placeholder="••••••••"
-              disabled={isLoading}
-              className="h-10 pl-9 text-sm"
-            />
+          <div className="space-y-1">
+            <div className="relative">
+              <Lock className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-[#737373] dark:text-[#a3a3a3]" />
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={8}
+                placeholder="••••••••"
+                disabled={isLoading}
+                className="h-8 pl-7 text-xs border-[#e5e5e5] dark:border-[#262626]"
+              />
+            </div>
+            {isRegistering && (
+              <p className="text-[10px] text-[#737373] dark:text-[#a3a3a3] pt-0.5">
+                Must be at least 8 characters
+              </p>
+            )}
           </div>
-          {isRegistering && (
-            <p className="text-xs text-muted-foreground pt-1">
-              Must be at least 8 characters
-            </p>
-          )}
         </div>
 
         <Button 
           type="submit" 
-          className="w-full h-10 text-sm font-medium" 
+          className="w-full h-8 text-xs font-medium bg-[#171717] dark:bg-[#fafafa] text-[#fafafa] dark:text-[#171717] hover:bg-[#262626] dark:hover:bg-[#e5e5e5]" 
           disabled={isLoading}
         >
           {isLoading ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
               {isRegistering ? "Creating account..." : "Signing in..."}
             </>
           ) : (
@@ -181,23 +187,23 @@ export const LoginForm = () => {
         <>
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <Separator />
+              <Separator className="border-[#e5e5e5] dark:border-[#262626]" />
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
+            <div className="relative flex justify-center text-[10px] uppercase">
+              <span className="bg-white dark:bg-[#171717] px-2 text-[#737373] dark:text-[#a3a3a3]">
                 Or continue with
               </span>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
             <Button
               type="button"
               variant="outline"
-              className="h-10 text-sm"
+              className="h-8 text-xs border-[#e5e5e5] dark:border-[#262626]"
               disabled={isLoading}
             >
-              <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
+              <svg className="mr-1.5 h-3 w-3" viewBox="0 0 24 24">
                 <path
                   d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                   fill="#4285F4"
@@ -220,10 +226,10 @@ export const LoginForm = () => {
             <Button
               type="button"
               variant="outline"
-              className="h-10 text-sm"
+              className="h-8 text-xs border-[#e5e5e5] dark:border-[#262626]"
               disabled={isLoading}
             >
-              <svg className="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+              <svg className="mr-1.5 h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
               </svg>
               GitHub

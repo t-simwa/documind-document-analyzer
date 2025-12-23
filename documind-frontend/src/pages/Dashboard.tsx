@@ -106,74 +106,63 @@ export default function Dashboard() {
             {/* Organization Section */}
             <div key={`org-section-${user?.organization_id || 'none'}-${refreshKey}`} ref={orgSectionRef} className="mb-6">
               {hasOrganization ? (
-                <div className="bg-white dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#262626] rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h2 className="text-xl font-semibold text-[#171717] dark:text-[#fafafa] mb-1">
-                        {organization?.name || "Organization Management"}
-                      </h2>
-                      <p className="text-[14px] text-[#737373] dark:text-[#a3a3a3]">
-                        Manage your organization settings and team members
-                      </p>
-                    </div>
-                    <OrganizationIcon className="h-6 w-6 text-[#737373] dark:text-[#a3a3a3]" />
+                <div className="bg-white dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#262626] rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-sm font-medium text-[#171717] dark:text-[#fafafa]">
+                      {organization?.name || "Organization"}
+                    </h2>
+                    <OrganizationIcon className="h-4 w-4 text-[#737373] dark:text-[#a3a3a3]" />
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <Button
                       onClick={() => navigate("/app/organization/settings")}
                       variant="outline"
-                      className="w-full justify-start h-auto py-4 px-5 hover:bg-[#fafafa] dark:hover:bg-[#262626]"
+                      className="w-full justify-start h-auto py-2.5 px-3 hover:bg-[#fafafa] dark:hover:bg-[#262626]"
                     >
-                      <div className="flex items-center gap-3 w-full">
-                        <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-[#f5f5f5] dark:bg-[#262626] flex items-center justify-center">
-                          <OrganizationIcon className="h-5 w-5 text-[#171717] dark:text-[#fafafa]" />
+                      <div className="flex items-center gap-2.5 w-full">
+                        <div className="flex-shrink-0 w-7 h-7 rounded-md bg-[#f5f5f5] dark:bg-[#262626] flex items-center justify-center">
+                          <OrganizationIcon className="h-3.5 w-3.5 text-[#171717] dark:text-[#fafafa]" />
                         </div>
                         <div className="flex-1 text-left">
-                          <div className="font-medium text-[15px] text-[#171717] dark:text-[#fafafa]">
-                            Organization Settings
-                          </div>
-                          <div className="text-[13px] text-[#737373] dark:text-[#a3a3a3] mt-0.5">
-                            Configure organization details
+                          <div className="font-medium text-xs text-[#171717] dark:text-[#fafafa]">
+                            Settings
                           </div>
                         </div>
-                        <ArrowRight className="h-4 w-4 text-[#737373] dark:text-[#a3a3a3]" />
+                        <ArrowRight className="h-3.5 w-3.5 text-[#737373] dark:text-[#a3a3a3]" />
                       </div>
                     </Button>
                     <Button
                       onClick={() => navigate("/app/organization/settings?tab=members")}
                       variant="outline"
-                      className="w-full justify-start h-auto py-4 px-5 hover:bg-[#fafafa] dark:hover:bg-[#262626]"
+                      className="w-full justify-start h-auto py-2.5 px-3 hover:bg-[#fafafa] dark:hover:bg-[#262626]"
                     >
-                      <div className="flex items-center gap-3 w-full">
-                        <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-[#f5f5f5] dark:bg-[#262626] flex items-center justify-center">
-                          <TeamIcon className="h-5 w-5 text-[#171717] dark:text-[#fafafa]" />
+                      <div className="flex items-center gap-2.5 w-full">
+                        <div className="flex-shrink-0 w-7 h-7 rounded-md bg-[#f5f5f5] dark:bg-[#262626] flex items-center justify-center">
+                          <TeamIcon className="h-3.5 w-3.5 text-[#171717] dark:text-[#fafafa]" />
                         </div>
                         <div className="flex-1 text-left">
-                          <div className="font-medium text-[15px] text-[#171717] dark:text-[#fafafa]">
+                          <div className="font-medium text-xs text-[#171717] dark:text-[#fafafa]">
                             Team Members
                           </div>
-                          <div className="text-[13px] text-[#737373] dark:text-[#a3a3a3] mt-0.5">
-                            Manage team and permissions
-                          </div>
                         </div>
-                        <ArrowRight className="h-4 w-4 text-[#737373] dark:text-[#a3a3a3]" />
+                        <ArrowRight className="h-3.5 w-3.5 text-[#737373] dark:text-[#a3a3a3]" />
                       </div>
                     </Button>
                   </div>
                 </div>
               ) : (
-                <div className="bg-white dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#262626] rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
+                <div className="bg-white dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#262626] rounded-lg overflow-hidden">
                   {/* Header Section */}
-                  <div className="px-6 pt-6 pb-4 border-b border-[#e5e5e5] dark:border-[#262626]">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 rounded-lg bg-foreground/5 dark:bg-foreground/10 flex items-center justify-center">
-                        <OrganizationIcon className="h-5 w-5 text-foreground" />
+                  <div className="px-4 pt-4 pb-3 border-b border-[#e5e5e5] dark:border-[#262626]">
+                    <div className="flex items-center gap-2.5 mb-2">
+                      <div className="w-8 h-8 rounded-md bg-foreground/5 dark:bg-foreground/10 flex items-center justify-center">
+                        <OrganizationIcon className="h-4 w-4 text-foreground" />
                       </div>
                       <div>
-                        <h2 className="text-xl font-semibold text-[#171717] dark:text-[#fafafa] mb-0.5">
+                        <h2 className="text-sm font-medium text-[#171717] dark:text-[#fafafa] mb-0.5">
                           Create your organization
                         </h2>
-                        <p className="text-[13px] text-[#737373] dark:text-[#a3a3a3]">
+                        <p className="text-xs text-[#737373] dark:text-[#a3a3a3]">
                           Set up a workspace to collaborate with your team
                         </p>
                       </div>
@@ -181,46 +170,46 @@ export default function Dashboard() {
                   </div>
 
                   {/* Content Section */}
-                  <div className="px-6 py-5 space-y-4">
+                  <div className="px-4 py-4 space-y-3">
                     {/* Feature Highlights */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                      <div className="flex items-start gap-2.5 p-3 rounded-lg bg-[#fafafa] dark:bg-[#0a0a0a] border border-[#e5e5e5] dark:border-[#262626]">
-                        <div className="flex-shrink-0 w-7 h-7 rounded-md bg-foreground/5 dark:bg-foreground/10 flex items-center justify-center mt-0.5">
-                          <TeamIcon className="h-3.5 w-3.5 text-foreground" />
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                      <div className="flex items-start gap-2 p-2.5 rounded-md bg-[#fafafa] dark:bg-[#0a0a0a] border border-[#e5e5e5] dark:border-[#262626]">
+                        <div className="flex-shrink-0 w-6 h-6 rounded-md bg-foreground/5 dark:bg-foreground/10 flex items-center justify-center mt-0.5">
+                          <TeamIcon className="h-3 w-3 text-foreground" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-[13px] font-medium text-[#171717] dark:text-[#fafafa] mb-0.5">
+                          <p className="text-xs font-medium text-[#171717] dark:text-[#fafafa] mb-0.5">
                             Team management
                           </p>
-                          <p className="text-[11px] text-[#737373] dark:text-[#a3a3a3] leading-relaxed">
+                          <p className="text-[10px] text-[#737373] dark:text-[#a3a3a3]">
                             Invite and manage members
                           </p>
                         </div>
                       </div>
 
-                      <div className="flex items-start gap-2.5 p-3 rounded-lg bg-[#fafafa] dark:bg-[#0a0a0a] border border-[#e5e5e5] dark:border-[#262626]">
-                        <div className="flex-shrink-0 w-7 h-7 rounded-md bg-foreground/5 dark:bg-foreground/10 flex items-center justify-center mt-0.5">
-                          <SecurityIcon className="h-3.5 w-3.5 text-foreground" />
+                      <div className="flex items-start gap-2 p-2.5 rounded-md bg-[#fafafa] dark:bg-[#0a0a0a] border border-[#e5e5e5] dark:border-[#262626]">
+                        <div className="flex-shrink-0 w-6 h-6 rounded-md bg-foreground/5 dark:bg-foreground/10 flex items-center justify-center mt-0.5">
+                          <SecurityIcon className="h-3 w-3 text-foreground" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-[13px] font-medium text-[#171717] dark:text-[#fafafa] mb-0.5">
+                          <p className="text-xs font-medium text-[#171717] dark:text-[#fafafa] mb-0.5">
                             Security controls
                           </p>
-                          <p className="text-[11px] text-[#737373] dark:text-[#a3a3a3] leading-relaxed">
+                          <p className="text-[10px] text-[#737373] dark:text-[#a3a3a3]">
                             Configure access policies
                           </p>
                         </div>
                       </div>
 
-                      <div className="flex items-start gap-2.5 p-3 rounded-lg bg-[#fafafa] dark:bg-[#0a0a0a] border border-[#e5e5e5] dark:border-[#262626]">
-                        <div className="flex-shrink-0 w-7 h-7 rounded-md bg-foreground/5 dark:bg-foreground/10 flex items-center justify-center mt-0.5">
-                          <WorkspaceIcon className="h-3.5 w-3.5 text-foreground" />
+                      <div className="flex items-start gap-2 p-2.5 rounded-md bg-[#fafafa] dark:bg-[#0a0a0a] border border-[#e5e5e5] dark:border-[#262626]">
+                        <div className="flex-shrink-0 w-6 h-6 rounded-md bg-foreground/5 dark:bg-foreground/10 flex items-center justify-center mt-0.5">
+                          <WorkspaceIcon className="h-3 w-3 text-foreground" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-[13px] font-medium text-[#171717] dark:text-[#fafafa] mb-0.5">
+                          <p className="text-xs font-medium text-[#171717] dark:text-[#fafafa] mb-0.5">
                             Workspace
                           </p>
-                          <p className="text-[11px] text-[#737373] dark:text-[#a3a3a3] leading-relaxed">
+                          <p className="text-[10px] text-[#737373] dark:text-[#a3a3a3]">
                             Organize your resources
                           </p>
                         </div>
@@ -228,13 +217,13 @@ export default function Dashboard() {
                     </div>
 
                     {/* CTA Button */}
-                    <div className="pt-2">
+                    <div className="pt-1">
                       <Button
                         onClick={() => setCreateOrgDialogOpen(true)}
-                        className="w-full sm:w-auto h-10 px-5"
-                        size="default"
+                        className="w-full sm:w-auto h-8 px-4 text-xs"
+                        size="sm"
                       >
-                        <Plus className="mr-2 h-4 w-4" />
+                        <Plus className="mr-1.5 h-3.5 w-3.5" />
                         Create organization
                       </Button>
                     </div>

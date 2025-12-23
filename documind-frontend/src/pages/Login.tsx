@@ -17,59 +17,59 @@ const Login = () => {
           </div>
           
           {/* Main Content */}
-          <div className="space-y-8 max-w-lg">
-            <div className="space-y-4">
-              <h2 className="text-4xl font-semibold tracking-tight leading-tight">
+          <div className="space-y-6 max-w-lg">
+            <div className="space-y-2">
+              <h2 className="text-2xl font-medium tracking-tight leading-tight text-[#171717] dark:text-[#fafafa]">
                 Secure document analysis for modern teams
               </h2>
-              <p className="text-muted-foreground text-base leading-relaxed">
+              <p className="text-sm text-[#737373] dark:text-[#a3a3a3] leading-relaxed">
                 Transform how your organization processes, analyzes, and extracts insights from documents at scale.
               </p>
             </div>
             
-            <div className="space-y-5 pt-2">
-              <div className="flex items-start gap-4 group">
-                <div className="mt-0.5 h-6 w-6 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 group-hover:bg-muted/80 transition-colors">
-                  <svg className="h-3.5 w-3.5 text-foreground" fill="none" viewBox="0 0 14 14">
+            <div className="space-y-3 pt-1">
+              <div className="flex items-start gap-3 group">
+                <div className="mt-0.5 h-5 w-5 rounded-lg bg-[#fafafa] dark:bg-[#0a0a0a] border border-[#e5e5e5] dark:border-[#262626] flex items-center justify-center flex-shrink-0 group-hover:bg-[#e5e5e5] dark:group-hover:bg-[#262626] transition-colors">
+                  <svg className="h-3 w-3 text-[#171717] dark:text-[#fafafa]" fill="none" viewBox="0 0 14 14">
                     <path d="M11.5 3.5L5.25 9.75 2.5 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 </div>
                 <div className="flex-1 pt-0.5">
-                  <p className="text-sm font-medium text-foreground mb-1">Enterprise-grade security</p>
-                  <p className="text-xs text-muted-foreground leading-relaxed">SOC 2, GDPR, and HIPAA compliant infrastructure</p>
+                  <p className="text-xs font-medium text-[#171717] dark:text-[#fafafa] mb-0.5">Enterprise-grade security</p>
+                  <p className="text-[10px] text-[#737373] dark:text-[#a3a3a3] leading-relaxed">SOC 2, GDPR, and HIPAA compliant infrastructure</p>
                 </div>
               </div>
               
-              <div className="flex items-start gap-4 group">
-                <div className="mt-0.5 h-6 w-6 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 group-hover:bg-muted/80 transition-colors">
-                  <svg className="h-3.5 w-3.5 text-foreground" fill="none" viewBox="0 0 14 14">
+              <div className="flex items-start gap-3 group">
+                <div className="mt-0.5 h-5 w-5 rounded-lg bg-[#fafafa] dark:bg-[#0a0a0a] border border-[#e5e5e5] dark:border-[#262626] flex items-center justify-center flex-shrink-0 group-hover:bg-[#e5e5e5] dark:group-hover:bg-[#262626] transition-colors">
+                  <svg className="h-3 w-3 text-[#171717] dark:text-[#fafafa]" fill="none" viewBox="0 0 14 14">
                     <path d="M11.5 3.5L5.25 9.75 2.5 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 </div>
                 <div className="flex-1 pt-0.5">
-                  <p className="text-sm font-medium text-foreground mb-1">AI-powered insights</p>
-                  <p className="text-xs text-muted-foreground leading-relaxed">Extract key information and patterns instantly</p>
+                  <p className="text-xs font-medium text-[#171717] dark:text-[#fafafa] mb-0.5">AI-powered insights</p>
+                  <p className="text-[10px] text-[#737373] dark:text-[#a3a3a3] leading-relaxed">Extract key information and patterns instantly</p>
                 </div>
               </div>
               
-              <div className="flex items-start gap-4 group">
-                <div className="mt-0.5 h-6 w-6 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 group-hover:bg-muted/80 transition-colors">
-                  <svg className="h-3.5 w-3.5 text-foreground" fill="none" viewBox="0 0 14 14">
+              <div className="flex items-start gap-3 group">
+                <div className="mt-0.5 h-5 w-5 rounded-lg bg-[#fafafa] dark:bg-[#0a0a0a] border border-[#e5e5e5] dark:border-[#262626] flex items-center justify-center flex-shrink-0 group-hover:bg-[#e5e5e5] dark:group-hover:bg-[#262626] transition-colors">
+                  <svg className="h-3 w-3 text-[#171717] dark:text-[#fafafa]" fill="none" viewBox="0 0 14 14">
                     <path d="M11.5 3.5L5.25 9.75 2.5 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 </div>
                 <div className="flex-1 pt-0.5">
-                  <p className="text-sm font-medium text-foreground mb-1">Scalable infrastructure</p>
-                  <p className="text-xs text-muted-foreground leading-relaxed">Built for teams of all sizes, from startups to enterprises</p>
+                  <p className="text-xs font-medium text-[#171717] dark:text-[#fafafa] mb-0.5">Scalable infrastructure</p>
+                  <p className="text-[10px] text-[#737373] dark:text-[#a3a3a3] leading-relaxed">Built for teams of all sizes, from startups to enterprises</p>
                 </div>
               </div>
             </div>
           </div>
           
           {/* Footer */}
-          <div className="flex items-center gap-6 text-xs text-muted-foreground">
+          <div className="flex items-center gap-4 text-[10px] text-[#737373] dark:text-[#a3a3a3]">
             <span className="font-medium">Trusted by leading organizations</span>
-            <Separator orientation="vertical" className="h-4" />
+            <Separator orientation="vertical" className="h-3" />
             <span>Enterprise ready</span>
           </div>
         </div>
@@ -83,12 +83,12 @@ const Login = () => {
             <Logo className="h-7 w-auto" showText={false} />
           </div>
 
-          <div className="space-y-6">
-            <div className="space-y-2 text-center lg:text-left">
-              <h1 className="text-2xl font-semibold tracking-tight">
+          <div className="space-y-5">
+            <div className="space-y-1.5 text-center lg:text-left">
+              <h1 className="text-xl font-medium tracking-tight text-[#171717] dark:text-[#fafafa]">
                 Welcome back
               </h1>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-xs text-[#737373] dark:text-[#a3a3a3]">
                 Sign in to your account to continue
               </p>
             </div>
@@ -96,15 +96,15 @@ const Login = () => {
             <LoginForm />
           </div>
 
-          <div className="pt-6">
-            <Separator className="mb-6" />
-            <p className="text-xs text-center text-muted-foreground">
+          <div className="pt-4">
+            <Separator className="mb-4 border-[#e5e5e5] dark:border-[#262626]" />
+            <p className="text-[10px] text-center text-[#737373] dark:text-[#a3a3a3]">
               By continuing, you agree to our{" "}
-              <a href="#" className="underline hover:text-foreground transition-colors">
+              <a href="#" className="underline hover:text-[#171717] dark:hover:text-[#fafafa] transition-colors">
                 Terms of Service
               </a>{" "}
               and{" "}
-              <a href="#" className="underline hover:text-foreground transition-colors">
+              <a href="#" className="underline hover:text-[#171717] dark:hover:text-[#fafafa] transition-colors">
                 Privacy Policy
               </a>
             </p>

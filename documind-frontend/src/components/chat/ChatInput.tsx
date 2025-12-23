@@ -40,12 +40,12 @@ export const ChatInput = ({
   };
 
   return (
-    <div className="px-6 py-4">
+    <div className="px-0 py-0">
       <form
         onSubmit={handleSubmit}
         className={cn(
-          "flex items-end gap-2 p-3 rounded-lg border border-border/50 bg-card transition-all",
-          "focus-within:border-border focus-within:shadow-sm"
+          "flex items-end gap-2 p-2 rounded-md border border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717] transition-all",
+          "focus-within:border-[#171717] dark:focus-within:border-[#fafafa] focus-within:ring-1 focus-within:ring-[#171717]/5 dark:focus-within:ring-[#fafafa]/5"
         )}
       >
         <textarea
@@ -57,7 +57,7 @@ export const ChatInput = ({
           disabled={isLoading}
           rows={1}
           className={cn(
-            "flex-1 min-h-[36px] max-h-[120px] px-2 py-2 bg-transparent text-sm text-foreground placeholder:text-muted-foreground resize-none focus:outline-none font-sans",
+            "flex-1 min-h-[32px] max-h-[120px] px-2 py-1.5 bg-transparent text-xs text-[#171717] dark:text-[#fafafa] placeholder:text-[#737373] dark:placeholder:text-[#a3a3a3] resize-none focus:outline-none",
             isLoading && "opacity-50 cursor-not-allowed"
           )}
         />
@@ -67,11 +67,11 @@ export const ChatInput = ({
           size="sm"
           disabled={!message.trim() || isLoading}
           className={cn(
-            "flex-shrink-0 h-8 w-8 p-0",
+            "flex-shrink-0 h-7 w-7 p-0 bg-[#171717] dark:bg-[#fafafa] text-[#fafafa] dark:text-[#171717] hover:bg-[#262626] dark:hover:bg-[#e5e5e5]",
             !message.trim() && "opacity-50"
           )}
         >
-          <Send className="h-3.5 w-3.5" />
+          <Send className="h-3 w-3" />
         </Button>
       </form>
     </div>

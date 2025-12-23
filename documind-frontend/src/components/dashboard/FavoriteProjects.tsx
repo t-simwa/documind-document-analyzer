@@ -88,10 +88,10 @@ export function FavoriteProjects() {
       await projectsApi.toggleFavorite(projectId);
       // Remove from local state
       setProjects(projects.filter((p) => p.id !== projectId));
-      toast({
-        title: "Removed from favorites",
-        description: "Project removed from favorites.",
-      });
+    toast({
+      title: "Removed from favorites",
+      description: "Project removed from favorites.",
+    });
     } catch (error) {
       console.error("Failed to unfavorite project:", error);
       toast({
@@ -103,119 +103,101 @@ export function FavoriteProjects() {
   };
 
   return (
-    <div className="bg-white dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#262626] rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300">
-      <div className="px-6 py-5 border-b border-[#e5e5e5] dark:border-[#262626]">
+    <div className="bg-white dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#262626] rounded-lg">
+      <div className="px-4 py-3 border-b border-[#e5e5e5] dark:border-[#262626]">
         <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-[#171717] dark:text-[#fafafa] mb-1">
-              Favorite Projects
-            </h2>
-            <p className="text-[13px] text-[#737373] dark:text-[#a3a3a3]">
-              Your most frequently accessed projects
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
+          <h2 className="text-sm font-medium text-[#171717] dark:text-[#fafafa]">
+            Favorite Projects
+          </h2>
+          <div className="flex items-center gap-1">
             <Button
               variant="ghost"
               size="sm"
               onClick={fetchFavorites}
-              className="text-[13px] text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa]"
+              className="h-6 w-6 p-0"
               title="Refresh favorites"
             >
-              <RefreshCw className="h-4 w-4" />
+              <RefreshCw className="h-3.5 w-3.5" />
             </Button>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => navigate("/app/projects")}
-              className="text-[13px] text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa]"
+              className="h-6 px-2 text-xs"
             >
               View All
             </Button>
           </div>
         </div>
       </div>
-      <div className="p-6">
+      <div className="p-4">
         {loading ? (
-          <div className="text-center py-12">
-            <p className="text-sm text-[#737373] dark:text-[#a3a3a3]">Loading favorite projects...</p>
+          <div className="text-center py-8">
+            <p className="text-xs text-[#737373] dark:text-[#a3a3a3]">Loading...</p>
           </div>
         ) : projects.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#f5f5f5] dark:bg-[#262626] flex items-center justify-center">
-              <FolderIcon className="h-7 w-7 text-[#a3a3a3] dark:text-[#525252]" />
-            </div>
-            <p className="text-sm font-medium text-[#737373] dark:text-[#a3a3a3] mb-2">No favorite projects yet</p>
+          <div className="text-center py-8">
+            <p className="text-xs text-[#737373] dark:text-[#a3a3a3] mb-2">No favorite projects</p>
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
               onClick={() => navigate("/app/projects")}
-              className="mt-2"
+              className="h-7 px-2 text-xs"
             >
               Browse Projects
             </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
             {projects.map((project, index) => {
               const color = projectColors[index % projectColors.length];
               const lastAccessed = project.updatedAt || project.createdAt;
               
               return (
-                <div
-                  key={project.id}
-                  className="group relative p-5 rounded-xl border border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717] hover:border-[#d4d4d4] dark:hover:border-[#404040] hover:shadow-sm transition-all duration-200 cursor-pointer"
-                  onClick={() => handleProjectClick(project.id)}
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div
-                        className={`w-11 h-11 rounded-xl ${color} flex items-center justify-center flex-shrink-0 shadow-sm`}
+              <div
+                key={project.id}
+                className="group relative p-2.5 rounded-md border border-[#e5e5e5] dark:border-[#262626] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a] transition-colors cursor-pointer"
+                onClick={() => handleProjectClick(project.id)}
+              >
+                <div className="flex items-center gap-2.5">
+                  <div
+                      className={`w-8 h-8 rounded-md ${color} flex items-center justify-center flex-shrink-0`}
+                  >
+                    <FolderIcon className="h-4 w-4 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <h4 className="text-xs font-medium text-[#171717] dark:text-[#fafafa] truncate">
+                        {project.name}
+                      </h4>
+                      {project.isFavorite && (
+                        <StarIcon className="h-3 w-3 text-yellow-500 flex-shrink-0" filled />
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] text-[#737373] dark:text-[#a3a3a3]">
+                      <span>{project.documentCount || 0} docs</span>
+                      <span>•</span>
+                      <span>{formatTimeAgo(lastAccessed)}</span>
+                    </div>
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                       >
-                        <FolderIcon className="h-5 w-5 text-white" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <h4 className="text-[14px] font-semibold text-[#171717] dark:text-[#fafafa] truncate">
-                            {project.name}
-                          </h4>
-                          {project.isFavorite && (
-                            <StarIcon className="h-3.5 w-3.5 text-[#171717] dark:text-[#fafafa] flex-shrink-0" filled />
-                          )}
-                        </div>
-                        <p className="text-[13px] text-[#737373] dark:text-[#a3a3a3] line-clamp-1">
-                          {project.description || "No description"}
-                        </p>
-                      </div>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa]"
-                        >
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
+                        <MoreVertical className="h-3.5 w-3.5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={(e) => handleUnfavorite(project.id, e)}>
-                          Remove from favorites
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                  <div className="flex items-center gap-4 text-[12px] text-[#737373] dark:text-[#a3a3a3]">
-                    <div className="flex items-center gap-1.5">
-                      <FileTextIcon className="h-3.5 w-3.5" />
-                      <span className="font-medium">{project.documentCount || 0} documents</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <CalendarIcon className="h-3.5 w-3.5" />
-                      <span className="font-medium">{formatTimeAgo(lastAccessed)}</span>
-                    </div>
-                  </div>
+                        Remove from favorites
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
+              </div>
               );
             })}
           </div>

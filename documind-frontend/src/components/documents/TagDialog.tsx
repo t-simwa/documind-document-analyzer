@@ -166,27 +166,27 @@ export const TagDialog = ({ open, onOpenChange, documentId, onUpdate, tags }: Ta
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[600px] p-0 gap-0 overflow-hidden">
+      <DialogContent className="sm:max-w-[520px] p-0 gap-0 overflow-hidden border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717]">
         {/* Header */}
-        <div className="px-6 pt-6 pb-4 border-b border-border/50">
+        <div className="px-4 pt-4 pb-3 border-b border-[#e5e5e5] dark:border-[#262626]">
           <DialogHeader>
-            <DialogTitle className="text-lg font-semibold tracking-tight">
+            <DialogTitle className="text-sm font-medium text-[#171717] dark:text-[#fafafa]">
               Manage tags
             </DialogTitle>
           </DialogHeader>
         </div>
 
-        {/* Content */}
-        <div className="px-6 py-5 space-y-5 overflow-y-auto max-h-[calc(90vh-200px)]">
+        {/* Form Content */}
+        <div className="px-4 py-4 space-y-4 overflow-y-auto max-h-[calc(90vh-180px)]">
           {/* Create New Tag Section */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 mb-1">
-              <Plus className="h-4 w-4 text-muted-foreground" />
-              <Label className="text-sm font-medium text-foreground">Create new tag</Label>
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-1.5">
+              <Plus className="h-3 w-3 text-[#737373] dark:text-[#a3a3a3]" />
+              <Label className="text-xs font-medium text-[#171717] dark:text-[#fafafa]">Create new tag</Label>
             </div>
             
-            <div className="space-y-3 pl-6">
-              <div className="flex gap-2">
+            <div className="space-y-1.5 pl-4.5">
+              <div className="flex gap-1.5">
                 <div className="relative flex-1">
                   <Input
                     value={newTagName}
@@ -198,11 +198,11 @@ export const TagDialog = ({ open, onOpenChange, documentId, onUpdate, tags }: Ta
                       }
                     }}
                     disabled={isLoading}
-                    className="h-10 text-sm pr-9"
+                    className="h-8 text-xs border-[#e5e5e5] dark:border-[#262626] pr-7"
                   />
                   {newTagName && (
                     <div
-                      className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full border border-background/50"
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full border border-white dark:border-[#171717]"
                       style={{ backgroundColor: newTagColor }}
                     />
                   )}
@@ -213,7 +213,7 @@ export const TagDialog = ({ open, onOpenChange, documentId, onUpdate, tags }: Ta
                     <Button
                       type="button"
                       variant="outline"
-                      className="h-10 w-10 p-0 border"
+                      className="h-8 w-8 p-0 border border-[#e5e5e5] dark:border-[#262626]"
                     >
                       <div
                         className="w-full h-full rounded-sm"
@@ -221,14 +221,14 @@ export const TagDialog = ({ open, onOpenChange, documentId, onUpdate, tags }: Ta
                       />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-56 p-3" align="start">
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <Palette className="h-3.5 w-3.5 text-muted-foreground" />
-                        <Label className="text-xs font-medium">Choose color</Label>
+                  <PopoverContent className="w-56 p-2.5 border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717]" align="start">
+                    <div className="space-y-2.5">
+                      <div className="flex items-center gap-1.5">
+                        <Palette className="h-3 w-3 text-[#737373] dark:text-[#a3a3a3]" />
+                        <Label className="text-xs font-medium text-[#171717] dark:text-[#fafafa]">Choose color</Label>
                       </div>
                       
-                      <div className="grid grid-cols-5 gap-1.5">
+                      <div className="grid grid-cols-5 gap-1">
                         {TAG_COLORS.map((color) => (
                           <button
                             key={color.value}
@@ -240,29 +240,29 @@ export const TagDialog = ({ open, onOpenChange, documentId, onUpdate, tags }: Ta
                             className={cn(
                               "aspect-square rounded border transition-all hover:scale-110",
                               newTagColor === color.value
-                                ? "border-foreground ring-1 ring-offset-1 ring-foreground/20"
-                                : "border-border"
+                                ? "border-[#171717] dark:border-[#fafafa] ring-1 ring-offset-1 ring-[#171717]/20 dark:ring-[#fafafa]/20"
+                                : "border-[#e5e5e5] dark:border-[#262626]"
                             )}
                             style={{ backgroundColor: color.value }}
                             title={color.name}
                           >
                             {newTagColor === color.value && (
-                              <Check className="h-2.5 w-2.5 text-white m-auto drop-shadow-md" />
+                              <Check className="h-2 w-2 text-white m-auto drop-shadow-md" />
                             )}
                           </button>
                         ))}
                       </div>
                       
-                      <Separator />
+                      <Separator className="my-2" />
                       
-                      <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground">Custom color</Label>
-                        <div className="flex gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] text-[#737373] dark:text-[#a3a3a3]">Custom color</Label>
+                        <div className="flex gap-1.5">
                           <Input
                             type="color"
                             value={newTagColor}
                             onChange={(e) => setNewTagColor(e.target.value)}
-                            className="h-7 w-full cursor-pointer"
+                            className="h-6 w-full cursor-pointer"
                           />
                           <Input
                             type="text"
@@ -274,7 +274,7 @@ export const TagDialog = ({ open, onOpenChange, documentId, onUpdate, tags }: Ta
                               }
                             }}
                             placeholder="#000000"
-                            className="h-7 w-20 font-mono text-xs"
+                            className="h-6 w-20 font-mono text-[10px] border-[#e5e5e5] dark:border-[#262626]"
                           />
                         </div>
                       </div>
@@ -285,47 +285,47 @@ export const TagDialog = ({ open, onOpenChange, documentId, onUpdate, tags }: Ta
                 <Button
                   onClick={handleCreateTag}
                   disabled={isLoading || !newTagName.trim()}
-                  className="h-10 px-3"
+                  className="h-8 w-8 p-0 bg-[#171717] dark:bg-[#fafafa] text-[#fafafa] dark:text-[#171717] hover:bg-[#262626] dark:hover:bg-[#e5e5e5]"
                 >
                   {isLoading ? (
-                    <div className="h-3.5 w-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    <span className="h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
                   ) : (
-                    <Plus className="h-3.5 w-3.5" />
+                    <Plus className="h-3 w-3" />
                   )}
                 </Button>
               </div>
             </div>
           </div>
 
-          <Separator />
+          <Separator className="my-4" />
 
           {/* Existing Tags Section */}
-          <div className="space-y-3">
+          <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Tag className="h-4 w-4 text-muted-foreground" />
-                <Label className="text-sm font-medium text-foreground">
+              <div className="flex items-center gap-1.5">
+                <Tag className="h-3 w-3 text-[#737373] dark:text-[#a3a3a3]" />
+                <Label className="text-xs font-medium text-[#171717] dark:text-[#fafafa]">
                   Available tags
                 </Label>
-                <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                <span className="text-[10px] text-[#737373] dark:text-[#a3a3a3] bg-[#fafafa] dark:bg-[#0a0a0a] px-1 py-0.5 rounded">
                   {tags.length}
                 </span>
               </div>
               {hasChanges() && (
-                <span className="text-xs text-foreground font-medium">
+                <span className="text-xs text-[#171717] dark:text-[#fafafa] font-medium">
                   {documentTags.size} selected
                 </span>
               )}
             </div>
             
-            <div className="space-y-1 max-h-[240px] overflow-y-auto rounded-lg border bg-muted/30 p-2 pl-6">
+            <div className="space-y-0.5 max-h-[240px] overflow-y-auto rounded-lg border border-[#e5e5e5] dark:border-[#262626] bg-[#fafafa] dark:bg-[#0a0a0a] p-1.5 pl-4">
               {tags.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <div className="p-2 rounded-full bg-muted mb-2">
-                    <Tag className="h-4 w-4 text-muted-foreground" />
+                <div className="flex flex-col items-center justify-center py-6 text-center">
+                  <div className="p-1.5 rounded-full bg-[#e5e5e5] dark:bg-[#262626] mb-1.5">
+                    <Tag className="h-3 w-3 text-[#737373] dark:text-[#a3a3a3]" />
                   </div>
-                  <p className="text-xs font-medium text-foreground mb-0.5">No tags available</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs font-medium text-[#171717] dark:text-[#fafafa] mb-0.5">No tags available</p>
+                  <p className="text-[10px] text-[#737373] dark:text-[#a3a3a3]">
                     Create your first tag above
                   </p>
                 </div>
@@ -336,9 +336,9 @@ export const TagDialog = ({ open, onOpenChange, documentId, onUpdate, tags }: Ta
                     <div
                       key={tag.id}
                       className={cn(
-                        "group flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-all cursor-pointer",
-                        "hover:bg-accent/50 border border-transparent",
-                        isSelected && "bg-accent border-foreground/20"
+                        "group flex items-center gap-1.5 px-1.5 py-1 rounded-md transition-all cursor-pointer",
+                        "hover:bg-white dark:hover:bg-[#171717] border border-transparent",
+                        isSelected && "bg-white dark:bg-[#171717] border-[#e5e5e5] dark:border-[#262626]"
                       )}
                       onClick={() => !isApplying && toggleTag(tag.id)}
                     >
@@ -347,26 +347,26 @@ export const TagDialog = ({ open, onOpenChange, documentId, onUpdate, tags }: Ta
                         checked={isSelected}
                         onCheckedChange={() => toggleTag(tag.id)}
                         disabled={isApplying}
-                        className="h-4 w-4 data-[state=checked]:bg-foreground data-[state=checked]:border-foreground"
+                        className="h-3 w-3 data-[state=checked]:bg-[#171717] dark:data-[state=checked]:bg-[#fafafa] data-[state=checked]:border-[#171717] dark:data-[state=checked]:border-[#fafafa]"
                       />
                       <div
                         className={cn(
-                          "w-2.5 h-2.5 rounded-full flex-shrink-0 border border-background/50",
-                          isSelected && "ring-1 ring-foreground/30"
+                          "w-2 h-2 rounded-full flex-shrink-0 border border-white dark:border-[#171717]",
+                          isSelected && "ring-1 ring-[#171717]/30 dark:ring-[#fafafa]/30"
                         )}
                         style={{ backgroundColor: tag.color || "#6b7280" }}
                       />
                       <label
                         htmlFor={tag.id}
                         className={cn(
-                          "flex-1 text-sm cursor-pointer select-none",
-                          isSelected ? "text-foreground font-medium" : "text-foreground/80"
+                          "flex-1 text-xs cursor-pointer select-none",
+                          isSelected ? "text-[#171717] dark:text-[#fafafa] font-medium" : "text-[#737373] dark:text-[#a3a3a3]"
                         )}
                       >
                         {tag.name}
                       </label>
                       {isSelected && (
-                        <Check className="h-3.5 w-3.5 text-foreground flex-shrink-0" />
+                        <Check className="h-2.5 w-2.5 text-[#171717] dark:text-[#fafafa] flex-shrink-0" />
                       )}
                     </div>
                   );
@@ -377,30 +377,30 @@ export const TagDialog = ({ open, onOpenChange, documentId, onUpdate, tags }: Ta
         </div>
 
         {/* Footer */}
-        <DialogFooter className="px-6 py-4 border-t border-border/50 bg-card/30">
+        <div className="px-4 py-3 border-t border-[#e5e5e5] dark:border-[#262626] bg-[#fafafa] dark:bg-[#0a0a0a] flex items-center justify-end gap-2">
           <Button
-            variant="outline"
+            variant="ghost"
             onClick={handleCancel}
             disabled={isApplying}
-            className="h-9"
+            className="h-7 text-xs text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
           >
             Cancel
           </Button>
           <Button
             onClick={handleApply}
             disabled={isApplying || !hasChanges()}
-            className="h-9"
+            className="h-7 text-xs min-w-[90px] bg-[#171717] dark:bg-[#fafafa] text-[#fafafa] dark:text-[#171717] hover:bg-[#262626] dark:hover:bg-[#e5e5e5]"
           >
             {isApplying ? (
               <>
-                <div className="h-3.5 w-3.5 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                <span className="mr-1.5 h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
                 Applying...
               </>
             ) : (
               "Apply changes"
             )}
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

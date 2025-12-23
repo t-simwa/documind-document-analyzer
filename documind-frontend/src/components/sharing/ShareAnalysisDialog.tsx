@@ -109,25 +109,25 @@ export const ShareAnalysisDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[520px] p-0 gap-0 overflow-hidden">
+      <DialogContent className="sm:max-w-[520px] p-0 gap-0 overflow-hidden border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717]">
         {/* Header */}
-        <div className="px-6 pt-6 pb-4 border-b border-border/50">
+        <div className="px-4 pt-4 pb-3 border-b border-[#e5e5e5] dark:border-[#262626]">
           <DialogHeader>
-            <DialogTitle className="text-lg font-semibold tracking-tight">
+            <DialogTitle className="text-sm font-medium text-[#171717] dark:text-[#fafafa]">
               Share analysis
             </DialogTitle>
           </DialogHeader>
         </div>
 
-        {/* Content */}
-        <div className="px-6 py-5 space-y-5 overflow-y-auto max-h-[calc(90vh-200px)]">
+        {/* Form Content */}
+        <div className="px-4 py-4 space-y-4 overflow-y-auto max-h-[calc(90vh-180px)]">
           {!shareLink ? (
             <>
               {/* Include Options */}
-              <div className="space-y-3">
-                <Label className="text-sm font-medium text-foreground">What to include</Label>
-                <div className="space-y-2.5">
-                  <div className="flex items-center space-x-2.5 p-3 rounded-lg border border-border/50 bg-card/30">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-[#171717] dark:text-[#fafafa]">What to include</Label>
+                <div className="space-y-1.5">
+                  <div className="flex items-center space-x-2 p-2 rounded-lg border border-[#e5e5e5] dark:border-[#262626] bg-[#fafafa] dark:bg-[#0a0a0a]">
                     <Checkbox
                       id="chat-history"
                       checked={includesChatHistory}
@@ -138,18 +138,18 @@ export const ShareAnalysisDialog = ({
                     />
                     <label
                       htmlFor="chat-history"
-                      className="text-sm font-normal cursor-pointer flex-1 flex items-center gap-2"
+                      className="text-xs font-normal cursor-pointer flex-1 flex items-center gap-1.5 text-[#171717] dark:text-[#fafafa]"
                     >
-                      <MessageCircleMore className="h-4 w-4 text-muted-foreground" />
+                      <MessageCircleMore className="h-3 w-3 text-[#737373] dark:text-[#a3a3a3]" />
                       <span>Chat History</span>
                       {!hasChatHistory && (
-                        <span className="text-xs text-muted-foreground ml-auto">
+                        <span className="text-[10px] text-[#737373] dark:text-[#a3a3a3] ml-auto">
                           (Not available)
                         </span>
                       )}
                     </label>
                   </div>
-                  <div className="flex items-center space-x-2.5 p-3 rounded-lg border border-border/50 bg-card/30">
+                  <div className="flex items-center space-x-2 p-2 rounded-lg border border-[#e5e5e5] dark:border-[#262626] bg-[#fafafa] dark:bg-[#0a0a0a]">
                     <Checkbox
                       id="summary"
                       checked={includesSummary}
@@ -160,12 +160,12 @@ export const ShareAnalysisDialog = ({
                     />
                     <label
                       htmlFor="summary"
-                      className="text-sm font-normal cursor-pointer flex-1 flex items-center gap-2"
+                      className="text-xs font-normal cursor-pointer flex-1 flex items-center gap-1.5 text-[#171717] dark:text-[#fafafa]"
                     >
-                      <FileCode className="h-4 w-4 text-muted-foreground" />
+                      <FileCode className="h-3 w-3 text-[#737373] dark:text-[#a3a3a3]" />
                       <span>Summary</span>
                       {!hasSummary && (
-                        <span className="text-xs text-muted-foreground ml-auto">
+                        <span className="text-[10px] text-[#737373] dark:text-[#a3a3a3] ml-auto">
                           (Not available)
                         </span>
                       )}
@@ -175,10 +175,10 @@ export const ShareAnalysisDialog = ({
               </div>
 
               {/* Expiry Date */}
-              <div className="flex items-center justify-between py-2">
+              <div className="flex items-center justify-between py-1">
                 <div className="space-y-0.5 flex-1">
-                  <Label className="text-sm font-medium text-foreground">Expiration date</Label>
-                  <p className="text-xs text-muted-foreground">
+                  <Label className="text-xs font-medium text-[#171717] dark:text-[#fafafa]">Expiration date</Label>
+                  <p className="text-[10px] text-[#737373] dark:text-[#a3a3a3]">
                     Set when this link should expire
                   </p>
                 </div>
@@ -191,11 +191,11 @@ export const ShareAnalysisDialog = ({
                     <Button
                       variant="outline"
                       className={cn(
-                        "w-full justify-start text-left font-normal h-10 text-sm",
-                        !expiresAt && "text-muted-foreground"
+                        "w-full justify-start text-left font-normal h-8 text-xs border-[#e5e5e5] dark:border-[#262626]",
+                        !expiresAt && "text-[#737373] dark:text-[#a3a3a3]"
                       )}
                     >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      <CalendarIcon className="mr-1.5 h-3 w-3" />
                       {expiresAt ? format(expiresAt, "PPP") : "Select expiration date"}
                     </Button>
                   </PopoverTrigger>
@@ -211,51 +211,56 @@ export const ShareAnalysisDialog = ({
               )}
 
               {!includesChatHistory && !includesSummary && (
-                <div className="text-center py-4 border border-border/50 rounded-lg bg-muted/20">
-                  <p className="text-xs text-muted-foreground font-medium">
+                <div className="text-center py-3 border border-[#e5e5e5] dark:border-[#262626] rounded-lg bg-[#fafafa] dark:bg-[#0a0a0a]">
+                  <p className="text-xs text-[#737373] dark:text-[#a3a3a3] font-medium">
                     Please select at least one option to share
                   </p>
                 </div>
               )}
             </>
           ) : (
-            <div className="space-y-3">
-              <div className="p-4 border border-border/50 rounded-lg bg-card/50">
-                <div className="flex items-center gap-2 mb-3">
-                  <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-sm font-medium text-foreground">Share link</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-[#171717] dark:text-[#fafafa]">Share link</Label>
+              <div className="space-y-1">
+                <div className="p-2.5 border border-[#e5e5e5] dark:border-[#262626] rounded-lg bg-[#fafafa] dark:bg-[#0a0a0a]">
+                  <div className="flex items-center gap-1.5">
+                    <Input
+                      value={shareLink}
+                      readOnly
+                      className="h-7 text-[10px] font-mono bg-white dark:bg-[#171717] border-[#e5e5e5] dark:border-[#262626]"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleCopyLink}
+                      className="h-7 w-7 p-0 flex-shrink-0 text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-white dark:hover:bg-[#171717]"
+                    >
+                      {copied ? (
+                        <Check className="h-3 w-3 text-green-600 dark:text-green-400" />
+                      ) : (
+                        <Copy className="h-3 w-3" />
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-[10px] text-[#737373] dark:text-[#a3a3a3] mt-2">
+                    Anyone with this link can view the shared analysis
+                  </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Input
-                    value={shareLink}
-                    readOnly
-                    className="h-9 text-xs font-mono bg-background/50 border-border/50"
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleCopyLink}
-                    className="h-9 w-9 p-0 flex-shrink-0"
-                  >
-                    {copied ? (
-                      <Check className="h-4 w-4 text-green-600" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground mt-2.5">
-                  Anyone with this link can view the shared analysis
-                </p>
               </div>
             </div>
           )}
         </div>
 
-        <DialogFooter className="px-6 py-4 border-t border-border/50 bg-card/30">
+        {/* Footer */}
+        <div className="px-4 py-3 border-t border-[#e5e5e5] dark:border-[#262626] bg-[#fafafa] dark:bg-[#0a0a0a] flex items-center justify-end gap-2">
           {!shareLink ? (
             <>
-              <Button variant="outline" onClick={handleClose} disabled={isLoading} className="h-9">
+              <Button 
+                variant="ghost" 
+                onClick={handleClose} 
+                disabled={isLoading}
+                className="h-7 text-xs text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
+              >
                 Cancel
               </Button>
               <Button
@@ -264,15 +269,27 @@ export const ShareAnalysisDialog = ({
                   isLoading ||
                   (!includesChatHistory && !includesSummary)
                 }
-                className="h-9"
+                className="h-7 text-xs min-w-[90px] bg-[#171717] dark:bg-[#fafafa] text-[#fafafa] dark:text-[#171717] hover:bg-[#262626] dark:hover:bg-[#e5e5e5]"
               >
-                {isLoading ? "Creating..." : "Create share link"}
+                {isLoading ? (
+                  <>
+                    <span className="mr-1.5 h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  "Create share link"
+                )}
               </Button>
             </>
           ) : (
-            <Button onClick={handleClose} className="h-9">Done</Button>
+            <Button 
+              onClick={handleClose}
+              className="h-7 text-xs min-w-[90px] bg-[#171717] dark:bg-[#fafafa] text-[#fafafa] dark:text-[#171717] hover:bg-[#262626] dark:hover:bg-[#e5e5e5]"
+            >
+              Done
+            </Button>
           )}
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

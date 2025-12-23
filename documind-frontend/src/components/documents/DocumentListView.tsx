@@ -215,14 +215,14 @@ export const DocumentListView = ({ projectId, onDocumentSelect, onCompareDocumen
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex-shrink-0 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="flex items-center justify-between px-6 py-4">
+      <div className="flex-shrink-0 border-b border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717]">
+        <div className="flex items-center justify-between px-4 py-3">
           <div>
-            <h1 className="text-lg font-semibold tracking-tight">Documents</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
+            <h1 className="text-sm font-medium text-[#171717] dark:text-[#fafafa]">Documents</h1>
+            <p className="text-xs text-[#737373] dark:text-[#a3a3a3] mt-0.5">
               {total} {total === 1 ? "document" : "documents"}
               {selectedIds.size > 0 && (
-                <span className="ml-2 text-foreground font-medium">
+                <span className="ml-2 text-[#171717] dark:text-[#fafafa] font-medium">
                   • {selectedIds.size} selected
                 </span>
               )}
@@ -233,9 +233,9 @@ export const DocumentListView = ({ projectId, onDocumentSelect, onCompareDocumen
               <Button
                 onClick={onCompareDocuments}
                 size="sm"
-                className="gap-2"
+                className="gap-1.5 h-7 text-xs border-[#e5e5e5] dark:border-[#262626] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
               >
-                <Layers className="h-4 w-4" />
+                <Layers className="h-3 w-3" />
                 Compare Documents
               </Button>
             )}
@@ -243,32 +243,32 @@ export const DocumentListView = ({ projectId, onDocumentSelect, onCompareDocumen
               <Button
                 onClick={onOpenSavedAnalyses}
                 size="sm"
-                className="gap-2"
+                className="gap-1.5 h-7 text-xs border-[#e5e5e5] dark:border-[#262626] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
               >
-                <Clock className="h-4 w-4" />
+                <Clock className="h-3 w-3" />
                 Saved Analyses
               </Button>
             )}
             <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
               <SheetTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Filter className="h-4 w-4" />
+                <Button variant="outline" size="sm" className="gap-1.5 h-7 text-xs border-[#e5e5e5] dark:border-[#262626] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]">
+                  <Filter className="h-3 w-3" />
                   Filters
                   {activeFiltersCount > 0 && (
-                    <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5 text-xs">
+                    <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-[#171717] dark:bg-[#fafafa] text-[#fafafa] dark:text-[#171717]">
                       {activeFiltersCount}
                     </Badge>
                   )}
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-[400px] sm:w-[540px]">
-                <SheetHeader className="pb-4 border-b">
-                  <SheetTitle>Filters</SheetTitle>
-                  <SheetDescription>
+              <SheetContent side="right" className="w-[400px] sm:w-[540px] border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717]">
+                <SheetHeader className="pb-3 border-b border-[#e5e5e5] dark:border-[#262626]">
+                  <SheetTitle className="text-sm font-medium text-[#171717] dark:text-[#fafafa]">Filters</SheetTitle>
+                  <SheetDescription className="text-xs text-[#737373] dark:text-[#a3a3a3]">
                     Filter documents by various criteria
                   </SheetDescription>
                 </SheetHeader>
-                <div className="mt-6">
+                <div className="mt-4">
                   <DocumentFilters
                     filters={filters}
                     onFiltersChange={(newFilters) => {
@@ -288,10 +288,10 @@ export const DocumentListView = ({ projectId, onDocumentSelect, onCompareDocumen
                 variant="default"
                 size="sm"
                 onClick={() => setBulkActionsOpen(true)}
-                className="gap-2"
+                className="gap-1.5 h-7 text-xs bg-[#171717] dark:bg-[#fafafa] text-[#fafafa] dark:text-[#171717] hover:bg-[#262626] dark:hover:bg-[#e5e5e5]"
               >
                 Actions
-                <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5 text-xs bg-background/50">
+                <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-[#fafafa] dark:bg-[#171717] text-[#171717] dark:text-[#fafafa]">
                   {selectedIds.size}
                 </Badge>
               </Button>
@@ -300,23 +300,23 @@ export const DocumentListView = ({ projectId, onDocumentSelect, onCompareDocumen
         </div>
 
         {/* Search Bar */}
-        <div className="px-6 pb-4">
+        <div className="px-4 pb-3">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#737373] dark:text-[#a3a3a3]" />
             <Input
               placeholder="Search documents..."
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
-              className="pl-9 h-9"
+              className="pl-8 h-8 text-xs border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717]"
             />
             {searchQuery && (
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
                 onClick={() => handleSearch("")}
               >
-                <X className="h-3.5 w-3.5" />
+                <X className="h-3 w-3" />
               </Button>
             )}
           </div>
@@ -328,8 +328,8 @@ export const DocumentListView = ({ projectId, onDocumentSelect, onCompareDocumen
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center space-y-2">
-              <div className="h-8 w-8 border-2 border-muted border-t-foreground rounded-full animate-spin mx-auto" />
-              <p className="text-sm text-muted-foreground">Loading documents...</p>
+              <div className="h-6 w-6 border-2 border-[#e5e5e5] dark:border-[#262626] border-t-[#171717] dark:border-t-[#fafafa] rounded-full animate-spin mx-auto" />
+              <p className="text-xs text-[#737373] dark:text-[#a3a3a3]">Loading documents...</p>
             </div>
           </div>
         ) : (
@@ -353,9 +353,9 @@ export const DocumentListView = ({ projectId, onDocumentSelect, onCompareDocumen
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex-shrink-0 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="flex items-center justify-between px-6 py-3">
-            <p className="text-sm text-muted-foreground">
+        <div className="flex-shrink-0 border-t border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717]">
+          <div className="flex items-center justify-between px-4 py-2.5">
+            <p className="text-xs text-[#737373] dark:text-[#a3a3a3]">
               Showing {((page - 1) * 20) + 1} to {Math.min(page * 20, total)} of {total} documents
             </p>
             <Pagination>

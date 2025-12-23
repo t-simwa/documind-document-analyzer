@@ -229,134 +229,150 @@ export const ExportDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[520px] p-0 gap-0 overflow-hidden">
+      <DialogContent className="sm:max-w-[520px] p-0 gap-0 overflow-hidden border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717]">
         {/* Header */}
-        <div className="px-6 pt-6 pb-4 border-b border-border/50">
+        <div className="px-4 pt-4 pb-3 border-b border-[#e5e5e5] dark:border-[#262626]">
           <DialogHeader>
-            <DialogTitle className="text-lg font-semibold tracking-tight">
+            <DialogTitle className="text-sm font-medium text-[#171717] dark:text-[#fafafa]">
               Export content
             </DialogTitle>
           </DialogHeader>
         </div>
 
-        {/* Content */}
-        <div className="px-6 py-5 space-y-5 overflow-y-auto max-h-[calc(90vh-200px)]">
+        {/* Form Content */}
+        <div className="px-4 py-4 space-y-4 overflow-y-auto max-h-[calc(90vh-180px)]">
           {/* Export Type */}
-          <div className="space-y-3">
-            <Label className="text-sm font-medium text-foreground">What to export</Label>
-            <RadioGroup value={exportType} onValueChange={(value) => setExportType(value as typeof exportType)}>
-              <div className="flex items-center space-x-2.5">
-                <RadioGroupItem value="chat" id="chat" />
-                <Label htmlFor="chat" className="text-sm font-normal cursor-pointer flex-1">
-                  Chat History {chatMessages.length > 0 && (
-                    <span className="text-xs text-muted-foreground ml-1.5">
-                      ({chatMessages.length} messages)
-                    </span>
-                  )}
-                </Label>
-              </div>
-              {summary && (
-                <div className="flex items-center space-x-2.5">
-                  <RadioGroupItem value="summary" id="summary" />
-                  <Label htmlFor="summary" className="text-sm font-normal cursor-pointer">
-                    Summary
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-[#171717] dark:text-[#fafafa]">What to export</Label>
+            <div className="space-y-1">
+              <RadioGroup value={exportType} onValueChange={(value) => setExportType(value as typeof exportType)}>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="chat" id="chat" />
+                  <Label htmlFor="chat" className="text-xs font-normal cursor-pointer flex-1 text-[#171717] dark:text-[#fafafa]">
+                    Chat History {chatMessages.length > 0 && (
+                      <span className="text-[10px] text-[#737373] dark:text-[#a3a3a3] ml-1">
+                        ({chatMessages.length} messages)
+                      </span>
+                    )}
                   </Label>
                 </div>
-              )}
-              {summary && chatMessages.length > 0 && (
-                <div className="flex items-center space-x-2.5">
-                  <RadioGroupItem value="both" id="both" />
-                  <Label htmlFor="both" className="text-sm font-normal cursor-pointer">
-                    Both (Chat + Summary)
-                  </Label>
-                </div>
-              )}
-            </RadioGroup>
+                {summary && (
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="summary" id="summary" />
+                    <Label htmlFor="summary" className="text-xs font-normal cursor-pointer text-[#171717] dark:text-[#fafafa]">
+                      Summary
+                    </Label>
+                  </div>
+                )}
+                {summary && chatMessages.length > 0 && (
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="both" id="both" />
+                    <Label htmlFor="both" className="text-xs font-normal cursor-pointer text-[#171717] dark:text-[#fafafa]">
+                      Both (Chat + Summary)
+                    </Label>
+                  </div>
+                )}
+              </RadioGroup>
+            </div>
           </div>
 
           {/* Format Selection */}
           {(exportType === "chat" || exportType === "summary" || exportType === "both") && (
-            <div className="space-y-3">
-              <Label className="text-sm font-medium text-foreground">Format</Label>
-              <RadioGroup value={format} onValueChange={(value) => setFormat(value as ExportFormat)}>
-                <div className="flex items-center space-x-2.5">
-                  <RadioGroupItem value="txt" id="txt" />
-                  <Label htmlFor="txt" className="text-sm font-normal cursor-pointer flex items-center gap-2">
-                    <FileType2 className="h-3.5 w-3.5 text-muted-foreground" />
-                    Text (.txt)
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2.5">
-                  <RadioGroupItem value="json" id="json" />
-                  <Label htmlFor="json" className="text-sm font-normal cursor-pointer flex items-center gap-2">
-                    <FileJson className="h-3.5 w-3.5 text-muted-foreground" />
-                    JSON (.json)
-                  </Label>
-                </div>
-              </RadioGroup>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-[#171717] dark:text-[#fafafa]">Format</Label>
+              <div className="space-y-1">
+                <RadioGroup value={format} onValueChange={(value) => setFormat(value as ExportFormat)}>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="txt" id="txt" />
+                    <Label htmlFor="txt" className="text-xs font-normal cursor-pointer flex items-center gap-1.5 text-[#171717] dark:text-[#fafafa]">
+                      <FileType2 className="h-3 w-3 text-[#737373] dark:text-[#a3a3a3]" />
+                      Text (.txt)
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="json" id="json" />
+                    <Label htmlFor="json" className="text-xs font-normal cursor-pointer flex items-center gap-1.5 text-[#171717] dark:text-[#fafafa]">
+                      <FileJson className="h-3 w-3 text-[#737373] dark:text-[#a3a3a3]" />
+                      JSON (.json)
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
             </div>
           )}
 
           {/* Additional Options */}
-          <div className="space-y-2">
-            <div className="flex items-center space-x-2.5">
+          <div className="space-y-1.5">
+            <div className="flex items-center space-x-2">
               <Checkbox
                 id="annotations"
                 checked={includeAnnotations}
                 onCheckedChange={(checked) => setIncludeAnnotations(checked as boolean)}
               />
-              <Label htmlFor="annotations" className="text-sm font-normal cursor-pointer">
+              <Label htmlFor="annotations" className="text-xs font-normal cursor-pointer text-[#171717] dark:text-[#fafafa]">
                 Include annotations and comments
               </Label>
             </div>
           </div>
 
-          <Separator />
+          <Separator className="my-4" />
 
           {/* Quick Export */}
-          <div className="space-y-3">
-            <Label className="text-sm font-medium text-foreground">Quick export</Label>
-            <div className="grid grid-cols-2 gap-2.5">
-              <Button
-                variant="outline"
-                onClick={handleExportToPDF}
-                disabled={isExporting || (!summary && chatMessages.length === 0)}
-                className="h-10 text-sm justify-start"
-              >
-                <FileDown className="h-4 w-4 mr-2 text-muted-foreground" />
-                PDF
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleExportToWord}
-                disabled={isExporting || (!summary && chatMessages.length === 0)}
-                className="h-10 text-sm justify-start"
-              >
-                <FileCode className="h-4 w-4 mr-2 text-muted-foreground" />
-                Word
-              </Button>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-[#171717] dark:text-[#fafafa]">Quick export</Label>
+            <div className="space-y-1">
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleExportToPDF}
+                  disabled={isExporting || (!summary && chatMessages.length === 0)}
+                  className="h-8 text-xs justify-start border-[#e5e5e5] dark:border-[#262626]"
+                >
+                  <FileDown className="h-3 w-3 mr-1.5 text-[#737373] dark:text-[#a3a3a3]" />
+                  PDF
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleExportToWord}
+                  disabled={isExporting || (!summary && chatMessages.length === 0)}
+                  className="h-8 text-xs justify-start border-[#e5e5e5] dark:border-[#262626]"
+                >
+                  <FileCode className="h-3 w-3 mr-1.5 text-[#737373] dark:text-[#a3a3a3]" />
+                  Word
+                </Button>
+              </div>
             </div>
           </div>
         </div>
 
-        <DialogFooter className="px-6 py-4 border-t border-border/50 bg-card/30">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isExporting} className="h-9">
+        {/* Footer */}
+        <div className="px-4 py-3 border-t border-[#e5e5e5] dark:border-[#262626] bg-[#fafafa] dark:bg-[#0a0a0a] flex items-center justify-end gap-2">
+          <Button 
+            variant="ghost" 
+            onClick={() => onOpenChange(false)} 
+            disabled={isExporting}
+            className="h-7 text-xs text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
+          >
             Cancel
           </Button>
-          <Button onClick={handleExport} disabled={isExporting} className="h-9">
+          <Button 
+            onClick={handleExport} 
+            disabled={isExporting}
+            className="h-7 text-xs min-w-[90px] bg-[#171717] dark:bg-[#fafafa] text-[#fafafa] dark:text-[#171717] hover:bg-[#262626] dark:hover:bg-[#e5e5e5]"
+          >
             {isExporting ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <span className="mr-1.5 h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
                 Exporting...
               </>
             ) : (
               <>
-                <Download className="h-4 w-4 mr-2" />
+                <Download className="h-3 w-3 mr-1.5" />
                 Export
               </>
             )}
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

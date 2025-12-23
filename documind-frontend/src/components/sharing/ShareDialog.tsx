@@ -169,101 +169,105 @@ export const ShareDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] p-0 gap-0 overflow-hidden">
+      <DialogContent className="sm:max-w-[520px] p-0 gap-0 overflow-hidden border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717]">
         {/* Header */}
-        <div className="px-6 pt-6 pb-4 border-b border-border/50">
+        <div className="px-4 pt-4 pb-3 border-b border-[#e5e5e5] dark:border-[#262626]">
           <DialogHeader>
-            <DialogTitle className="text-lg font-semibold tracking-tight">
+            <DialogTitle className="text-sm font-medium text-[#171717] dark:text-[#fafafa]">
               Share document
             </DialogTitle>
           </DialogHeader>
         </div>
 
-        {/* Content */}
-        <div className="px-6 py-5 space-y-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+        {/* Form Content */}
+        <div className="px-4 py-4 space-y-4 overflow-y-auto max-h-[calc(90vh-180px)]">
           {/* Create New Share Link */}
           <div className="space-y-4">
             <div className="space-y-0.5">
-              <h3 className="text-sm font-semibold text-foreground">Create share link</h3>
-              <p className="text-xs text-muted-foreground">
+              <h3 className="text-xs font-medium text-[#171717] dark:text-[#fafafa]">Create share link</h3>
+              <p className="text-[10px] text-[#737373] dark:text-[#a3a3a3]">
                 Generate a link with specific permissions and access controls
               </p>
             </div>
 
             {/* Permission Level */}
-            <div className="space-y-2">
-              <Label htmlFor="permission" className="text-sm font-medium text-foreground">
+            <div className="space-y-1.5">
+              <Label htmlFor="permission" className="text-xs font-medium text-[#171717] dark:text-[#fafafa]">
                 Permission level
               </Label>
-              <Select value={permission} onValueChange={(value) => setPermission(value as SharePermission)}>
-                <SelectTrigger id="permission" className="h-10 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="view">
-                    <div className="flex items-center gap-2">
-                      <LockKeyhole className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span>View only</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="comment">
-                    <div className="flex items-center gap-2">
-                      <UserCheck className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span>View & comment</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="edit">
-                    <div className="flex items-center gap-2">
-                      <UserCog className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span>Full access</span>
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="space-y-1">
+                <Select value={permission} onValueChange={(value) => setPermission(value as SharePermission)}>
+                  <SelectTrigger id="permission" className="h-8 text-xs border-[#e5e5e5] dark:border-[#262626]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717]">
+                    <SelectItem value="view" className="text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <LockKeyhole className="h-3 w-3 text-[#737373] dark:text-[#a3a3a3]" />
+                        <span>View only</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="comment" className="text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <UserCheck className="h-3 w-3 text-[#737373] dark:text-[#a3a3a3]" />
+                        <span>View & comment</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="edit" className="text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <UserCog className="h-3 w-3 text-[#737373] dark:text-[#a3a3a3]" />
+                        <span>Full access</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {/* Access Level */}
-            <div className="space-y-2">
-              <Label htmlFor="access" className="text-sm font-medium text-foreground">
+            <div className="space-y-1.5">
+              <Label htmlFor="access" className="text-xs font-medium text-[#171717] dark:text-[#fafafa]">
                 Who can access
               </Label>
-              <Select value={access} onValueChange={(value) => setAccess(value as ShareAccess)}>
-                <SelectTrigger id="access" className="h-10 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="anyone">
-                    <div className="flex items-center gap-2">
-                      <Network className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span>Anyone with the link</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="team">
-                    <div className="flex items-center gap-2">
-                      <UserCheck className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span>Team members only</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="specific">
-                    <div className="flex items-center gap-2">
-                      <UserCog className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span>Specific users</span>
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="space-y-1">
+                <Select value={access} onValueChange={(value) => setAccess(value as ShareAccess)}>
+                  <SelectTrigger id="access" className="h-8 text-xs border-[#e5e5e5] dark:border-[#262626]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717]">
+                    <SelectItem value="anyone" className="text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <Network className="h-3 w-3 text-[#737373] dark:text-[#a3a3a3]" />
+                        <span>Anyone with the link</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="team" className="text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <UserCheck className="h-3 w-3 text-[#737373] dark:text-[#a3a3a3]" />
+                        <span>Team members only</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="specific" className="text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <UserCog className="h-3 w-3 text-[#737373] dark:text-[#a3a3a3]" />
+                        <span>Specific users</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {/* User Selection */}
             {access === "specific" && (
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-foreground">Select users</Label>
-                <div className="border border-border/50 rounded-lg p-3 max-h-40 overflow-y-auto space-y-2.5 bg-card/30">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-[#171717] dark:text-[#fafafa]">Select users</Label>
+                <div className="space-y-1 border border-[#e5e5e5] dark:border-[#262626] rounded-lg p-2 max-h-40 overflow-y-auto bg-[#fafafa] dark:bg-[#0a0a0a]">
                   {users.length === 0 ? (
-                    <p className="text-xs text-muted-foreground text-center py-2">No users available</p>
+                    <p className="text-[10px] text-[#737373] dark:text-[#a3a3a3] text-center py-2">No users available</p>
                   ) : (
                     users.map((user) => (
-                      <div key={user.id} className="flex items-center space-x-2.5">
+                      <div key={user.id} className="flex items-center space-x-2 py-0.5">
                         <Checkbox
                           id={`user-${user.id}`}
                           checked={selectedUsers.includes(user.id)}
@@ -271,10 +275,10 @@ export const ShareDialog = ({
                         />
                         <label
                           htmlFor={`user-${user.id}`}
-                          className="text-sm font-normal leading-none cursor-pointer flex-1"
+                          className="text-xs font-normal leading-none cursor-pointer flex-1 text-[#171717] dark:text-[#fafafa]"
                         >
-                          <span className="text-foreground">{user.name}</span>
-                          <span className="text-muted-foreground ml-1.5">({user.email})</span>
+                          <span>{user.name}</span>
+                          <span className="text-[#737373] dark:text-[#a3a3a3] ml-1">({user.email})</span>
                         </label>
                       </div>
                     ))
@@ -284,10 +288,10 @@ export const ShareDialog = ({
             )}
 
             {/* Expiry Date */}
-            <div className="flex items-center justify-between py-2">
+            <div className="flex items-center justify-between py-1">
               <div className="space-y-0.5 flex-1">
-                <Label className="text-sm font-medium text-foreground">Expiration date</Label>
-                <p className="text-xs text-muted-foreground">
+                <Label className="text-xs font-medium text-[#171717] dark:text-[#fafafa]">Expiration date</Label>
+                <p className="text-[10px] text-[#737373] dark:text-[#a3a3a3]">
                   Set when this link should expire
                 </p>
               </div>
@@ -300,11 +304,11 @@ export const ShareDialog = ({
                   <Button
                     variant="outline"
                     className={cn(
-                      "w-full justify-start text-left font-normal h-10 text-sm",
-                      !expiresAt && "text-muted-foreground"
+                      "w-full justify-start text-left font-normal h-8 text-xs border-[#e5e5e5] dark:border-[#262626]",
+                      !expiresAt && "text-[#737373] dark:text-[#a3a3a3]"
                     )}
                   >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    <CalendarIcon className="mr-1.5 h-3 w-3" />
                     {expiresAt ? format(expiresAt, "PPP") : "Select expiration date"}
                   </Button>
                 </PopoverTrigger>
@@ -322,74 +326,81 @@ export const ShareDialog = ({
             <Button 
               onClick={handleCreateShareLink} 
               disabled={isLoading} 
-              className="w-full h-10"
+              className="w-full h-8 text-xs bg-[#171717] dark:bg-[#fafafa] text-[#fafafa] dark:text-[#171717] hover:bg-[#262626] dark:hover:bg-[#e5e5e5]"
             >
-              {isLoading ? "Creating..." : "Create share link"}
+              {isLoading ? (
+                <>
+                  <span className="mr-1.5 h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                "Create share link"
+              )}
             </Button>
           </div>
 
-          <Separator />
+          <Separator className="my-4" />
 
           {/* Existing Share Links */}
           <div className="space-y-3">
             <div className="space-y-0.5">
-              <h3 className="text-sm font-semibold text-foreground">Active share links</h3>
-              <p className="text-xs text-muted-foreground">
+              <h3 className="text-xs font-medium text-[#171717] dark:text-[#fafafa]">Active share links</h3>
+              <p className="text-[10px] text-[#737373] dark:text-[#a3a3a3]">
                 Manage existing share links for this document
               </p>
             </div>
             {shareLinks.length === 0 ? (
-              <div className="text-center py-8 border border-border/50 rounded-lg bg-muted/20">
-                <ExternalLink className="h-8 w-8 text-muted-foreground/50 mx-auto mb-2" />
-                <p className="text-xs text-muted-foreground font-medium">No active share links</p>
-                <p className="text-xs text-muted-foreground/70 mt-0.5">Create one above to get started</p>
+              <div className="text-center py-6 border border-[#e5e5e5] dark:border-[#262626] rounded-lg bg-[#fafafa] dark:bg-[#0a0a0a]">
+                <ExternalLink className="h-6 w-6 text-[#737373]/50 dark:text-[#a3a3a3]/50 mx-auto mb-1.5" />
+                <p className="text-xs text-[#737373] dark:text-[#a3a3a3] font-medium">No active share links</p>
+                <p className="text-[10px] text-[#737373]/70 dark:text-[#a3a3a3]/70 mt-0.5">Create one above to get started</p>
               </div>
             ) : (
               <div className="space-y-2">
                 {shareLinks.map((link) => (
                   <div
                     key={link.id}
-                    className="group flex items-start justify-between gap-3 p-3.5 border border-border/50 rounded-lg bg-card/50 hover:bg-card hover:border-border transition-all duration-200"
+                    className="group flex items-start justify-between gap-2 p-2.5 border border-[#e5e5e5] dark:border-[#262626] rounded-lg bg-white dark:bg-[#171717] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a] transition-all duration-200"
                   >
-                    <div className="flex-1 min-w-0 space-y-2">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="outline" className="text-xs font-normal border-border/60">
+                    <div className="flex-1 min-w-0 space-y-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <Badge variant="outline" className="text-[10px] font-normal border-[#e5e5e5] dark:border-[#262626]">
                           {getPermissionLabel(link.permission)}
                         </Badge>
-                        <Badge variant="secondary" className="text-xs font-normal">
+                        <Badge variant="secondary" className="text-[10px] font-normal bg-[#fafafa] dark:bg-[#0a0a0a] border-[#e5e5e5] dark:border-[#262626]">
                           {getAccessLabel(link.access)}
                         </Badge>
                         {link.expiresAt && (
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-[10px] text-[#737373] dark:text-[#a3a3a3]">
                             Expires {format(link.expiresAt, "MMM d, yyyy")}
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 min-w-0">
+                      <div className="flex items-center gap-1.5 min-w-0">
                         <Input
                           value={link.shareUrl}
                           readOnly
-                          className="h-8 text-xs font-mono bg-background/50 border-border/50"
+                          className="h-7 text-[10px] font-mono bg-[#fafafa] dark:bg-[#0a0a0a] border-[#e5e5e5] dark:border-[#262626]"
                         />
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-8 w-8 p-0 flex-shrink-0"
+                          className="h-7 w-7 p-0 flex-shrink-0 text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
                           onClick={() => handleCopyLink(link)}
                         >
                           {copiedLinkId === link.id ? (
-                            <Check className="h-3.5 w-3.5 text-green-600" />
+                            <Check className="h-3 w-3 text-green-600 dark:text-green-400" />
                           ) : (
-                            <Copy className="h-3.5 w-3.5" />
+                            <Copy className="h-3 w-3" />
                           )}
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-8 w-8 p-0 flex-shrink-0 text-muted-foreground hover:text-destructive"
+                          className="h-7 w-7 p-0 flex-shrink-0 text-[#737373] dark:text-[#a3a3a3] hover:text-red-600 dark:hover:text-red-400 hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
                           onClick={() => handleRevokeLink(link.id)}
                         >
-                          <X className="h-3.5 w-3.5" />
+                          <X className="h-3 w-3" />
                         </Button>
                       </div>
                     </div>
@@ -400,11 +411,16 @@ export const ShareDialog = ({
           </div>
         </div>
 
-        <DialogFooter className="px-6 py-4 border-t border-border/50 bg-card/30">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="h-9">
+        {/* Footer */}
+        <div className="px-4 py-3 border-t border-[#e5e5e5] dark:border-[#262626] bg-[#fafafa] dark:bg-[#0a0a0a] flex items-center justify-end gap-2">
+          <Button 
+            variant="ghost" 
+            onClick={() => onOpenChange(false)}
+            className="h-7 text-xs text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
+          >
             Close
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

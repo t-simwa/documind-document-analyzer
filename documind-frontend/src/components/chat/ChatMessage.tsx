@@ -48,7 +48,7 @@ const ResponseCard = ({ content, citations, onCitationClick }: { content: string
       parts.push(
         <sup
           key={`citation-${match.index}`}
-          className="text-[0.7em] text-muted-foreground/70 font-medium align-baseline"
+          className="text-[0.7em] text-[#737373] dark:text-[#a3a3a3] font-medium align-baseline"
         >
           {match[0]}
         </sup>
@@ -109,7 +109,7 @@ const ResponseCard = ({ content, citations, onCitationClick }: { content: string
         // Flush current paragraph and list
         if (currentParagraph.length > 0) {
           elements.push(
-            <div key={`para-${i}`} className="mb-3 text-foreground/90 leading-relaxed">
+            <div key={`para-${i}`} className="mb-2.5 text-[#171717] dark:text-[#fafafa] leading-relaxed text-xs">
               {renderTextWithCitations(currentParagraph.join(' '))}
             </div>
           );
@@ -119,7 +119,7 @@ const ResponseCard = ({ content, citations, onCitationClick }: { content: string
           elements.push(
             <div key={`list-group-${i}`} className="ml-4 mb-3 space-y-1">
               {listItems.map((item, idx) => (
-                <div key={idx} className="text-foreground/90 leading-relaxed">
+                <div key={idx} className="text-[#171717] dark:text-[#fafafa] leading-relaxed text-xs">
                   {renderTextWithCitations(item)}
                 </div>
               ))}
@@ -133,7 +133,7 @@ const ResponseCard = ({ content, citations, onCitationClick }: { content: string
           ? trimmed.replace(/^•\s*/, '').trim() 
           : trimmed;
         elements.push(
-          <div key={`header-${i}`} className="font-semibold text-foreground mb-2 mt-4 first:mt-0 text-xs">
+        <div key={`header-${i}`} className="font-medium text-[#171717] dark:text-[#fafafa] mb-1.5 mt-3 first:mt-0 text-xs">
             {displayHeaderText}
           </div>
         );
@@ -185,7 +185,7 @@ const ResponseCard = ({ content, citations, onCitationClick }: { content: string
           
           // Add header
           elements.push(
-            <div key={`header-${i}`} className="font-semibold text-foreground mb-2 mt-4 first:mt-0 text-xs">
+            <div key={`header-${i}`} className="font-medium text-[#171717] dark:text-[#fafafa] mb-1.5 mt-3 first:mt-0 text-xs">
               {headerText}
             </div>
           );
@@ -227,7 +227,7 @@ const ResponseCard = ({ content, citations, onCitationClick }: { content: string
           elements.push(
             <div key={`list-group-${i}`} className="ml-4 mb-3 space-y-1">
               {listItems.map((item, idx) => (
-                <div key={idx} className="text-foreground/90 leading-relaxed">
+                <div key={idx} className="text-[#171717] dark:text-[#fafafa] leading-relaxed text-xs">
                   {renderTextWithCitations(item)}
                 </div>
               ))}
@@ -241,7 +241,7 @@ const ResponseCard = ({ content, citations, onCitationClick }: { content: string
         // Empty line - flush paragraph and list
         if (currentParagraph.length > 0) {
           elements.push(
-            <div key={`para-${i}`} className="mb-3 text-foreground/90 leading-relaxed">
+            <div key={`para-${i}`} className="mb-2.5 text-[#171717] dark:text-[#fafafa] leading-relaxed text-xs">
               {renderTextWithCitations(currentParagraph.join(' '))}
             </div>
           );
@@ -251,7 +251,7 @@ const ResponseCard = ({ content, citations, onCitationClick }: { content: string
           elements.push(
             <div key={`list-group-${i}`} className="ml-4 mb-3 space-y-1">
               {listItems.map((item, idx) => (
-                <div key={idx} className="text-foreground/90 leading-relaxed">
+                <div key={idx} className="text-[#171717] dark:text-[#fafafa] leading-relaxed text-xs">
                   {renderTextWithCitations(item)}
                 </div>
               ))}
@@ -292,47 +292,47 @@ const ResponseCard = ({ content, citations, onCitationClick }: { content: string
       </div>
 
       {citations && citations.length > 0 && (
-        <div className="pt-3 border-t border-border/50">
+        <div className="pt-2.5 border-t border-[#e5e5e5] dark:border-[#262626]">
           <button
             onClick={() => setSourcesExpanded(!sourcesExpanded)}
-            className="w-full flex items-center justify-between mb-2.5 group hover:opacity-80 transition-opacity"
+            className="w-full flex items-center justify-between mb-2 group hover:opacity-80 transition-opacity"
           >
-            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider font-sans">
+            <p className="text-[10px] font-medium text-[#737373] dark:text-[#a3a3a3] uppercase tracking-wide">
               Sources
             </p>
             <div className="flex items-center gap-1.5">
-              <span className="text-[10px] text-muted-foreground font-sans">
+              <span className="text-[10px] text-[#737373] dark:text-[#a3a3a3]">
                 {citations.length}
               </span>
               {sourcesExpanded ? (
-                <ChevronUp className="h-3 w-3 text-muted-foreground" />
+                <ChevronUp className="h-3 w-3 text-[#737373] dark:text-[#a3a3a3]" />
               ) : (
-                <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                <ChevronDown className="h-3 w-3 text-[#737373] dark:text-[#a3a3a3]" />
               )}
             </div>
           </button>
           {sourcesExpanded && (
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               {citations.map((citation, index) => (
                 <button
                   key={index}
                   onClick={() => onCitationClick?.(citation)}
-                  className="w-full flex items-center gap-2.5 p-2.5 rounded-md border border-border/50 hover:bg-muted/50 hover:border-border transition-all text-left group cursor-pointer"
+                  className="w-full flex items-center gap-2 p-2 rounded-md border border-[#e5e5e5] dark:border-[#262626] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a] transition-all text-left group cursor-pointer"
                 >
-                  <div className="flex-shrink-0 w-5 h-5 rounded bg-muted/50 flex items-center justify-center">
-                    <FileText className="h-2.5 w-2.5 text-muted-foreground" />
+                  <div className="flex-shrink-0 w-4 h-4 rounded bg-[#f5f5f5] dark:bg-[#262626] flex items-center justify-center">
+                    <FileText className="h-2.5 w-2.5 text-[#737373] dark:text-[#a3a3a3]" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-foreground truncate font-sans">{citation.text}</p>
+                    <p className="text-xs text-[#171717] dark:text-[#fafafa] truncate">{citation.text}</p>
                     {(citation.page || citation.section) && (
-                      <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
+                      <p className="text-[10px] text-[#737373] dark:text-[#a3a3a3] font-mono mt-0.5">
                         {citation.page && `Page ${citation.page}`}
                         {citation.page && citation.section && " · "}
                         {citation.section}
                       </p>
                     )}
                   </div>
-                  <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                  <ExternalLink className="h-3 w-3 text-[#737373] dark:text-[#a3a3a3] opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
                 </button>
               ))}
             </div>
@@ -345,35 +345,35 @@ const ResponseCard = ({ content, citations, onCitationClick }: { content: string
           variant="ghost"
           size="sm"
           onClick={handleCopy}
-          className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted/50"
+          className="h-6 w-6 p-0 text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
         >
-          {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+          {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
         </Button>
         <Button
           variant="ghost"
           size="sm"
           onClick={() => setFeedback('up')}
           className={cn(
-            "h-7 w-7 p-0",
+            "h-6 w-6 p-0",
             feedback === 'up' 
-              ? "text-foreground bg-muted/50" 
-              : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              ? "text-[#171717] dark:text-[#fafafa] bg-[#fafafa] dark:bg-[#0a0a0a]" 
+              : "text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
           )}
         >
-          <ThumbsUp className="h-3.5 w-3.5" />
+          <ThumbsUp className="h-3 w-3" />
         </Button>
         <Button
           variant="ghost"
           size="sm"
           onClick={() => setFeedback('down')}
           className={cn(
-            "h-7 w-7 p-0",
+            "h-6 w-6 p-0",
             feedback === 'down' 
-              ? "text-foreground bg-muted/50" 
-              : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              ? "text-[#171717] dark:text-[#fafafa] bg-[#fafafa] dark:bg-[#0a0a0a]" 
+              : "text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
           )}
         >
-          <ThumbsDown className="h-3.5 w-3.5" />
+          <ThumbsDown className="h-3 w-3" />
         </Button>
       </div>
     </div>
@@ -382,9 +382,9 @@ const ResponseCard = ({ content, citations, onCitationClick }: { content: string
 
 const TypingIndicator = () => (
   <div className="flex items-center gap-1.5 py-1">
-    <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 animate-pulse" style={{ animationDelay: '0ms' }} />
-    <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 animate-pulse" style={{ animationDelay: '150ms' }} />
-    <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 animate-pulse" style={{ animationDelay: '300ms' }} />
+    <div className="w-1.5 h-1.5 rounded-full bg-[#737373]/40 dark:bg-[#a3a3a3]/40 animate-pulse" style={{ animationDelay: '0ms' }} />
+    <div className="w-1.5 h-1.5 rounded-full bg-[#737373]/40 dark:bg-[#a3a3a3]/40 animate-pulse" style={{ animationDelay: '150ms' }} />
+    <div className="w-1.5 h-1.5 rounded-full bg-[#737373]/40 dark:bg-[#a3a3a3]/40 animate-pulse" style={{ animationDelay: '300ms' }} />
   </div>
 );
 
@@ -400,36 +400,36 @@ export const ChatMessage = ({
   const isUser = role === "user";
 
   return (
-    <div className={cn("flex gap-3", isUser ? "flex-row-reverse" : "flex-row")}>
+    <div className={cn("flex gap-2.5", isUser ? "flex-row-reverse" : "flex-row")}>
       {/* Avatar */}
       <div className={cn(
-        "flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-xs font-medium",
+        "flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center text-xs font-medium",
         isUser 
-          ? "bg-foreground text-background" 
-          : "bg-muted/50 text-foreground border border-border/50"
+          ? "bg-[#171717] dark:bg-[#fafafa] text-[#fafafa] dark:text-[#171717]" 
+          : "bg-[#f5f5f5] dark:bg-[#262626] text-[#171717] dark:text-[#fafafa] border border-[#e5e5e5] dark:border-[#262626]"
       )}>
-        {isUser ? <User className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+        {isUser ? <User className="h-3.5 w-3.5" /> : <FileText className="h-3.5 w-3.5" />}
       </div>
 
       {/* Content */}
       <div className={cn("flex-1 min-w-0", isUser && "flex flex-col items-end")}>
         <div className={cn(
-          "rounded-lg px-4 py-3 max-w-[85%]",
+          "rounded-md px-3 py-2 max-w-[85%]",
           isUser
-            ? "bg-foreground text-background"
-            : "bg-card border border-border/50"
+            ? "bg-[#171717] dark:bg-[#fafafa] text-[#fafafa] dark:text-[#171717]"
+            : "bg-white dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#262626]"
         )}>
           {isLoading ? (
             <TypingIndicator />
           ) : isUser ? (
-            <p className="text-xs leading-relaxed font-sans">{content}</p>
+            <p className="text-xs leading-relaxed">{content}</p>
           ) : (
             <ResponseCard content={content} citations={citations} onCitationClick={onCitationClick} />
           )}
         </div>
 
         {timestamp && !isLoading && (
-          <p className="mt-1.5 text-[10px] text-muted-foreground font-mono">
+          <p className="mt-1 text-[10px] text-[#737373] dark:text-[#a3a3a3] font-mono">
             {timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           </p>
         )}

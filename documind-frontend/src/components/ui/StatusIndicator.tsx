@@ -63,31 +63,33 @@ export const StatusIndicator = ({
   return (
     <div
       className={cn(
-        "flex flex-col gap-2 px-4 py-3 rounded-lg border",
-        config.bgColor,
-        config.borderColor,
+        "flex flex-col gap-1.5 px-3 py-2 rounded-lg border",
+        status === "loading" && "bg-[#fafafa] dark:bg-[#0a0a0a] border-[#e5e5e5] dark:border-[#262626]",
+        status === "error" && "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900",
+        status === "success" && "bg-[#fafafa] dark:bg-[#0a0a0a] border-[#e5e5e5] dark:border-[#262626]",
+        status === "info" && "bg-[#fafafa] dark:bg-[#0a0a0a] border-[#e5e5e5] dark:border-[#262626]",
         className
       )}
     >
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         {isAnimated ? (
-          <Icon className={cn("h-4 w-4 animate-spin", config.color)} />
+          <Icon className={cn("h-3 w-3 animate-spin", status === "error" ? "text-red-600 dark:text-red-400" : "text-[#737373] dark:text-[#a3a3a3]")} />
         ) : (
-          <Icon className={cn("h-4 w-4", config.color)} />
+          <Icon className={cn("h-3 w-3", status === "error" ? "text-red-600 dark:text-red-400" : "text-[#737373] dark:text-[#a3a3a3]")} />
         )}
-        <span className={cn("text-sm font-medium flex-1", status === "error" ? config.color : "text-foreground")}>
+        <span className={cn("text-xs font-medium flex-1", status === "error" ? "text-red-600 dark:text-red-400" : "text-[#171717] dark:text-[#fafafa]")}>
           {message}
         </span>
         {showTimeRemaining && (
-          <span className="text-xs text-muted-foreground tabular-nums">
+          <span className="text-[10px] text-[#737373] dark:text-[#a3a3a3] tabular-nums">
             ~{estimatedTimeRemaining}s
           </span>
         )}
       </div>
       {showProgress && (
-        <div className="space-y-1.5">
-          <Progress value={progress} className="h-1.5" />
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <div className="space-y-1">
+          <Progress value={progress} className="h-1" />
+          <div className="flex items-center justify-between text-[10px] text-[#737373] dark:text-[#a3a3a3]">
             <span>Processing...</span>
             <span className="tabular-nums">{progress}%</span>
           </div>

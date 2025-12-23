@@ -77,37 +77,37 @@ export const AnalysisTabs = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col h-full bg-[#fafafa] dark:bg-[#0a0a0a]">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full">
-        <div className="border-b border-border/50 bg-background px-5 flex items-center justify-between">
-          <TabsList className="inline-flex h-10 items-center justify-start rounded-none bg-transparent p-0 text-muted-foreground gap-0.5">
+        <div className="border-b border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717] px-4 flex items-center justify-between">
+          <TabsList className="inline-flex h-8 items-center justify-start rounded-none bg-transparent p-0 text-[#737373] dark:text-[#a3a3a3] gap-0.5">
             <TabsTrigger 
               value="chat" 
-              className="inline-flex items-center justify-center whitespace-nowrap rounded-t-lg px-4 py-2 text-xs font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-foreground data-[state=inactive]:hover:text-foreground/80 border-b-2 border-transparent"
+              className="inline-flex items-center justify-center whitespace-nowrap rounded-t-md px-3 py-1.5 text-xs font-medium transition-all focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-transparent data-[state=active]:text-[#171717] dark:data-[state=active]:text-[#fafafa] data-[state=active]:border-b-2 data-[state=active]:border-[#171717] dark:data-[state=active]:border-[#fafafa] data-[state=inactive]:hover:text-[#171717] dark:data-[state=inactive]:hover:text-[#fafafa] border-b-2 border-transparent"
             >
-              <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
+              <MessageSquare className="h-3 w-3 mr-1.5" />
               Chat
             </TabsTrigger>
             <TabsTrigger 
               value="summary" 
-              className="inline-flex items-center justify-center whitespace-nowrap rounded-t-lg px-4 py-2 text-xs font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-foreground data-[state=inactive]:hover:text-foreground/80 border-b-2 border-transparent"
+              className="inline-flex items-center justify-center whitespace-nowrap rounded-t-md px-3 py-1.5 text-xs font-medium transition-all focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-transparent data-[state=active]:text-[#171717] dark:data-[state=active]:text-[#fafafa] data-[state=active]:border-b-2 data-[state=active]:border-[#171717] dark:data-[state=active]:border-[#fafafa] data-[state=inactive]:hover:text-[#171717] dark:data-[state=inactive]:hover:text-[#fafafa] border-b-2 border-transparent"
             >
-              <FileText className="h-3.5 w-3.5 mr-1.5" />
+              <FileText className="h-3 w-3 mr-1.5" />
               Summary
             </TabsTrigger>
             <TabsTrigger 
               value="extracts" 
-              className="inline-flex items-center justify-center whitespace-nowrap rounded-t-lg px-4 py-2 text-xs font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-foreground data-[state=inactive]:hover:text-foreground/80 border-b-2 border-transparent"
+              className="inline-flex items-center justify-center whitespace-nowrap rounded-t-md px-3 py-1.5 text-xs font-medium transition-all focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-transparent data-[state=active]:text-[#171717] dark:data-[state=active]:text-[#fafafa] data-[state=active]:border-b-2 data-[state=active]:border-[#171717] dark:data-[state=active]:border-[#fafafa] data-[state=inactive]:hover:text-[#171717] dark:data-[state=inactive]:hover:text-[#fafafa] border-b-2 border-transparent"
             >
-              <Layers className="h-3.5 w-3.5 mr-1.5" />
+              <Layers className="h-3 w-3 mr-1.5" />
               Extracts
             </TabsTrigger>
             {documentId && (
               <TabsTrigger 
                 value="comments" 
-                className="inline-flex items-center justify-center whitespace-nowrap rounded-t-lg px-4 py-2 text-xs font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-foreground data-[state=inactive]:hover:text-foreground/80 border-b-2 border-transparent"
+                className="inline-flex items-center justify-center whitespace-nowrap rounded-t-md px-3 py-1.5 text-xs font-medium transition-all focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-transparent data-[state=active]:text-[#171717] dark:data-[state=active]:text-[#fafafa] data-[state=active]:border-b-2 data-[state=active]:border-[#171717] dark:data-[state=active]:border-[#fafafa] data-[state=inactive]:hover:text-[#171717] dark:data-[state=inactive]:hover:text-[#fafafa] border-b-2 border-transparent"
               >
-                <MessageCircleMore className="h-3.5 w-3.5 mr-1.5" />
+                <MessageCircleMore className="h-3 w-3 mr-1.5" />
                 Comments
               </TabsTrigger>
             )}
@@ -117,9 +117,9 @@ export const AnalysisTabs = ({
               variant="ghost"
               size="sm"
               onClick={() => setShareAnalysisDialogOpen(true)}
-              className="gap-2"
+              className="gap-1.5 h-7 text-xs text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
             >
-              <Share2 className="h-4 w-4" />
+              <Share2 className="h-3 w-3" />
               Share Analysis
             </Button>
           )}

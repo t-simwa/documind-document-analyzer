@@ -69,15 +69,15 @@ export const SummaryTab = ({ documentId, documentName, summary, isLoading, error
             className="mb-4"
           />
           <div className="text-center py-8">
-            <p className="text-sm text-muted-foreground mb-4">{error}</p>
+            <p className="text-xs text-[#737373] dark:text-[#a3a3a3] mb-4">{error}</p>
             {onRetry && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={onRetry}
-                className="gap-2"
+                className="gap-1.5 h-7 text-xs border-[#e5e5e5] dark:border-[#262626]"
               >
-                <RefreshCw className="h-3.5 w-3.5" />
+                <RefreshCw className="h-3 w-3" />
                 Retry
               </Button>
             )}
@@ -89,12 +89,12 @@ export const SummaryTab = ({ documentId, documentName, summary, isLoading, error
 
   if (!summary) {
     return (
-      <div className="flex flex-col items-center justify-center h-full px-6 py-16">
-        <div className="w-10 h-10 rounded-lg bg-muted/50 flex items-center justify-center mb-4">
-          <FileText className="h-4 w-4 text-muted-foreground" />
+      <div className="flex flex-col items-center justify-center h-full px-6 py-12">
+        <div className="w-8 h-8 rounded-lg bg-[#fafafa] dark:bg-[#0a0a0a] flex items-center justify-center mb-3">
+          <FileText className="h-3.5 w-3.5 text-[#737373] dark:text-[#a3a3a3]" />
         </div>
-        <h3 className="text-sm font-semibold text-foreground mb-1.5">Summary not available</h3>
-        <p className="text-xs text-muted-foreground text-center max-w-sm">
+        <h3 className="text-xs font-medium text-[#171717] dark:text-[#fafafa] mb-1">Summary not available</h3>
+        <p className="text-[10px] text-[#737373] dark:text-[#a3a3a3] text-center max-w-sm">
           The summary will be generated automatically once document processing is complete.
         </p>
       </div>
@@ -102,13 +102,13 @@ export const SummaryTab = ({ documentId, documentName, summary, isLoading, error
   }
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto">
-      <div className="max-w-4xl mx-auto px-6 py-8 w-full space-y-8">
+    <div className="flex flex-col h-full overflow-y-auto bg-[#fafafa] dark:bg-[#0a0a0a]">
+      <div className="max-w-4xl mx-auto px-4 py-6 w-full space-y-6">
         {/* Header with Export */}
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
-            <h2 className="text-xl font-semibold tracking-tight text-foreground">Summary</h2>
-            <p className="text-xs text-muted-foreground">
+            <h2 className="text-sm font-medium text-[#171717] dark:text-[#fafafa]">Summary</h2>
+            <p className="text-[10px] text-[#737373] dark:text-[#a3a3a3]">
               Overview of key information extracted from this document
             </p>
           </div>
@@ -117,26 +117,26 @@ export const SummaryTab = ({ documentId, documentName, summary, isLoading, error
               variant="outline"
               size="sm"
               onClick={() => setExportDialogOpen(true)}
-              className="gap-2"
+              className="gap-1.5 h-7 text-xs border-[#e5e5e5] dark:border-[#262626]"
             >
-              <Download className="h-4 w-4" />
+              <Download className="h-3 w-3" />
               Export
             </Button>
           )}
         </div>
 
         {/* Executive Summary */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           
           <div className="prose prose-sm max-w-none">
-            <div className="bg-card border border-border/50 rounded-lg p-6 shadow-sm">
-              <p className="text-xs leading-relaxed text-foreground/90 font-normal whitespace-pre-wrap">
+            <div className="bg-white dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#262626] rounded-lg p-4">
+              <p className="text-xs leading-relaxed text-[#171717] dark:text-[#fafafa] font-normal whitespace-pre-wrap">
                 {summary.executiveSummary}
               </p>
               {summary.generatedAt && (
-                <div className="mt-6 pt-5 border-t border-border/50 flex items-center gap-2">
-                  <Clock className="h-3 w-3 text-muted-foreground" />
-                  <span className="text-[11px] text-muted-foreground font-medium">
+                <div className="mt-4 pt-3 border-t border-[#e5e5e5] dark:border-[#262626] flex items-center gap-1.5">
+                  <Clock className="h-2.5 w-2.5 text-[#737373] dark:text-[#a3a3a3]" />
+                  <span className="text-[10px] text-[#737373] dark:text-[#a3a3a3] font-medium">
                     Generated {summary.generatedAt.toLocaleDateString("en-US", { 
                       month: "short", 
                       day: "numeric", 
@@ -155,26 +155,26 @@ export const SummaryTab = ({ documentId, documentName, summary, isLoading, error
 
         {/* Key Points */}
         {summary.keyPoints && summary.keyPoints.length > 0 && (
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="space-y-0.5">
-              <h3 className="text-base font-semibold tracking-tight text-foreground">Key Points</h3>
-              <p className="text-xs text-muted-foreground">
+              <h3 className="text-xs font-medium text-[#171717] dark:text-[#fafafa]">Key Points</h3>
+              <p className="text-[10px] text-[#737373] dark:text-[#a3a3a3]">
                 Important highlights and findings
               </p>
             </div>
             
-            <div className="space-y-2.5">
+            <div className="space-y-2">
               {summary.keyPoints.map((point, index) => (
                 <div 
                   key={index} 
-                  className="group flex gap-3 p-3 rounded-lg border border-border/50 bg-card/50 hover:bg-card hover:border-border transition-all duration-200"
+                  className="group flex gap-2 p-2.5 rounded-lg border border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a] transition-all duration-200"
                 >
-                  <div className="flex-shrink-0 w-5 h-5 rounded border border-border/60 bg-background flex items-center justify-center mt-0.5 group-hover:border-foreground/20 transition-colors">
-                    <span className="text-[10px] font-semibold text-foreground/60 group-hover:text-foreground/80">
+                  <div className="flex-shrink-0 w-4 h-4 rounded border border-[#e5e5e5] dark:border-[#262626] bg-[#fafafa] dark:bg-[#0a0a0a] flex items-center justify-center mt-0.5 group-hover:border-[#171717]/20 dark:group-hover:border-[#fafafa]/20 transition-colors">
+                    <span className="text-[9px] font-medium text-[#737373] dark:text-[#a3a3a3] group-hover:text-[#171717] dark:group-hover:text-[#fafafa]">
                       {index + 1}
                     </span>
                   </div>
-                  <p className="text-xs text-foreground/90 flex-1 leading-relaxed font-normal pt-0.5">
+                  <p className="text-xs text-[#171717] dark:text-[#fafafa] flex-1 leading-relaxed font-normal pt-0.5">
                     {point}
                   </p>
                 </div>

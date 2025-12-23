@@ -102,13 +102,13 @@ export default function Profile() {
         <main className="flex-1 overflow-y-auto bg-gradient-to-b from-transparent via-transparent to-[#f5f5f5]/50 dark:to-[#0f0f0f]/50">
           <div className="max-w-[1200px] mx-auto px-6 sm:px-8 lg:px-12 py-10 lg:py-12">
             {/* Header Section */}
-            <div className="mb-10 lg:mb-12">
-              <div className="flex items-center justify-between mb-3">
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-2">
                 <div>
-                  <h1 className="text-4xl lg:text-5xl font-semibold tracking-tight text-[#171717] dark:text-[#fafafa] mb-3">
+                  <h1 className="text-2xl font-medium tracking-tight text-[#171717] dark:text-[#fafafa] mb-1">
                     Profile
                   </h1>
-                  <p className="text-[15px] text-[#737373] dark:text-[#a3a3a3] font-normal">
+                  <p className="text-xs text-[#737373] dark:text-[#a3a3a3]">
                     Manage your profile information and personal details
                   </p>
                 </div>
@@ -116,18 +116,18 @@ export default function Profile() {
             </div>
 
             {/* Profile Content */}
-            <div className="space-y-6 lg:space-y-8">
+            <div className="space-y-4">
               {/* Profile Picture */}
-              <div className="bg-white dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#262626] rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300">
-                <div className="px-6 py-5 border-b border-[#e5e5e5] dark:border-[#262626]">
-                  <h2 className="text-lg font-semibold text-[#171717] dark:text-[#fafafa] mb-1">
+              <div className="bg-white dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#262626] rounded-lg">
+                <div className="px-4 py-3 border-b border-[#e5e5e5] dark:border-[#262626]">
+                  <h2 className="text-sm font-medium text-[#171717] dark:text-[#fafafa] mb-0.5">
                     Profile Picture
                   </h2>
-                  <p className="text-[13px] text-[#737373] dark:text-[#a3a3a3]">
+                  <p className="text-xs text-[#737373] dark:text-[#a3a3a3]">
                     Upload a profile picture to personalize your account
                   </p>
                 </div>
-                <div className="p-6">
+                <div className="p-4">
                   <ProfilePictureUpload
                     currentAvatar={profile?.avatar}
                     userName={profile?.name || "User"}
@@ -137,16 +137,16 @@ export default function Profile() {
               </div>
 
               {/* Personal Information */}
-              <div className="bg-white dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#262626] rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300">
-                <div className="px-6 py-5 border-b border-[#e5e5e5] dark:border-[#262626]">
-                  <h2 className="text-lg font-semibold text-[#171717] dark:text-[#fafafa] mb-1">
+              <div className="bg-white dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#262626] rounded-lg">
+                <div className="px-4 py-3 border-b border-[#e5e5e5] dark:border-[#262626]">
+                  <h2 className="text-sm font-medium text-[#171717] dark:text-[#fafafa] mb-0.5">
                     Personal Information
                   </h2>
-                  <p className="text-[13px] text-[#737373] dark:text-[#a3a3a3]">
+                  <p className="text-xs text-[#737373] dark:text-[#a3a3a3]">
                     Update your personal information and contact details
                   </p>
                 </div>
-                <div className="p-6">
+                <div className="p-4">
                   <PersonalInfoForm onUpdate={handleProfileUpdate} />
                 </div>
               </div>

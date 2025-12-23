@@ -53,20 +53,19 @@ interface StatCardProps {
 
 function StatCard({ title, value, change, icon }: StatCardProps) {
   return (
-    <div className="p-5 rounded-xl border border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717] hover:border-[#d4d4d4] dark:hover:border-[#404040] transition-all duration-200">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-[13px] text-[#737373] dark:text-[#a3a3a3] font-medium">{title}</span>
+    <div className="p-2.5 rounded-md border border-[#e5e5e5] dark:border-[#262626] bg-[#fafafa] dark:bg-[#0a0a0a]">
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-[10px] text-[#737373] dark:text-[#a3a3a3] font-medium uppercase tracking-wide">{title}</span>
         <div className="text-[#737373] dark:text-[#a3a3a3]">{icon}</div>
       </div>
-      <p className="text-2xl font-semibold text-[#171717] dark:text-[#fafafa] mb-2 tracking-tight">{value}</p>
-      <p className="text-[12px] text-[#737373] dark:text-[#a3a3a3]">
+      <p className="text-base font-semibold text-[#171717] dark:text-[#fafafa] mb-0.5 leading-none">{value}</p>
+      <p className="text-[10px] text-[#737373] dark:text-[#a3a3a3]">
         <span className={cn(
-          "font-semibold",
+          "font-medium",
           change > 0 ? "text-green-500" : "text-red-500"
         )}>
           {change > 0 ? "+" : ""}{change}%
-        </span>{" "}
-        from last period
+        </span>
       </p>
     </div>
   );
@@ -82,18 +81,15 @@ export function UsageStatistics() {
   };
 
   return (
-    <div className="bg-white dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#262626] rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300">
-      <div className="px-6 py-5 border-b border-[#e5e5e5] dark:border-[#262626]">
-        <h2 className="text-lg font-semibold text-[#171717] dark:text-[#fafafa] mb-1">
+    <div className="bg-white dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#262626] rounded-lg">
+      <div className="px-4 py-3 border-b border-[#e5e5e5] dark:border-[#262626]">
+        <h2 className="text-sm font-medium text-[#171717] dark:text-[#fafafa]">
           Usage Statistics
         </h2>
-        <p className="text-[13px] text-[#737373] dark:text-[#a3a3a3]">
-          Platform usage metrics and analytics (Admin view)
-        </p>
       </div>
-      <div className="p-6">
+      <div className="p-4">
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
           <StatCard
             title="Total Documents"
             value={stats.totalDocuments}
@@ -122,13 +118,13 @@ export function UsageStatistics() {
 
         {/* Charts */}
         <Tabs defaultValue="daily" className="w-full">
-          <TabsList className="grid w-full max-w-full grid-cols-2 bg-[#f5f5f5] dark:bg-[#262626] p-1 rounded-lg">
-            <TabsTrigger value="daily" className="rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-[#171717]">Daily</TabsTrigger>
-            <TabsTrigger value="monthly" className="rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-[#171717]">Monthly</TabsTrigger>
+          <TabsList className="grid w-full max-w-full grid-cols-2 bg-[#f5f5f5] dark:bg-[#262626] p-0.5 rounded-md h-7">
+            <TabsTrigger value="daily" className="text-xs rounded data-[state=active]:bg-white dark:data-[state=active]:bg-[#171717]">Daily</TabsTrigger>
+            <TabsTrigger value="monthly" className="text-xs rounded data-[state=active]:bg-white dark:data-[state=active]:bg-[#171717]">Monthly</TabsTrigger>
           </TabsList>
-          <TabsContent value="daily" className="mt-6 w-full">
+          <TabsContent value="daily" className="mt-3 w-full">
             <div className="w-full">
-              <ChartContainer config={chartConfig} className="h-[320px] w-full">
+              <ChartContainer config={chartConfig} className="h-[200px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart 
                     data={dailyUsageData}
@@ -160,9 +156,9 @@ export function UsageStatistics() {
               </ChartContainer>
             </div>
           </TabsContent>
-          <TabsContent value="monthly" className="mt-6 w-full">
+          <TabsContent value="monthly" className="mt-3 w-full">
             <div className="w-full">
-              <ChartContainer config={chartConfig} className="h-[320px] w-full">
+              <ChartContainer config={chartConfig} className="h-[200px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart 
                     data={monthlyUsageData}

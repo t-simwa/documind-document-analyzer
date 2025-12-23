@@ -157,99 +157,60 @@ export function RecentActivity() {
   }, []);
 
   return (
-    <div className="bg-white dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#262626] rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300">
-      <div className="px-6 py-5 border-b border-[#e5e5e5] dark:border-[#262626]">
-        <h2 className="text-lg font-semibold text-[#171717] dark:text-[#fafafa] mb-1">
+    <div className="bg-white dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#262626] rounded-lg">
+      <div className="px-4 py-3 border-b border-[#e5e5e5] dark:border-[#262626]">
+        <h2 className="text-sm font-medium text-[#171717] dark:text-[#fafafa]">
           Recent Activity
         </h2>
-        <p className="text-[13px] text-[#737373] dark:text-[#a3a3a3]">
-          Latest updates across your workspace
-        </p>
       </div>
-      <div className="p-6">
-        <ScrollArea className="h-[420px] pr-4">
+      <div className="p-4">
+        <ScrollArea className="h-[300px] pr-4">
           <div className="space-y-3">
             {loading ? (
-              <div className="text-center py-12">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#f5f5f5] dark:bg-[#262626] flex items-center justify-center animate-pulse">
-                  <FileTextIcon className="h-7 w-7 text-[#a3a3a3] dark:text-[#525252]" />
-                </div>
-                <p className="text-sm font-medium text-[#737373] dark:text-[#a3a3a3] mb-1">Loading activities...</p>
+              <div className="text-center py-8">
+                <p className="text-xs text-[#737373] dark:text-[#a3a3a3]">Loading...</p>
               </div>
             ) : error ? (
-              <div className="text-center py-12">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
-                  <ActivityErrorIcon className="h-7 w-7 text-red-500" />
-                </div>
-                <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-1">Failed to load activities</p>
-                <p className="text-xs text-[#a3a3a3] dark:text-[#737373]">{error}</p>
+              <div className="text-center py-8">
+                <p className="text-xs text-red-500 mb-1">Failed to load</p>
+                <p className="text-[10px] text-[#737373] dark:text-[#a3a3a3]">{error}</p>
               </div>
             ) : activities.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#f5f5f5] dark:bg-[#262626] flex items-center justify-center">
-                  <FileTextIcon className="h-7 w-7 text-[#a3a3a3] dark:text-[#525252]" />
-                </div>
-                <p className="text-sm font-medium text-[#737373] dark:text-[#a3a3a3] mb-1">No recent activity</p>
-                <p className="text-xs text-[#a3a3a3] dark:text-[#737373]">Activity will appear here as you work</p>
+              <div className="text-center py-8">
+                <p className="text-xs text-[#737373] dark:text-[#a3a3a3]">No recent activity</p>
               </div>
             ) : (
-              activities.map((activity, index) => (
-                <div
-                  key={activity.id}
-                  className={cn(
-                    "group relative flex items-start gap-4 p-4 rounded-xl border transition-all duration-200",
-                    "hover:shadow-sm hover:border-[#d4d4d4] dark:hover:border-[#404040]",
-                    index === 0 && "bg-[#fafafa] dark:bg-[#0a0a0a] border-[#e5e5e5] dark:border-[#262626]",
-                    index !== 0 && "bg-white dark:bg-[#171717] border-[#f5f5f5] dark:border-[#262626]"
-                  )}
-                >
-                  <div className={cn(
-                    "mt-0.5 flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center",
-                    activity.status === "error" && "bg-red-500 text-white",
-                    activity.status === "processing" && "bg-blue-500 text-white",
-                    activity.status === "success" && "bg-green-500 text-white",
-                    !activity.status && "bg-[#f5f5f5] dark:bg-[#262626] text-[#737373] dark:text-[#a3a3a3]"
-                  )}>
-                    {getActivityIcon(activity.type, activity.status)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-3 mb-1.5">
-                      <h4 className="text-[14px] font-semibold text-[#171717] dark:text-[#fafafa] leading-snug">
-                        {activity.title}
-                      </h4>
-                      <span className="text-[12px] text-[#a3a3a3] dark:text-[#525252] whitespace-nowrap flex-shrink-0 font-medium">
-                        {formatTimeAgo(activity.createdAt)}
-                      </span>
+              <div className="space-y-2">
+                {activities.map((activity) => (
+                  <div
+                    key={activity.id}
+                    className="flex items-start gap-2.5 p-2 rounded-md hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a] transition-colors"
+                  >
+                    <div className={cn(
+                      "mt-0.5 flex-shrink-0 w-6 h-6 rounded-md flex items-center justify-center",
+                      activity.status === "error" && "bg-red-500 text-white",
+                      activity.status === "processing" && "bg-blue-500 text-white",
+                      activity.status === "success" && "bg-green-500 text-white",
+                      !activity.status && "bg-[#f5f5f5] dark:bg-[#262626] text-[#737373] dark:text-[#a3a3a3]"
+                    )}>
+                      {getActivityIcon(activity.type, activity.status)}
                     </div>
-                    <p className="text-[13px] text-[#737373] dark:text-[#a3a3a3] mb-3 leading-relaxed">
-                      {activity.description}
-                    </p>
-                    <div className="flex items-center gap-3">
-                      {activity.userName && (
-                        <div className="flex items-center gap-1.5">
-                          <User className="h-3.5 w-3.5 text-[#a3a3a3] dark:text-[#525252]" />
-                          <span className="text-[12px] text-[#737373] dark:text-[#a3a3a3] font-medium">
-                            {activity.userName}
-                          </span>
-                        </div>
-                      )}
-                      {activity.status && (
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "text-[11px] font-semibold px-2.5 py-0.5 h-5 border-0 uppercase tracking-wide text-white",
-                            activity.status === "error" && "bg-red-500",
-                            activity.status === "processing" && "bg-blue-500",
-                            activity.status === "success" && "bg-green-500"
-                          )}
-                        >
-                          {activity.status}
-                        </Badge>
-                      )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2 mb-0.5">
+                        <h4 className="text-xs font-medium text-[#171717] dark:text-[#fafafa] leading-snug">
+                          {activity.title}
+                        </h4>
+                        <span className="text-[10px] text-[#737373] dark:text-[#a3a3a3] whitespace-nowrap flex-shrink-0">
+                          {formatTimeAgo(activity.createdAt)}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#737373] dark:text-[#a3a3a3] line-clamp-1">
+                        {activity.description}
+                      </p>
                     </div>
                   </div>
-                </div>
-              ))
+                ))}
+              </div>
             )}
           </div>
         </ScrollArea>

@@ -68,10 +68,9 @@ const getStatusColor = (status: User["status"]) => {
 };
 
 const getRoleBadge = (role: User["role"]) => {
-  // All badges use the same style as viewer badge
   const badgeStyle = "bg-[#f5f5f5] dark:bg-[#262626] text-[#525252] dark:text-[#a3a3a3] border-[#e5e5e5] dark:border-[#404040]";
   return (
-    <Badge variant="outline" className={cn("text-[11px] font-semibold px-2 py-0.5 h-5 border uppercase tracking-wide", badgeStyle)}>
+    <Badge variant="outline" className={cn("text-[10px] font-medium px-1.5 py-0 h-4 border uppercase tracking-wide", badgeStyle)}>
       {role}
     </Badge>
   );
@@ -96,79 +95,65 @@ export function ActiveUsers() {
   const totalCount = users.length;
 
   return (
-    <div className="bg-white dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#262626] rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300">
-      <div className="px-6 py-5 border-b border-[#e5e5e5] dark:border-[#262626]">
+    <div className="bg-white dark:bg-[#171717] border border-[#e5e5e5] dark:border-[#262626] rounded-lg">
+      <div className="px-4 py-3 border-b border-[#e5e5e5] dark:border-[#262626]">
         <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-[#171717] dark:text-[#fafafa] mb-1">
-              Active Users
-            </h2>
-            <p className="text-[13px] text-[#737373] dark:text-[#a3a3a3]">
-              Team members and their activity
-            </p>
-          </div>
-          <Badge variant="outline" className="flex items-center gap-1.5 border-[#e5e5e5] dark:border-[#262626] bg-[#fafafa] dark:bg-[#0a0a0a] text-[#171717] dark:text-[#fafafa]">
-            <UsersIcon className="h-3.5 w-3.5" />
+          <h2 className="text-sm font-medium text-[#171717] dark:text-[#fafafa]">
+            Active Users
+          </h2>
+          <Badge variant="outline" className="flex items-center gap-1 h-5 px-1.5 text-[10px] border-[#e5e5e5] dark:border-[#262626] bg-[#fafafa] dark:bg-[#0a0a0a] text-[#171717] dark:text-[#fafafa]">
+            <UsersIcon className="h-3 w-3" />
             {onlineCount}/{totalCount}
           </Badge>
         </div>
       </div>
-      <div className="p-6">
-        <ScrollArea className="h-[300px]">
-          <div className="space-y-3">
-            {users.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#f5f5f5] dark:bg-[#262626] flex items-center justify-center">
-                  <UsersIcon className="h-7 w-7 text-[#a3a3a3] dark:text-[#525252]" />
+      <div className="p-4">
+        <div className="space-y-2">
+          {users.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-xs text-[#737373] dark:text-[#a3a3a3]">No active users</p>
+            </div>
+          ) : (
+            users.map((user) => (
+              <div
+                key={user.id}
+                className="flex items-center gap-2.5 p-2 rounded-md hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a] transition-colors"
+              >
+                <div className="relative">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={user.avatar} alt={user.name} />
+                    <AvatarFallback className="bg-[#f5f5f5] dark:bg-[#262626] text-[#171717] dark:text-[#fafafa] font-medium text-xs">
+                      {user.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div
+                    className={cn(
+                      "absolute bottom-0 right-0 h-2 w-2 rounded-full border border-white dark:border-[#171717]",
+                      getStatusColor(user.status)
+                    )}
+                  />
                 </div>
-                <p className="text-sm font-medium text-[#737373] dark:text-[#a3a3a3] mb-1">No active users</p>
-                <p className="text-xs text-[#a3a3a3] dark:text-[#737373]">Users will appear here when active</p>
-              </div>
-            ) : (
-              users.map((user) => (
-                <div
-                  key={user.id}
-                  className="flex items-center gap-3 p-3.5 rounded-xl border border-[#f5f5f5] dark:border-[#262626] bg-white dark:bg-[#171717] hover:border-[#e5e5e5] dark:hover:border-[#404040] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a] transition-all duration-200"
-                >
-                  <div className="relative">
-                    <Avatar className="h-10 w-10 ring-2 ring-[#f5f5f5] dark:ring-[#262626]">
-                      <AvatarImage src={user.avatar} alt={user.name} />
-                      <AvatarFallback className="bg-gradient-to-br from-[#171717]/10 to-[#171717]/5 dark:from-[#fafafa]/10 dark:to-[#fafafa]/5 text-[#171717] dark:text-[#fafafa] font-semibold text-sm">
-                        {user.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")
-                          .toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div
-                      className={cn(
-                        "absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white dark:border-[#171717]",
-                        getStatusColor(user.status)
-                      )}
-                    />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <p className="text-[14px] font-semibold text-[#171717] dark:text-[#fafafa] truncate">
-                        {user.name}
-                      </p>
-                      {getRoleBadge(user.role)}
-                    </div>
-                    <p className="text-[12px] text-[#737373] dark:text-[#a3a3a3] truncate mb-2">
-                      {user.email}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <p className="text-xs font-medium text-[#171717] dark:text-[#fafafa] truncate">
+                      {user.name}
                     </p>
-                    <div className="flex items-center gap-3 text-[12px] text-[#737373] dark:text-[#a3a3a3]">
-                      <span className="font-medium">{user.documentsAccessed} docs</span>
-                      <span>•</span>
-                      <span className="font-medium">{formatTimeAgo(user.lastActive)}</span>
-                    </div>
+                    {getRoleBadge(user.role)}
+                  </div>
+                  <div className="flex items-center gap-2 text-[10px] text-[#737373] dark:text-[#a3a3a3]">
+                    <span>{user.documentsAccessed} docs</span>
+                    <span>•</span>
+                    <span>{formatTimeAgo(user.lastActive)}</span>
                   </div>
                 </div>
-              ))
-            )}
-          </div>
-        </ScrollArea>
+              </div>
+            ))
+          )}
+        </div>
       </div>
     </div>
   );

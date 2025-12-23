@@ -56,22 +56,22 @@ interface SidebarProps {
 const getFileIcon = (type: string) => {
   switch (type) {
     case 'pdf':
-      return <FileText className="h-[15px] w-[15px] text-red-400" />;
+      return <FileText className="h-3.5 w-3.5 text-red-500" />;
     case 'docx':
-      return <FileText className="h-[15px] w-[15px] text-blue-400" />;
+      return <FileText className="h-3.5 w-3.5 text-blue-500" />;
     default:
-      return <File className="h-[15px] w-[15px] text-muted-foreground" />;
+      return <File className="h-3.5 w-3.5 text-[#737373] dark:text-[#a3a3a3]" />;
   }
 };
 
 const getStatusIcon = (status: string) => {
   switch (status) {
     case 'ready':
-      return <Check className="h-3 w-3 text-success" />;
+      return <Check className="h-2.5 w-2.5 text-green-500" />;
     case 'processing':
-      return <Loader2 className="h-3 w-3 text-primary animate-spin" />;
+      return <Loader2 className="h-2.5 w-2.5 text-blue-500 animate-spin" />;
     case 'error':
-      return <AlertCircle className="h-3 w-3 text-destructive" />;
+      return <AlertCircle className="h-2.5 w-2.5 text-red-500" />;
     default:
       return null;
   }
@@ -298,31 +298,31 @@ export const Sidebar = ({
       <div key={project.id} className="space-y-0.5">
         <div
           className={cn(
-            "group flex items-center gap-2.5 w-full px-2.5 rounded-md text-[13px] transition-colors text-left relative",
+            "group flex items-center gap-2 w-full px-2 rounded-md text-xs transition-colors text-left relative",
             isSelected 
-              ? "bg-accent text-accent-foreground font-medium py-1.5" 
-              : "text-muted-foreground hover:text-foreground hover:bg-accent/50 py-1.5"
+              ? "bg-[#fafafa] dark:bg-[#0a0a0a] text-[#171717] dark:text-[#fafafa] font-medium py-1.5" 
+              : "text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a] py-1.5"
           )}
           style={{ paddingLeft: `${level * 12 + 10}px` }}
           onClick={() => onSelectProject?.(project.id)}
         >
           {hasChildren ? (
             isExpanded ? (
-            <FolderOpen className="h-[15px] w-[15px] flex-shrink-0 text-foreground/70" />
+            <FolderOpen className="h-3.5 w-3.5 flex-shrink-0 text-[#737373] dark:text-[#a3a3a3]" />
             ) : (
-              <Folder className="h-[15px] w-[15px] flex-shrink-0 text-foreground/70" />
+              <Folder className="h-3.5 w-3.5 flex-shrink-0 text-[#737373] dark:text-[#a3a3a3]" />
             )
           ) : (
-            <Folder className="h-[15px] w-[15px] flex-shrink-0 text-muted-foreground" />
+            <Folder className="h-3.5 w-3.5 flex-shrink-0 text-[#737373] dark:text-[#a3a3a3]" />
           )}
           {!collapsed && (
             <>
               <span className="flex-1 truncate">{project.name}</span>
               {isFavorite && (
-                <Star className="h-[13px] w-[13px] fill-yellow-400 text-yellow-400 flex-shrink-0" />
+                <Star className="h-3 w-3 fill-yellow-500 text-yellow-500 flex-shrink-0" />
               )}
               {project.documentCount !== undefined && project.documentCount > 0 && (
-                <span className="text-xs text-muted-foreground/70 font-medium tabular-nums">
+                <span className="text-[10px] text-[#737373] dark:text-[#a3a3a3] font-medium tabular-nums">
                   {project.documentCount}
                 </span>
               )}
@@ -331,12 +331,12 @@ export const Sidebar = ({
                   variant="ghost"
                   size="icon"
                   onClick={(e) => toggleProjectExpanded(project.id, e)}
-                  className="h-[22px] w-[22px] opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                  className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
                 >
                   {isExpanded ? (
-                    <ChevronDown className="h-[13px] w-[13px]" />
+                    <ChevronDown className="h-3 w-3" />
                   ) : (
-                    <ChevronRight className="h-[13px] w-[13px]" />
+                    <ChevronRight className="h-3 w-3" />
                   )}
                 </Button>
               )}
@@ -345,25 +345,25 @@ export const Sidebar = ({
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-[22px] w-[22px] opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                    className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
                   >
-                    <MoreVertical className="h-[13px] w-[13px]" />
+                    <MoreVertical className="h-3 w-3" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-40">
-                  <DropdownMenuItem onClick={(e) => handleToggleFavorite(project.id, e)}>
-                    <Star className={cn("h-4 w-4 mr-2", isFavorite && "fill-yellow-400 text-yellow-400")} />
+                <DropdownMenuContent align="end" className="w-40 rounded-lg border border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717] shadow-lg p-1">
+                  <DropdownMenuItem onClick={(e) => handleToggleFavorite(project.id, e)} className="px-2.5 py-2 text-xs hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]">
+                    <Star className={cn("h-3.5 w-3.5 mr-2", isFavorite && "fill-yellow-500 text-yellow-500")} />
                     {isFavorite ? "Remove from favorites" : "Add to favorites"}
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setEditingProject(project)}>
-                    <Edit className="h-4 w-4 mr-2" />
+                  <DropdownMenuItem onClick={() => setEditingProject(project)} className="px-2.5 py-2 text-xs hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]">
+                    <Edit className="h-3.5 w-3.5 mr-2" />
                     Edit
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => handleDeleteProject(project.id)}
-                    className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950"
+                    className="px-2.5 py-2 text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/20"
                   >
-                    <Trash2 className="h-4 w-4 mr-2" />
+                    <Trash2 className="h-3.5 w-3.5 mr-2" />
                     Delete
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -394,14 +394,14 @@ export const Sidebar = ({
   return (
     <aside
       className={cn(
-        "h-screen bg-background border-r border-border flex flex-col transition-all duration-150 ease-out",
+        "h-screen bg-white dark:bg-[#171717] border-r border-[#e5e5e5] dark:border-[#262626] flex flex-col transition-all duration-150 ease-out",
         collapsed ? "w-[56px]" : "w-[240px]"
       )}
     >
       {/* Header */}
       <div className={cn(
-        "h-12 border-b border-border flex items-center",
-        collapsed ? "justify-center px-2" : "justify-between px-4"
+        "h-12 border-b border-[#e5e5e5] dark:border-[#262626] flex items-center",
+        collapsed ? "justify-center px-2" : "justify-between px-3"
       )}>
         <Logo showText={!collapsed} />
         
@@ -410,9 +410,9 @@ export const Sidebar = ({
             variant="ghost"
             size="icon-sm"
             onClick={onToggleCollapse}
-            className="text-muted-foreground"
+            className="h-7 w-7 text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
           >
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft className="h-3.5 w-3.5" />
           </Button>
         )}
       </div>
@@ -424,9 +424,9 @@ export const Sidebar = ({
             variant="ghost"
             size="icon-sm"
             onClick={onToggleCollapse}
-            className="w-full text-muted-foreground"
+            className="w-full h-7 text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
           >
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="h-3.5 w-3.5" />
           </Button>
         </div>
       )}
@@ -437,9 +437,9 @@ export const Sidebar = ({
           onClick={onNewUpload}
           variant="outline"
           size={collapsed ? "icon-sm" : "sm"}
-          className="w-full"
+          className="w-full h-8 text-xs border-[#e5e5e5] dark:border-[#262626] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="h-3.5 w-3.5" />
           {!collapsed && <span>New</span>}
         </Button>
       </div>
@@ -447,8 +447,8 @@ export const Sidebar = ({
       {/* Documents List */}
       <div className="flex-1 overflow-y-auto">
         {!collapsed && documents.length > 0 && (
-          <div className="px-3 py-2.5">
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+          <div className="px-3 py-2">
+            <p className="text-[10px] font-medium text-[#737373] dark:text-[#a3a3a3] uppercase tracking-wide">
               Recent Documents
           </p>
           </div>
@@ -462,10 +462,10 @@ export const Sidebar = ({
               onMouseEnter={() => setHoveredDoc(doc.id)}
               onMouseLeave={() => setHoveredDoc(null)}
               className={cn(
-                "group w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[13px] transition-colors text-left cursor-pointer",
+                "group w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-colors text-left cursor-pointer",
                 selectedDocId === doc.id
-                  ? "bg-accent text-accent-foreground font-medium"
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                  ? "bg-[#fafafa] dark:bg-[#0a0a0a] text-[#171717] dark:text-[#fafafa] font-medium"
+                  : "text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
               )}
             >
               {/* File Icon */}
@@ -476,10 +476,10 @@ export const Sidebar = ({
               {!collapsed && (
                 <>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[13px] truncate">{doc.name}</p>
+                    <p className="text-xs truncate">{doc.name}</p>
                     <div className="flex items-center gap-1.5 mt-0.5">
                       {getStatusIcon(doc.status)}
-                      <span className="text-xs text-muted-foreground/70">{doc.size}</span>
+                      <span className="text-[10px] text-[#737373] dark:text-[#a3a3a3]">{doc.size}</span>
                     </div>
                   </div>
 
@@ -490,9 +490,9 @@ export const Sidebar = ({
                         e.stopPropagation();
                         onDeleteDocument(doc.id);
                       }}
-                    className="h-[22px] w-[22px] opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive flex-shrink-0 flex items-center justify-center rounded hover:bg-destructive/10"
+                    className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity text-[#737373] dark:text-[#a3a3a3] hover:text-red-600 dark:hover:text-red-400 flex-shrink-0 flex items-center justify-center rounded hover:bg-red-50 dark:hover:bg-red-950/20"
                     >
-                    <Trash2 className="h-[13px] w-[13px]" />
+                    <Trash2 className="h-3 w-3" />
                     </button>
                 </>
               )}
@@ -502,41 +502,41 @@ export const Sidebar = ({
 
         {documents.length === 0 && !collapsed && (
           <div className="px-3 py-8 text-center">
-            <p className="text-xs text-muted-foreground/70">No documents</p>
+            <p className="text-xs text-[#737373] dark:text-[#a3a3a3]">No documents</p>
           </div>
         )}
       </div>
 
       {/* Projects Section */}
       {onSelectProject && (
-        <div className={cn("flex-1 overflow-y-auto", !collapsed && "border-t border-border")}>
+        <div className={cn("flex-1 overflow-y-auto", !collapsed && "border-t border-[#e5e5e5] dark:border-[#262626]")}>
           {!collapsed && (
             <>
               <div className="px-1.5 pt-2 pb-1">
                 <button
                   className={cn(
-                    "flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-md text-[13px] transition-colors text-left",
+                    "flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-xs transition-colors text-left",
                     selectedProjectId === null 
-                      ? "bg-accent text-accent-foreground font-medium" 
-                      : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                      ? "bg-[#fafafa] dark:bg-[#0a0a0a] text-[#171717] dark:text-[#fafafa] font-medium" 
+                      : "text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
                   )}
                   onClick={() => onSelectProject(null)}
                 >
-                  <Folder className="h-[15px] w-[15px] flex-shrink-0" />
+                  <Folder className="h-3.5 w-3.5 flex-shrink-0" />
                   <span className="truncate">All Documents</span>
                 </button>
               </div>
-              <div className="flex items-center justify-between px-3 py-2.5">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+              <div className="flex items-center justify-between px-3 py-2">
+                <p className="text-[10px] font-medium text-[#737373] dark:text-[#a3a3a3] uppercase tracking-wide">
                   Projects
                 </p>
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => setProjectDialogOpen(true)}
-                  className="h-[22px] w-[22px] text-muted-foreground hover:text-foreground"
+                  className="h-5 w-5 text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
                 >
-                  <Plus className="h-[13px] w-[13px]" />
+                  <Plus className="h-3 w-3" />
                 </Button>
               </div>
             </>
@@ -548,10 +548,10 @@ export const Sidebar = ({
                 variant="ghost"
                 size="icon"
                 onClick={() => setProjectDialogOpen(true)}
-                className="w-full h-8"
+                className="w-full h-7 text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
                 title="New Project"
               >
-                <Folder className="h-4 w-4" />
+                <Folder className="h-3.5 w-3.5" />
               </Button>
             </div>
           )}
@@ -560,7 +560,7 @@ export const Sidebar = ({
             <div className="px-1.5 pb-2 space-y-0.5">
               {loadingProjects ? (
                 <div className="px-2.5 py-3 text-center">
-                  <div className="h-4 w-4 border-2 border-muted border-t-foreground rounded-full animate-spin mx-auto" />
+                  <div className="h-3.5 w-3.5 border-2 border-[#e5e5e5] dark:border-[#262626] border-t-[#171717] dark:border-t-[#fafafa] rounded-full animate-spin mx-auto" />
                 </div>
               ) : (
                 projects.map((project) => renderProject(project))
@@ -572,19 +572,19 @@ export const Sidebar = ({
 
       {/* Footer */}
       {!collapsed && (
-        <div className="border-t border-border">
-          <div className="px-3 py-3">
-            <div className="relative pl-3.5">
-              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-3 bg-foreground/20 rounded-full" />
+        <div className="border-t border-[#e5e5e5] dark:border-[#262626]">
+          <div className="px-3 py-2.5">
+            <div className="relative pl-3">
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-2.5 bg-[#737373]/20 dark:bg-[#a3a3a3]/20 rounded-full" />
               <div className="space-y-0.5">
-                <div className="flex items-center gap-2">
-                  <p className="text-xs font-medium text-foreground tracking-tight">Secure</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-xs font-medium text-[#171717] dark:text-[#fafafa]">Secure</p>
                   <div className="relative">
-                    <div className="w-1 h-1 rounded-full bg-success" />
-                    <div className="absolute inset-0 w-1 h-1 rounded-full bg-success animate-ping opacity-75" />
+                    <div className="w-1 h-1 rounded-full bg-green-500" />
+                    <div className="absolute inset-0 w-1 h-1 rounded-full bg-green-500 animate-ping opacity-75" />
                   </div>
                 </div>
-                <p className="text-[10px] text-muted-foreground/60 font-normal leading-tight tracking-wide uppercase">Encrypted</p>
+                <p className="text-[10px] text-[#737373] dark:text-[#a3a3a3] font-normal leading-tight tracking-wide uppercase">Encrypted</p>
               </div>
             </div>
           </div>
@@ -592,11 +592,11 @@ export const Sidebar = ({
       )}
       
       {collapsed && (
-        <div className="border-t border-border p-2">
+        <div className="border-t border-[#e5e5e5] dark:border-[#262626] p-2">
           <div className="flex items-center justify-center">
             <div className="relative">
-              <div className="w-1.5 h-1.5 rounded-full bg-success" />
-              <div className="absolute inset-0 w-1.5 h-1.5 rounded-full bg-success animate-ping opacity-60" />
+              <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+              <div className="absolute inset-0 w-1.5 h-1.5 rounded-full bg-green-500 animate-ping opacity-60" />
             </div>
           </div>
         </div>

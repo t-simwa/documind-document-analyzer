@@ -50,45 +50,45 @@ export const DocumentFilters = ({
     (filters.projectId !== undefined ? 1 : 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Status Filter */}
-      <div className="space-y-2">
-        <Label className="text-sm font-medium">Status</Label>
+      <div className="space-y-1.5">
+        <Label className="text-xs font-medium text-[#171717] dark:text-[#fafafa]">Status</Label>
         <Select
           value={filters.status?.join(",") || "all"}
           onValueChange={(value) =>
             updateFilter("status", value === "all" ? undefined : (value.split(",") as any))
           }
         >
-          <SelectTrigger>
+          <SelectTrigger className="h-8 text-xs border-[#e5e5e5] dark:border-[#262626]">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            <SelectItem value="ready">Ready</SelectItem>
-            <SelectItem value="processing">Processing</SelectItem>
-            <SelectItem value="error">Error</SelectItem>
-            <SelectItem value="ready,processing">Ready & Processing</SelectItem>
+          <SelectContent className="border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717]">
+            <SelectItem value="all" className="text-xs">All statuses</SelectItem>
+            <SelectItem value="ready" className="text-xs">Ready</SelectItem>
+            <SelectItem value="processing" className="text-xs">Processing</SelectItem>
+            <SelectItem value="error" className="text-xs">Error</SelectItem>
+            <SelectItem value="ready,processing" className="text-xs">Ready & Processing</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       {/* File Type Filter */}
-      <div className="space-y-2">
-        <Label className="text-sm font-medium">File type</Label>
+      <div className="space-y-1.5">
+        <Label className="text-xs font-medium text-[#171717] dark:text-[#fafafa]">File type</Label>
         <Select
           value={filters.fileType?.join(",") || "all"}
           onValueChange={(value) =>
             updateFilter("fileType", value === "all" ? undefined : value.split(","))
           }
         >
-          <SelectTrigger>
+          <SelectTrigger className="h-8 text-xs border-[#e5e5e5] dark:border-[#262626]">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All types</SelectItem>
+          <SelectContent className="border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717]">
+            <SelectItem value="all" className="text-xs">All types</SelectItem>
             {availableFileTypes.map((type) => (
-              <SelectItem key={type} value={type}>
+              <SelectItem key={type} value={type} className="text-xs">
                 {type.toUpperCase()}
               </SelectItem>
             ))}
@@ -97,24 +97,24 @@ export const DocumentFilters = ({
       </div>
 
       {/* Tags Filter */}
-      <div className="space-y-2">
-        <Label className="text-sm font-medium">Tags</Label>
+      <div className="space-y-1.5">
+        <Label className="text-xs font-medium text-[#171717] dark:text-[#fafafa]">Tags</Label>
         <Select
           value={filters.tags?.join(",") || "all"}
           onValueChange={(value) =>
             updateFilter("tags", value === "all" ? undefined : value.split(","))
           }
         >
-          <SelectTrigger>
+          <SelectTrigger className="h-8 text-xs border-[#e5e5e5] dark:border-[#262626]">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All tags</SelectItem>
+          <SelectContent className="border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717]">
+            <SelectItem value="all" className="text-xs">All tags</SelectItem>
             {tags.map((tag) => (
-              <SelectItem key={tag.id} value={tag.id}>
-                <div className="flex items-center gap-2">
+              <SelectItem key={tag.id} value={tag.id} className="text-xs">
+                <div className="flex items-center gap-1.5">
                   <div
-                    className="w-2.5 h-2.5 rounded-full"
+                    className="w-2 h-2 rounded-full"
                     style={{ backgroundColor: tag.color || "#6b7280" }}
                   />
                   {tag.name}
@@ -126,21 +126,21 @@ export const DocumentFilters = ({
       </div>
 
       {/* Uploaded By Filter */}
-      <div className="space-y-2">
-        <Label className="text-sm font-medium">Uploaded by</Label>
+      <div className="space-y-1.5">
+        <Label className="text-xs font-medium text-[#171717] dark:text-[#fafafa]">Uploaded by</Label>
         <Select
           value={filters.uploadedBy?.join(",") || "all"}
           onValueChange={(value) =>
             updateFilter("uploadedBy", value === "all" ? undefined : value.split(","))
           }
         >
-          <SelectTrigger>
+          <SelectTrigger className="h-8 text-xs border-[#e5e5e5] dark:border-[#262626]">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All users</SelectItem>
+          <SelectContent className="border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717]">
+            <SelectItem value="all" className="text-xs">All users</SelectItem>
             {users.map((user) => (
-              <SelectItem key={user.id} value={user.id}>
+              <SelectItem key={user.id} value={user.id} className="text-xs">
                 {user.name}
               </SelectItem>
             ))}
@@ -149,23 +149,23 @@ export const DocumentFilters = ({
       </div>
 
       {/* Date Range */}
-      <div className="space-y-3">
-        <Label className="text-sm font-medium">Date range</Label>
-        <div className="space-y-2">
+      <div className="space-y-2">
+        <Label className="text-xs font-medium text-[#171717] dark:text-[#fafafa]">Date range</Label>
+        <div className="space-y-1.5">
           <Popover open={dateFromOpen} onOpenChange={setDateFromOpen}>
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
                 className={cn(
-                  "w-full justify-start text-left font-normal h-9",
-                  !filters.dateFrom && "text-muted-foreground"
+                  "w-full justify-start text-left font-normal h-8 text-xs border-[#e5e5e5] dark:border-[#262626]",
+                  !filters.dateFrom && "text-[#737373] dark:text-[#a3a3a3]"
                 )}
               >
-                <CalendarIcon className="mr-2 h-4 w-4" />
+                <CalendarIcon className="mr-1.5 h-3 w-3" />
                 {filters.dateFrom ? format(filters.dateFrom, "MMM d, yyyy") : "From date"}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
+            <PopoverContent className="w-auto p-0 border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717]" align="start">
               <Calendar
                 mode="single"
                 selected={filters.dateFrom}
@@ -183,15 +183,15 @@ export const DocumentFilters = ({
               <Button
                 variant="outline"
                 className={cn(
-                  "w-full justify-start text-left font-normal h-9",
-                  !filters.dateTo && "text-muted-foreground"
+                  "w-full justify-start text-left font-normal h-8 text-xs border-[#e5e5e5] dark:border-[#262626]",
+                  !filters.dateTo && "text-[#737373] dark:text-[#a3a3a3]"
                 )}
               >
-                <CalendarIcon className="mr-2 h-4 w-4" />
+                <CalendarIcon className="mr-1.5 h-3 w-3" />
                 {filters.dateTo ? format(filters.dateTo, "MMM d, yyyy") : "To date"}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
+            <PopoverContent className="w-auto p-0 border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717]" align="start">
               <Calendar
                 mode="single"
                 selected={filters.dateTo}
@@ -208,93 +208,93 @@ export const DocumentFilters = ({
 
       {/* Active Filters */}
       {activeFiltersCount > 0 && (
-        <div className="space-y-3 pt-4 border-t">
+        <div className="space-y-2 pt-3 border-t border-[#e5e5e5] dark:border-[#262626]">
           <div className="flex items-center justify-between">
-            <Label className="text-sm font-medium">Active filters</Label>
+            <Label className="text-xs font-medium text-[#171717] dark:text-[#fafafa]">Active filters</Label>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => onFiltersChange({})}
-              className="h-7 text-xs text-muted-foreground hover:text-foreground"
+              className="h-6 text-[10px] text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
             >
               Clear all
             </Button>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             {filters.status && filters.status.length > 0 && (
-              <Badge variant="secondary" className="gap-1.5 h-6 px-2 text-xs font-normal">
+              <Badge variant="secondary" className="gap-1 h-5 px-1.5 text-[10px] font-normal bg-[#fafafa] dark:bg-[#0a0a0a] border-[#e5e5e5] dark:border-[#262626]">
                 Status: {filters.status.join(", ")}
                 <button
                   onClick={() => removeFilter("status")}
-                  className="ml-0.5 hover:bg-secondary-foreground/20 rounded-full p-0.5"
+                  className="ml-0.5 hover:bg-[#e5e5e5] dark:hover:bg-[#262626] rounded-full p-0.5"
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-2.5 w-2.5" />
                 </button>
               </Badge>
             )}
             {filters.fileType && filters.fileType.length > 0 && (
-              <Badge variant="secondary" className="gap-1.5 h-6 px-2 text-xs font-normal">
+              <Badge variant="secondary" className="gap-1 h-5 px-1.5 text-[10px] font-normal bg-[#fafafa] dark:bg-[#0a0a0a] border-[#e5e5e5] dark:border-[#262626]">
                 Type: {filters.fileType.join(", ")}
                 <button
                   onClick={() => removeFilter("fileType")}
-                  className="ml-0.5 hover:bg-secondary-foreground/20 rounded-full p-0.5"
+                  className="ml-0.5 hover:bg-[#e5e5e5] dark:hover:bg-[#262626] rounded-full p-0.5"
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-2.5 w-2.5" />
                 </button>
               </Badge>
             )}
             {filters.tags && filters.tags.length > 0 && (
-              <Badge variant="secondary" className="gap-1.5 h-6 px-2 text-xs font-normal">
+              <Badge variant="secondary" className="gap-1 h-5 px-1.5 text-[10px] font-normal bg-[#fafafa] dark:bg-[#0a0a0a] border-[#e5e5e5] dark:border-[#262626]">
                 Tags: {filters.tags.length}
                 <button
                   onClick={() => removeFilter("tags")}
-                  className="ml-0.5 hover:bg-secondary-foreground/20 rounded-full p-0.5"
+                  className="ml-0.5 hover:bg-[#e5e5e5] dark:hover:bg-[#262626] rounded-full p-0.5"
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-2.5 w-2.5" />
                 </button>
               </Badge>
             )}
             {filters.uploadedBy && filters.uploadedBy.length > 0 && (
-              <Badge variant="secondary" className="gap-1.5 h-6 px-2 text-xs font-normal">
+              <Badge variant="secondary" className="gap-1 h-5 px-1.5 text-[10px] font-normal bg-[#fafafa] dark:bg-[#0a0a0a] border-[#e5e5e5] dark:border-[#262626]">
                 User: {filters.uploadedBy.length}
                 <button
                   onClick={() => removeFilter("uploadedBy")}
-                  className="ml-0.5 hover:bg-secondary-foreground/20 rounded-full p-0.5"
+                  className="ml-0.5 hover:bg-[#e5e5e5] dark:hover:bg-[#262626] rounded-full p-0.5"
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-2.5 w-2.5" />
                 </button>
               </Badge>
             )}
             {filters.dateFrom && (
-              <Badge variant="secondary" className="gap-1.5 h-6 px-2 text-xs font-normal">
+              <Badge variant="secondary" className="gap-1 h-5 px-1.5 text-[10px] font-normal bg-[#fafafa] dark:bg-[#0a0a0a] border-[#e5e5e5] dark:border-[#262626]">
                 From: {format(filters.dateFrom, "MMM d")}
                 <button
                   onClick={() => removeFilter("dateFrom")}
-                  className="ml-0.5 hover:bg-secondary-foreground/20 rounded-full p-0.5"
+                  className="ml-0.5 hover:bg-[#e5e5e5] dark:hover:bg-[#262626] rounded-full p-0.5"
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-2.5 w-2.5" />
                 </button>
               </Badge>
             )}
             {filters.dateTo && (
-              <Badge variant="secondary" className="gap-1.5 h-6 px-2 text-xs font-normal">
+              <Badge variant="secondary" className="gap-1 h-5 px-1.5 text-[10px] font-normal bg-[#fafafa] dark:bg-[#0a0a0a] border-[#e5e5e5] dark:border-[#262626]">
                 To: {format(filters.dateTo, "MMM d")}
                 <button
                   onClick={() => removeFilter("dateTo")}
-                  className="ml-0.5 hover:bg-secondary-foreground/20 rounded-full p-0.5"
+                  className="ml-0.5 hover:bg-[#e5e5e5] dark:hover:bg-[#262626] rounded-full p-0.5"
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-2.5 w-2.5" />
                 </button>
               </Badge>
             )}
             {filters.search && (
-              <Badge variant="secondary" className="gap-1.5 h-6 px-2 text-xs font-normal">
+              <Badge variant="secondary" className="gap-1 h-5 px-1.5 text-[10px] font-normal bg-[#fafafa] dark:bg-[#0a0a0a] border-[#e5e5e5] dark:border-[#262626]">
                 Search: {filters.search}
                 <button
                   onClick={() => removeFilter("search")}
-                  className="ml-0.5 hover:bg-secondary-foreground/20 rounded-full p-0.5"
+                  className="ml-0.5 hover:bg-[#e5e5e5] dark:hover:bg-[#262626] rounded-full p-0.5"
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-2.5 w-2.5" />
                 </button>
               </Badge>
             )}

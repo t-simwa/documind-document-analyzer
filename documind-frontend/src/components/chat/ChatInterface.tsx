@@ -86,15 +86,15 @@ export const ChatInterface = ({
   }, [messages]);
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col h-full bg-[#fafafa] dark:bg-[#0a0a0a]">
       {/* Messages */}
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-3xl mx-auto px-6 py-8">
+        <div className="max-w-3xl mx-auto px-4 py-6">
           {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12">
+            <div className="flex flex-col items-center justify-center py-10">
               {/* Suggested Questions */}
               {suggestedQuestions && suggestedQuestions.length > 0 && (
-                <div className="w-full max-w-2xl mb-6">
+                <div className="w-full max-w-2xl mb-5">
                   <SuggestedQuestions
                     questions={suggestedQuestions}
                     isLoading={suggestedQuestionsLoading}
@@ -106,26 +106,26 @@ export const ChatInterface = ({
               <div className="flex flex-wrap gap-2 justify-center max-w-md">
                 <button
                   onClick={() => onSendMessage("What are the main points in this document?")}
-                  className="px-3.5 py-1.5 text-xs font-medium rounded-lg border border-border/50 bg-card/50 hover:bg-card hover:border-border text-foreground/80 hover:text-foreground transition-all duration-200"
+                  className="px-3 py-1.5 text-xs font-medium rounded-md border border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a] text-[#171717] dark:text-[#fafafa] transition-all duration-200"
                 >
                   Main points
                 </button>
                 <button
                   onClick={() => onSendMessage("Summarize this document")}
-                  className="px-3.5 py-1.5 text-xs font-medium rounded-lg border border-border/50 bg-card/50 hover:bg-card hover:border-border text-foreground/80 hover:text-foreground transition-all duration-200"
+                  className="px-3 py-1.5 text-xs font-medium rounded-md border border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a] text-[#171717] dark:text-[#fafafa] transition-all duration-200"
                 >
                   Summarize
                 </button>
                 <button
                   onClick={() => onSendMessage("What are the key findings?")}
-                  className="px-3.5 py-1.5 text-xs font-medium rounded-lg border border-border/50 bg-card/50 hover:bg-card hover:border-border text-foreground/80 hover:text-foreground transition-all duration-200"
+                  className="px-3 py-1.5 text-xs font-medium rounded-md border border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a] text-[#171717] dark:text-[#fafafa] transition-all duration-200"
                 >
                   Key findings
                 </button>
               </div>
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-5">
               {messages.map((message) => (
                 <div key={message.id} className="space-y-2">
                   <ChatMessage
@@ -187,8 +187,8 @@ export const ChatInterface = ({
       </div>
 
       {/* Input */}
-      <div className="border-t border-border/50 bg-card/30 backdrop-blur-sm">
-        <div className="flex items-center gap-2 px-6 py-2.5">
+      <div className="border-t border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717]">
+        <div className="flex items-center gap-2 px-4 py-2">
           <div className="flex-1">
             <ChatInput onSendMessage={onSendMessage} isLoading={isLoading} />
           </div>
@@ -197,33 +197,33 @@ export const ChatInterface = ({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                className="h-7 w-7 text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
               >
                 <MoreVertical className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuContent align="end" className="w-48 rounded-lg border border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717] shadow-lg p-1">
               {messages.length > 0 && (
                 <>
-                  <DropdownMenuItem onClick={onClearHistory}>
-                    <RotateCcw className="h-4 w-4 mr-2" />
+                  <DropdownMenuItem onClick={onClearHistory} className="px-2.5 py-2 text-xs hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]">
+                    <RotateCcw className="h-3.5 w-3.5 mr-2" />
                     Clear history
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator />
+                  <DropdownMenuSeparator className="bg-[#e5e5e5] dark:bg-[#262626]" />
                 </>
               )}
               {onQueryConfigChange && (
                 <>
-                  <DropdownMenuItem onClick={() => setConfigDialogOpen(true)}>
-                    <Settings2 className="h-4 w-4 mr-2" />
+                  <DropdownMenuItem onClick={() => setConfigDialogOpen(true)} className="px-2.5 py-2 text-xs hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]">
+                    <Settings2 className="h-3.5 w-3.5 mr-2" />
                     Query Settings
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator />
+                  <DropdownMenuSeparator className="bg-[#e5e5e5] dark:bg-[#262626]" />
                 </>
               )}
               {messages.length > 0 && (
-                <DropdownMenuItem onClick={() => setExportDialogOpen(true)}>
-                  <Download className="h-4 w-4 mr-2" />
+                <DropdownMenuItem onClick={() => setExportDialogOpen(true)} className="px-2.5 py-2 text-xs hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]">
+                  <Download className="h-3.5 w-3.5 mr-2" />
                   Export conversation
                 </DropdownMenuItem>
               )}

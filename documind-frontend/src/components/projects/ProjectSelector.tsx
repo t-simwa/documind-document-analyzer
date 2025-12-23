@@ -46,21 +46,21 @@ export const ProjectSelector = ({
 
   return (
     <>
-      <div className="flex gap-2">
+      <div className="flex gap-1.5">
         <Select
           value={value || "none"}
           onValueChange={(val) => onChange(val === "none" ? null : val)}
           disabled={loading}
         >
-          <SelectTrigger className="flex-1 h-9">
+          <SelectTrigger className="flex-1 h-8 text-xs border-[#e5e5e5] dark:border-[#262626]">
             <SelectValue placeholder={placeholder} />
           </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">No project</SelectItem>
+          <SelectContent className="border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717]">
+            <SelectItem value="none" className="text-xs">No project</SelectItem>
             {projects.map((project) => (
-              <SelectItem key={project.id} value={project.id}>
-                <div className="flex items-center gap-2">
-                  <Folder className="h-4 w-4 text-muted-foreground" />
+              <SelectItem key={project.id} value={project.id} className="text-xs">
+                <div className="flex items-center gap-1.5">
+                  <Folder className="h-3 w-3 text-[#737373] dark:text-[#a3a3a3]" />
                   <span>{project.name}</span>
                 </div>
               </SelectItem>
@@ -75,9 +75,9 @@ export const ProjectSelector = ({
             size="icon"
             onClick={() => setDialogOpen(true)}
             title="Create new project"
-            className="h-9 w-9"
+            className="h-8 w-8 border-[#e5e5e5] dark:border-[#262626]"
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-3 w-3 text-[#737373] dark:text-[#a3a3a3]" />
           </Button>
         )}
       </div>

@@ -266,40 +266,47 @@ export const GlobalNavBar = ({ onSearch }: GlobalNavBarProps) => {
                 <span className="sr-only">Help & Support</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[200px] rounded-lg border-border/50 shadow-lg">
-              <DropdownMenuLabel className="px-3 py-2 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">
+            <DropdownMenuContent align="end" className="w-[200px] rounded-lg border border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717] shadow-lg p-1 overflow-hidden">
+              <DropdownMenuLabel className="px-2.5 py-2 text-[10px] font-medium text-[#737373] dark:text-[#a3a3a3] uppercase tracking-wide">
                 Help & Support
               </DropdownMenuLabel>
-              <DropdownMenuSeparator className="bg-border/50" />
-              <DropdownMenuItem asChild className="px-3 py-2.5 cursor-pointer rounded-md mx-1 my-0.5">
-                <Link to="/resources" className="flex items-center gap-2.5">
-                  <FileText className="h-4 w-4 text-muted-foreground/70" />
-                  <span className="text-sm">Documentation</span>
+              <div className="py-1">
+                <DropdownMenuItem asChild className="px-0 mx-0">
+                  <Link to="/resources" className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium text-[#171717] dark:text-[#fafafa] hover:text-[#171717] dark:hover:text-[#fafafa] transition-colors duration-150 hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a] rounded-md w-full">
+                    <FileText className="h-3.5 w-3.5 text-[#737373] dark:text-[#a3a3a3]" />
+                    <span>Documentation</span>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={() => navigate("/resources")}
-                className="px-3 py-2.5 cursor-pointer rounded-md mx-1 my-0.5"
+                  className="px-0 mx-0"
               >
-                <div className="mr-2.5 h-4 w-4 text-muted-foreground/70">
+                  <div className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium text-[#171717] dark:text-[#fafafa] hover:text-[#171717] dark:hover:text-[#fafafa] transition-colors duration-150 hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a] rounded-md w-full cursor-pointer">
+                    <div className="h-3.5 w-3.5 text-[#737373] dark:text-[#a3a3a3]">
                   <HelpIcon />
                 </div>
-                <span className="text-sm">Support Center</span>
+                    <span>Support Center</span>
+                  </div>
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={() => window.open("https://github.com", "_blank")}
-                className="px-3 py-2.5 cursor-pointer rounded-md mx-1 my-0.5"
-              >
-                <Folder className="mr-2.5 h-4 w-4 text-muted-foreground/70" />
-                <span className="text-sm">Community</span>
+                  className="px-0 mx-0"
+                >
+                  <div className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium text-[#171717] dark:text-[#fafafa] hover:text-[#171717] dark:hover:text-[#fafafa] transition-colors duration-150 hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a] rounded-md w-full cursor-pointer">
+                    <Folder className="h-3.5 w-3.5 text-[#737373] dark:text-[#a3a3a3]" />
+                    <span>Community</span>
+                  </div>
               </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-border/50 my-1" />
+                <DropdownMenuSeparator className="bg-[#e5e5e5] dark:bg-[#262626] my-1" />
               <DropdownMenuItem 
                 onClick={() => toast({ title: "Contact Support", description: "Opening support form..." })} 
-                className="px-3 py-2.5 cursor-pointer rounded-md mx-1"
+                  className="px-0 mx-0"
               >
-                <span className="text-sm">Contact Support</span>
+                  <div className="px-2.5 py-2 text-xs font-medium text-[#171717] dark:text-[#fafafa] hover:text-[#171717] dark:hover:text-[#fafafa] transition-colors duration-150 hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a] rounded-md w-full cursor-pointer">
+                    <span>Contact Support</span>
+                  </div>
               </DropdownMenuItem>
+              </div>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -309,12 +316,12 @@ export const GlobalNavBar = ({ onSearch }: GlobalNavBarProps) => {
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="relative h-9 w-9 rounded-lg hover:bg-muted/50 transition-colors duration-200"
+                className="relative h-9 w-9 rounded-lg hover:bg-[#fafafa] dark:hover:bg-[#262626] transition-colors duration-200"
               >
                 <NotificationIcon />
                 {unreadCount > 0 && (
-                  <div className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-md bg-foreground border border-border/50 shadow-lg">
-                    <span className="text-[10px] font-bold text-background leading-none">
+                  <div className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-md bg-[#171717] dark:bg-[#fafafa] border border-[#e5e5e5] dark:border-[#262626] shadow-sm">
+                    <span className="text-[10px] font-bold text-[#fafafa] dark:text-[#171717] leading-none">
                       {unreadCount > 9 ? "9+" : unreadCount}
                     </span>
                   </div>
@@ -322,13 +329,13 @@ export const GlobalNavBar = ({ onSearch }: GlobalNavBarProps) => {
                 <span className="sr-only">Notifications</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[380px] rounded-xl border border-border/40 bg-background/95 backdrop-blur-xl shadow-2xl p-0 overflow-hidden">
+            <DropdownMenuContent align="end" className="w-[380px] rounded-lg border border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717] shadow-lg p-0 overflow-hidden">
               {/* Header */}
-              <div className="flex items-center justify-between px-5 py-4 border-b border-border/30 bg-muted/20">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-[#e5e5e5] dark:border-[#262626]">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-semibold tracking-tight">Notifications</h3>
+                  <h3 className="text-sm font-medium text-[#171717] dark:text-[#fafafa]">Notifications</h3>
                   {unreadCount > 0 && (
-                    <span className="px-1.5 py-0.5 rounded-md bg-foreground/10 text-foreground text-[10px] font-semibold border border-border/30">
+                    <span className="px-1.5 py-0.5 rounded-md bg-[#171717] dark:bg-[#fafafa] text-[#fafafa] dark:text-[#171717] text-[10px] font-medium border border-[#e5e5e5] dark:border-[#262626]">
                       {unreadCount}
                     </span>
                   )}
@@ -336,7 +343,7 @@ export const GlobalNavBar = ({ onSearch }: GlobalNavBarProps) => {
                 {unreadCount > 0 && (
                   <button
                     onClick={handleMarkAllAsRead}
-                    className="text-xs font-medium text-muted-foreground/70 hover:text-foreground transition-colors duration-200 px-2 py-1 rounded-md hover:bg-muted/40"
+                    className="text-xs font-medium text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] transition-colors duration-200 px-2 py-1 rounded-md hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
                   >
                     Mark all read
                   </button>
@@ -344,47 +351,47 @@ export const GlobalNavBar = ({ onSearch }: GlobalNavBarProps) => {
               </div>
 
               {/* Notifications List */}
-              <div className="max-h-[440px] overflow-y-auto scrollbar-hide">
+              <div className="max-h-[400px] overflow-y-auto scrollbar-hide">
                 {notifications.length === 0 ? (
-                  <div className="px-5 py-16 text-center">
-                    <div className="h-12 w-12 text-muted-foreground/20 mx-auto mb-4 flex items-center justify-center">
+                  <div className="px-4 py-12 text-center">
+                    <div className="h-10 w-10 text-[#e5e5e5] dark:text-[#404040] mx-auto mb-3 flex items-center justify-center">
                       <NotificationIcon />
                     </div>
-                    <p className="text-sm font-medium text-foreground/60 mb-1">No notifications</p>
-                    <p className="text-xs text-muted-foreground/50">You're all caught up</p>
+                    <p className="text-xs font-medium text-[#171717] dark:text-[#fafafa] mb-0.5">No notifications</p>
+                    <p className="text-[10px] text-[#737373] dark:text-[#a3a3a3]">You're all caught up</p>
                   </div>
                 ) : (
-                  <div className="py-2">
+                  <div className="py-1">
                     {notifications.map((notification, index) => (
                       <button
                         key={notification.id}
                         onClick={() => handleNotificationClick(notification)}
                         className={cn(
-                          "w-full text-left px-5 py-3.5 transition-all duration-200 border-b border-border/20 last:border-b-0",
-                          "hover:bg-muted/40 active:bg-muted/50",
-                          !notification.read && "bg-foreground/5 hover:bg-foreground/10"
+                          "w-full text-left px-4 py-2.5 transition-all duration-200 border-b border-[#e5e5e5] dark:border-[#262626] last:border-b-0",
+                          "hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]",
+                          !notification.read && "bg-[#fafafa] dark:bg-[#0a0a0a]"
                         )}
                       >
-                        <div className="flex items-start gap-3">
+                        <div className="flex items-start gap-2.5">
                           {/* Unread Indicator */}
                           {!notification.read && (
-                            <div className="mt-1.5 flex-shrink-0">
-                              <div className="h-2 w-2 rounded-sm bg-foreground rotate-45" />
+                            <div className="mt-1 flex-shrink-0">
+                              <div className="h-1.5 w-1.5 rounded-full bg-[#171717] dark:bg-[#fafafa]" />
                             </div>
                           )}
-                          {notification.read && <div className="w-2" />}
+                          {notification.read && <div className="w-1.5" />}
                           
                           {/* Content */}
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-3 mb-1">
-                              <p className="text-sm font-semibold text-foreground leading-tight">
+                            <div className="flex items-start justify-between gap-2 mb-0.5">
+                              <p className="text-xs font-medium text-[#171717] dark:text-[#fafafa] leading-snug">
                                 {notification.title}
                               </p>
-                              <span className="text-[10px] font-medium text-muted-foreground/60 whitespace-nowrap flex-shrink-0">
+                              <span className="text-[10px] font-medium text-[#737373] dark:text-[#a3a3a3] whitespace-nowrap flex-shrink-0">
                                 {formatNotificationTime(notification.timestamp)}
                               </span>
                             </div>
-                            <p className="text-xs text-muted-foreground/80 leading-relaxed">
+                            <p className="text-[11px] text-[#737373] dark:text-[#a3a3a3] leading-relaxed">
                               {notification.message}
                             </p>
                           </div>
@@ -397,10 +404,10 @@ export const GlobalNavBar = ({ onSearch }: GlobalNavBarProps) => {
 
               {/* Footer */}
               {notifications.length > 0 && (
-                <div className="border-t border-border/30 bg-muted/10">
+                <div className="border-t border-[#e5e5e5] dark:border-[#262626]">
                   <button
                     onClick={() => navigate("/app/notifications")}
-                    className="w-full px-5 py-3 text-xs font-semibold text-muted-foreground/70 hover:text-foreground transition-colors duration-200 hover:bg-muted/30"
+                    className="w-full px-4 py-2.5 text-xs font-medium text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] transition-colors duration-200 hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
                   >
                     View all notifications
                   </button>
@@ -413,10 +420,10 @@ export const GlobalNavBar = ({ onSearch }: GlobalNavBarProps) => {
           {user && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <button className="relative h-8 w-8 rounded-lg hover:bg-muted/50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-foreground/20 focus:ring-offset-2 focus:ring-offset-background">
-                  <Avatar className="h-8 w-8 ring-1 ring-border/30 ring-offset-0 transition-all duration-200 hover:ring-border/50">
+                <button className="relative h-8 w-8 rounded-lg hover:bg-[#fafafa] dark:hover:bg-[#262626] transition-all duration-200 focus:outline-none focus:ring-1 focus:ring-[#171717]/10 dark:focus:ring-[#fafafa]/10 focus:ring-offset-1">
+                  <Avatar className="h-8 w-8 ring-1 ring-[#e5e5e5] dark:ring-[#262626] ring-offset-0 transition-all duration-200 hover:ring-[#d4d4d4] dark:hover:ring-[#404040]">
                   <AvatarImage src={user.avatar} alt={user.name} />
-                    <AvatarFallback className="bg-gradient-to-br from-foreground/12 to-foreground/6 text-foreground font-semibold text-[11px]">
+                    <AvatarFallback className="bg-[#f5f5f5] dark:bg-[#262626] text-[#171717] dark:text-[#fafafa] font-medium text-xs">
                     {user.name
                       .split(" ")
                       .map((n) => n[0])
@@ -426,13 +433,13 @@ export const GlobalNavBar = ({ onSearch }: GlobalNavBarProps) => {
                 </Avatar>
               </button>
             </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[200px] rounded-lg border border-border/50 bg-background shadow-xl p-1.5 overflow-hidden">
+              <DropdownMenuContent align="end" className="w-[200px] rounded-lg border border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717] shadow-lg p-1 overflow-hidden">
               {/* Profile Header */}
-                <div className="px-3 py-2.5 border-b border-border/20">
+                <div className="px-3 py-2 border-b border-[#e5e5e5] dark:border-[#262626]">
                   <div className="flex items-center gap-2.5">
-                    <Avatar className="h-8 w-8 ring-1 ring-border/20">
+                    <Avatar className="h-7 w-7 ring-1 ring-[#e5e5e5] dark:ring-[#262626]">
                     <AvatarImage src={user.avatar} alt={user.name} />
-                      <AvatarFallback className="bg-gradient-to-br from-foreground/12 to-foreground/6 text-foreground font-semibold text-[11px]">
+                      <AvatarFallback className="bg-[#f5f5f5] dark:bg-[#262626] text-[#171717] dark:text-[#fafafa] font-medium text-xs">
                       {user.name
                         .split(" ")
                         .map((n) => n[0])
@@ -441,10 +448,10 @@ export const GlobalNavBar = ({ onSearch }: GlobalNavBarProps) => {
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-semibold text-foreground leading-tight truncate">
+                      <p className="text-xs font-medium text-[#171717] dark:text-[#fafafa] leading-tight truncate">
                       {user.name}
                     </p>
-                      <p className="text-[11px] text-muted-foreground/70 leading-tight truncate">
+                      <p className="text-[10px] text-[#737373] dark:text-[#a3a3a3] leading-tight truncate">
                       {user.email}
                     </p>
                   </div>
@@ -456,27 +463,27 @@ export const GlobalNavBar = ({ onSearch }: GlobalNavBarProps) => {
                 <DropdownMenuItem asChild className="px-0 mx-0">
                   <Link 
                     to="/app" 
-                    className="flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium text-foreground/90 hover:text-foreground transition-colors duration-150 hover:bg-muted/50 rounded-md w-full"
+                    className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium text-[#171717] dark:text-[#fafafa] hover:text-[#171717] dark:hover:text-[#fafafa] transition-colors duration-150 hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a] rounded-md w-full"
                   >
-                    <LayoutDashboard className="h-3.5 w-3.5 text-muted-foreground/70" />
+                    <LayoutDashboard className="h-3.5 w-3.5 text-[#737373] dark:text-[#a3a3a3]" />
                     <span>Dashboard</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild className="px-0 mx-0">
                   <Link 
                     to="/app/profile" 
-                    className="flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium text-foreground/90 hover:text-foreground transition-colors duration-150 hover:bg-muted/50 rounded-md w-full"
+                    className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium text-[#171717] dark:text-[#fafafa] hover:text-[#171717] dark:hover:text-[#fafafa] transition-colors duration-150 hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a] rounded-md w-full"
                   >
-                    <User className="h-3.5 w-3.5 text-muted-foreground/70" />
+                    <User className="h-3.5 w-3.5 text-[#737373] dark:text-[#a3a3a3]" />
                     <span>Profile</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild className="px-0 mx-0">
                   <Link 
                     to="/app/settings" 
-                    className="flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium text-foreground/90 hover:text-foreground transition-colors duration-150 hover:bg-muted/50 rounded-md w-full"
+                    className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium text-[#171717] dark:text-[#fafafa] hover:text-[#171717] dark:hover:text-[#fafafa] transition-colors duration-150 hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a] rounded-md w-full"
                   >
-                    <Settings className="h-3.5 w-3.5 text-muted-foreground/70" />
+                    <Settings className="h-3.5 w-3.5 text-[#737373] dark:text-[#a3a3a3]" />
                     <span>Settings</span>
                   </Link>
                 </DropdownMenuItem>
@@ -484,10 +491,10 @@ export const GlobalNavBar = ({ onSearch }: GlobalNavBarProps) => {
 
 
               {/* Logout Section */}
-              <div className="border-t border-border/20 pt-1">
+              <div className="border-t border-[#e5e5e5] dark:border-[#262626] pt-1">
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium text-destructive/90 hover:text-destructive transition-colors duration-150 hover:bg-destructive/10 rounded-md"
+                  className="w-full flex items-center gap-2 px-2.5 py-2 text-xs font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors duration-150 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-md"
                 >
                   <LogOut className="h-3.5 w-3.5" />
                   <span>Logout</span>
