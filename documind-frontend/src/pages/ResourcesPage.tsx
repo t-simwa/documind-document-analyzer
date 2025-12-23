@@ -240,13 +240,13 @@ const ResourcesPage = () => {
       <Navigation />
 
       {/* Hero Section */}
-      <section className="pt-40 pb-32 px-4 sm:px-6 lg:px-8">
+      <section className="pt-24 pb-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-5xl mx-auto">
           <div className="text-center">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6 text-white leading-tight">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-medium tracking-tight mb-4 text-white leading-tight">
               Resources
             </h1>
-            <p className="text-xl sm:text-2xl text-white/60 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-sm sm:text-base lg:text-lg text-white/60 max-w-2xl mx-auto leading-relaxed">
               Everything you need to understand, analyze, and extract value from your documents.
             </p>
           </div>
@@ -254,9 +254,9 @@ const ResourcesPage = () => {
       </section>
 
       {/* Resources Categories */}
-      <section className="pb-40 px-4 sm:px-6 lg:px-8">
+      <section className="pb-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-16 lg:gap-x-12 lg:gap-y-20">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-10 lg:gap-x-6 lg:gap-y-12">
             {resourceCategories.map((category, index) => {
               const Icon = category.icon;
               return (
@@ -265,16 +265,16 @@ const ResourcesPage = () => {
                   className="group"
                 >
                   {/* Category Header */}
-                  <div className="mb-10">
-                    <div className="flex items-start gap-4 mb-5">
-                      <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06] group-hover:border-white/10 group-hover:bg-white/[0.04] transition-all duration-300 flex-shrink-0">
-                        <Icon className="w-5 h-5 text-white/75 group-hover:text-white/90 transition-colors" />
+                  <div className="mb-6">
+                    <div className="flex items-start gap-3 mb-3">
+                      <div className="p-2 rounded-lg bg-white/[0.02] border border-white/[0.06] group-hover:border-white/10 group-hover:bg-white/[0.04] transition-all duration-300 flex-shrink-0">
+                        <Icon className="w-4 h-4 text-white/75 group-hover:text-white/90 transition-colors" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h2 className="text-2xl font-semibold text-white mb-2 tracking-[-0.01em] leading-tight">
+                        <h2 className="text-base font-medium text-white mb-1.5 tracking-[-0.01em] leading-tight">
                           {category.title}
                         </h2>
-                        <p className="text-sm text-white/60 leading-relaxed font-normal">
+                        <p className="text-xs text-white/60 leading-relaxed font-normal">
                           {category.subtitle}
                         </p>
                       </div>
@@ -283,32 +283,32 @@ const ResourcesPage = () => {
                     {category.learnMoreHref && (
                       <Link 
                         to={category.learnMoreHref}
-                        className="inline-flex items-center gap-2 text-sm text-white/65 hover:text-white transition-colors font-medium group/link"
+                        className="inline-flex items-center gap-1.5 text-xs text-white/65 hover:text-white transition-colors font-medium group/link"
                       >
                         Learn more
-                        <ChevronRight className="w-4 h-4 group-hover/link:translate-x-1 transition-transform duration-200" />
+                        <ChevronRight className="w-3 h-3 group-hover/link:translate-x-1 transition-transform duration-200" />
                       </Link>
                     )}
                   </div>
 
                   {/* Articles List */}
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     {category.articles.map((article, articleIndex) => (
                       <Link
                         key={articleIndex}
                         to={article.href || "#"}
-                        className="block group/article p-5 rounded-xl border border-white/[0.04] bg-white/[0.01] hover:bg-white/[0.03] hover:border-white/10 transition-all duration-300"
+                        className="block group/article p-4 rounded-lg border border-white/[0.04] bg-white/[0.01] hover:bg-white/[0.03] hover:border-white/10 transition-all duration-300"
                       >
-                        <div className="flex items-start justify-between gap-5 mb-3">
-                          <h3 className="text-[15px] font-medium text-white group-hover/article:text-white/95 transition-colors leading-snug flex-1 tracking-[-0.01em]">
+                        <div className="flex items-start justify-between gap-3 mb-2">
+                          <h3 className="text-xs font-medium text-white group-hover/article:text-white/95 transition-colors leading-snug flex-1 tracking-[-0.01em]">
                             {article.title}
                           </h3>
-                          <ChevronRight className="w-4 h-4 text-white/25 group-hover/article:text-white/50 group-hover/article:translate-x-1 transition-all duration-200 flex-shrink-0 mt-0.5" />
+                          <ChevronRight className="w-3 h-3 text-white/25 group-hover/article:text-white/50 group-hover/article:translate-x-1 transition-all duration-200 flex-shrink-0 mt-0.5" />
                         </div>
-                        <p className="text-[13px] text-white/55 mb-4 leading-relaxed line-clamp-2">
+                        <p className="text-[10px] text-white/55 mb-3 leading-relaxed line-clamp-2">
                           {article.description}
                         </p>
-                        <div className="flex items-center gap-3 text-xs text-white/45">
+                        <div className="flex items-center gap-2 text-[10px] text-white/45">
                           <span className="font-medium">{article.author}</span>
                           {article.date && (
                             <>
@@ -319,8 +319,8 @@ const ResourcesPage = () => {
                           {article.readTime && (
                             <>
                               <span className="text-white/15">·</span>
-                              <span className="flex items-center gap-1.5">
-                                <Clock className="w-3 h-3" />
+                              <span className="flex items-center gap-1">
+                                <Clock className="w-2.5 h-2.5" />
                                 {article.readTime}
                               </span>
                             </>
@@ -337,17 +337,17 @@ const ResourcesPage = () => {
       </section>
 
       {/* Quick Links Section */}
-      <section className="py-32 px-4 sm:px-6 lg:px-8 border-t border-white/[0.08]">
+      <section className="py-16 px-4 sm:px-6 lg:px-8 border-t border-white/[0.08]">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl sm:text-5xl font-semibold text-white mb-4 tracking-[-0.02em]">
+          <div className="text-center mb-10">
+            <h2 className="text-2xl sm:text-3xl font-medium text-white mb-3 tracking-[-0.02em]">
               Quick Access
             </h2>
-            <p className="text-lg text-white/60 font-normal">
+            <p className="text-sm text-white/60 font-normal">
               Jump to the resources you need most
             </p>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
               { icon: BookMarked, title: "Documentation", description: "Complete guides and references", href: "/products/features" },
               { icon: LockKeyhole, title: "Security", description: "Security and compliance info", href: "/products/security" },
@@ -359,16 +359,16 @@ const ResourcesPage = () => {
                 <Link 
                   key={index}
                   to={link.href}
-                  className="group flex flex-col gap-4 p-7 rounded-2xl border border-white/[0.04] bg-white/[0.01] hover:bg-white/[0.03] hover:border-white/10 transition-all duration-300"
+                  className="group flex flex-col gap-3 p-5 rounded-lg border border-white/[0.04] bg-white/[0.01] hover:bg-white/[0.03] hover:border-white/10 transition-all duration-300"
                 >
-                  <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] w-fit group-hover:bg-white/[0.04] group-hover:border-white/10 transition-all duration-300">
-                    <Icon className="w-6 h-6 text-white/70 group-hover:text-white/90 transition-colors" />
+                  <div className="p-2 rounded-lg bg-white/[0.02] border border-white/[0.06] w-fit group-hover:bg-white/[0.04] group-hover:border-white/10 transition-all duration-300">
+                    <Icon className="w-4 h-4 text-white/70 group-hover:text-white/90 transition-colors" />
                   </div>
                   <div>
-                    <h3 className="text-base font-semibold text-white mb-2 group-hover:text-white/95 transition-colors tracking-[-0.01em]">
+                    <h3 className="text-sm font-medium text-white mb-1.5 group-hover:text-white/95 transition-colors tracking-[-0.01em]">
                       {link.title}
                     </h3>
-                    <p className="text-sm text-white/55 leading-relaxed">
+                    <p className="text-xs text-white/55 leading-relaxed">
                       {link.description}
                     </p>
                   </div>
@@ -380,12 +380,12 @@ const ResourcesPage = () => {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-white/[0.08] py-20 px-4 sm:px-6 lg:px-8 mt-20">
+      <footer className="border-t border-white/[0.08] py-10 px-4 sm:px-6 lg:px-8 mt-12">
         <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-4 gap-16 mb-16">
+          <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div>
-              <div className="flex items-center gap-2.5 mb-5">
-                <div className="relative w-5 h-5">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="relative w-4 h-4">
                   <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
                     <path 
                       d="M12 2L2 19.5h20L12 2z" 
@@ -394,15 +394,15 @@ const ResourcesPage = () => {
                     />
                   </svg>
                 </div>
-                <span className="font-semibold text-white">DocuMind AI</span>
+                <span className="font-medium text-white text-xs">DocuMind AI</span>
               </div>
-              <p className="text-sm text-white/60 leading-relaxed">
+              <p className="text-xs text-white/60 leading-relaxed">
                 Intelligent document analysis with enterprise-grade security.
               </p>
             </div>
             <div>
-              <h3 className="font-semibold mb-5 text-white text-sm tracking-[-0.01em]">Product</h3>
-              <ul className="space-y-3.5 text-sm">
+              <h3 className="font-medium mb-3 text-white text-xs tracking-[-0.01em]">Product</h3>
+              <ul className="space-y-2 text-xs">
                 <li><Link to="/products" className="text-white/60 hover:text-white transition-colors duration-200">Features</Link></li>
                 <li><Link to="/pricing" className="text-white/60 hover:text-white transition-colors duration-200">Pricing</Link></li>
                 <li><Link to="/products/security" className="text-white/60 hover:text-white transition-colors duration-200">Security</Link></li>
@@ -410,8 +410,8 @@ const ResourcesPage = () => {
               </ul>
             </div>
             <div>
-              <h3 className="font-semibold mb-5 text-white text-sm tracking-[-0.01em]">Resources</h3>
-              <ul className="space-y-3.5 text-sm">
+              <h3 className="font-medium mb-3 text-white text-xs tracking-[-0.01em]">Resources</h3>
+              <ul className="space-y-2 text-xs">
                 <li><Link to="/resources" className="text-white/60 hover:text-white transition-colors duration-200">Documentation</Link></li>
                 <li><Link to="/resources" className="text-white/60 hover:text-white transition-colors duration-200">Blog</Link></li>
                 <li><Link to="/resources" className="text-white/60 hover:text-white transition-colors duration-200">Case studies</Link></li>
@@ -419,8 +419,8 @@ const ResourcesPage = () => {
               </ul>
             </div>
             <div>
-              <h3 className="font-semibold mb-5 text-white text-sm tracking-[-0.01em]">Company</h3>
-              <ul className="space-y-3.5 text-sm">
+              <h3 className="font-medium mb-3 text-white text-xs tracking-[-0.01em]">Company</h3>
+              <ul className="space-y-2 text-xs">
                 <li><Link to="#about" className="text-white/60 hover:text-white transition-colors duration-200">About</Link></li>
                 <li><Link to="#contact" className="text-white/60 hover:text-white transition-colors duration-200">Contact</Link></li>
                 <li><Link to="#careers" className="text-white/60 hover:text-white transition-colors duration-200">Careers</Link></li>
@@ -428,11 +428,11 @@ const ResourcesPage = () => {
               </ul>
             </div>
           </div>
-          <div className="border-t border-white/[0.08] pt-8 flex flex-col md:flex-row justify-between items-center gap-6">
-            <p className="text-sm text-white/60">
+          <div className="border-t border-white/[0.08] pt-6 flex flex-col md:flex-row justify-between items-center gap-3">
+            <p className="text-xs text-white/60">
               © 2024 DocuMind AI. All rights reserved.
             </p>
-            <div className="flex items-center gap-8 text-sm text-white/60">
+            <div className="flex items-center gap-4 text-xs text-white/60">
               <Link to="#terms" className="hover:text-white transition-colors duration-200">Terms</Link>
               <Link to="#privacy" className="hover:text-white transition-colors duration-200">Privacy</Link>
               <Link to="/products/security" className="hover:text-white transition-colors duration-200">Security</Link>

@@ -174,20 +174,20 @@ const PricingPage = () => {
       <Navigation />
 
       {/* Hero Section */}
-      <section className="pt-40 pb-20 px-4 sm:px-6 lg:px-8">
+      <section className="pt-24 pb-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-5xl mx-auto text-center">
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-6 text-white leading-[1.1]">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-medium tracking-tight mb-4 text-white leading-[1.1]">
             Pricing that scales with you
           </h1>
-          <p className="text-lg sm:text-xl text-white/50 mb-12 max-w-2xl mx-auto leading-relaxed font-light">
+          <p className="text-sm sm:text-base lg:text-lg text-white/50 mb-8 max-w-2xl mx-auto leading-relaxed font-light">
             Start free, upgrade as you grow. All plans include full access to our platform.
           </p>
 
           {/* Billing Toggle */}
-          <div className="flex items-center justify-center gap-5 mb-16">
+          <div className="flex items-center justify-center gap-4 mb-12">
             <button
               onClick={() => setBillingPeriod("monthly")}
-              className={`text-sm font-medium transition-all duration-200 ${
+              className={`text-xs font-medium transition-all duration-200 ${
                 billingPeriod === "monthly" 
                   ? "text-white" 
                   : "text-white/40 hover:text-white/60"
@@ -197,20 +197,20 @@ const PricingPage = () => {
             </button>
             <button
               onClick={() => setBillingPeriod(billingPeriod === "monthly" ? "annual" : "monthly")}
-              className={`relative w-16 h-8 rounded-full transition-all duration-300 ${
+              className={`relative w-14 h-7 rounded-full transition-all duration-300 ${
                 billingPeriod === "annual" ? "bg-white" : "bg-white/10"
               }`}
             >
               <span
-                className={`absolute top-1 left-1 w-6 h-6 bg-black rounded-full transition-transform duration-300 shadow-sm ${
-                  billingPeriod === "annual" ? "translate-x-7" : "translate-x-0"
+                className={`absolute top-0.5 left-0.5 w-6 h-6 bg-black rounded-full transition-transform duration-300 shadow-sm ${
+                  billingPeriod === "annual" ? "translate-x-6" : "translate-x-0"
                 }`}
               />
             </button>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <button
                 onClick={() => setBillingPeriod("annual")}
-                className={`text-sm font-medium transition-all duration-200 ${
+                className={`text-xs font-medium transition-all duration-200 ${
                   billingPeriod === "annual" 
                     ? "text-white" 
                     : "text-white/40 hover:text-white/60"
@@ -219,7 +219,7 @@ const PricingPage = () => {
                 Annual
               </button>
               {billingPeriod === "annual" && (
-                <span className="text-xs font-semibold text-black bg-white px-2.5 py-1 rounded-full">
+                <span className="text-[10px] font-medium text-black bg-white px-2 py-0.5 rounded-full">
                   Save 17%
                 </span>
               )}
@@ -229,62 +229,62 @@ const PricingPage = () => {
       </section>
 
       {/* Pricing Cards */}
-      <section className="pb-24 px-4 sm:px-6 lg:px-8">
+      <section className="pb-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-3 gap-6 lg:gap-8">
+          <div className="grid md:grid-cols-3 gap-4 lg:gap-5">
             {plans.map((plan, index) => (
               <div
                 key={plan.id}
                 className={`relative group ${
                   plan.popular 
-                    ? "md:-mt-4 md:mb-4" 
+                    ? "md:-mt-3 md:mb-3" 
                     : ""
                 }`}
               >
                 {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
-                    <span className="inline-flex items-center px-4 py-1.5 rounded-full text-xs font-semibold text-black bg-white">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-medium text-black bg-white">
                       Most Popular
                     </span>
                   </div>
                 )}
                 <div
-                  className={`relative h-full p-8 lg:p-10 rounded-2xl border transition-all duration-300 ${
+                  className={`relative h-full p-5 rounded-xl border transition-all duration-300 ${
                     plan.popular
                       ? "border-white/20 bg-white/5 shadow-[0_8px_30px_rgba(255,255,255,0.08)]"
                       : "border-white/10 bg-white/[0.02] hover:border-white/15 hover:bg-white/5"
                   }`}
                 >
-                  <div className="mb-8">
-                    <h3 className="text-2xl font-semibold mb-3 text-white">{plan.name}</h3>
-                    <p className="text-sm text-white/50 leading-relaxed">{plan.description}</p>
+                  <div className="mb-6">
+                    <h3 className="text-base font-medium mb-2 text-white">{plan.name}</h3>
+                    <p className="text-xs text-white/50 leading-relaxed">{plan.description}</p>
                   </div>
                   
-                  <div className="mb-8 pb-8 border-b border-white/10">
-                    <div className="flex items-baseline gap-2 mb-2">
-                      <span className="text-6xl font-bold text-white tracking-tight">
+                  <div className="mb-6 pb-6 border-b border-white/10">
+                    <div className="flex items-baseline gap-1.5 mb-1.5">
+                      <span className="text-3xl sm:text-4xl font-medium text-white tracking-tight">
                         {getPrice(plan)}
                       </span>
                       {plan.monthlyPrice !== null && (
-                        <span className="text-lg text-white/40 font-light">
+                        <span className="text-sm text-white/40 font-light">
                           /{billingPeriod === "annual" ? "mo" : "mo"}
                         </span>
                       )}
                     </div>
                     {plan.monthlyPrice !== null && (
-                      <div className="flex items-center gap-2 mt-3">
+                      <div className="flex items-center gap-1.5 mt-2">
                         {billingPeriod === "annual" && (
                           <>
-                            <span className="text-sm text-white/30 line-through">
+                            <span className="text-xs text-white/30 line-through">
                               ${plan.monthlyPrice}/mo
                             </span>
-                            <span className="text-xs font-medium text-white/50">
+                            <span className="text-[10px] font-medium text-white/50">
                               billed annually
                             </span>
                           </>
                         )}
                         {billingPeriod === "monthly" && (
-                          <span className="text-xs text-white/40">
+                          <span className="text-[10px] text-white/40">
                             billed monthly
                           </span>
                         )}
@@ -294,10 +294,10 @@ const PricingPage = () => {
 
                   {plan.id === "enterprise" ? (
                     <Button
-                      className={`w-full mb-10 font-medium transition-all duration-200 ${
+                      className={`w-full mb-6 font-medium transition-all duration-200 h-8 text-xs ${
                         plan.popular
-                          ? "bg-white text-black hover:bg-white/90 h-12 text-base"
-                          : "border-white/20 text-white hover:bg-white/5 hover:border-white/30 h-12 text-base"
+                          ? "bg-white text-black hover:bg-white/90"
+                          : "border-white/20 text-white hover:bg-white/5 hover:border-white/30"
                       }`}
                       variant={plan.popular ? "default" : "outline"}
                       onClick={() => setIsDemoDialogOpen(true)}
@@ -306,10 +306,10 @@ const PricingPage = () => {
                     </Button>
                   ) : (
                     <Button
-                      className={`w-full mb-10 font-medium transition-all duration-200 ${
+                      className={`w-full mb-6 font-medium transition-all duration-200 h-8 text-xs ${
                         plan.popular
-                          ? "bg-white text-black hover:bg-white/90 h-12 text-base"
-                          : "border-white/20 text-white hover:bg-white/5 hover:border-white/30 h-12 text-base"
+                          ? "bg-white text-black hover:bg-white/90"
+                          : "border-white/20 text-white hover:bg-white/5 hover:border-white/30"
                       }`}
                       variant={plan.popular ? "default" : "outline"}
                       asChild
@@ -318,21 +318,21 @@ const PricingPage = () => {
                     </Button>
                   )}
 
-                  <ul className="space-y-4">
+                  <ul className="space-y-3">
                     {Object.entries(plan.features)
                       .slice(0, 6)
                       .map(([key, value]) => (
-                        <li key={key} className="flex items-start gap-3">
+                        <li key={key} className="flex items-start gap-2">
                           {typeof value === "boolean" ? (
                             value ? (
-                              <Check className="w-5 h-5 text-white/70 mt-0.5 flex-shrink-0" strokeWidth={2.5} />
+                              <Check className="w-3.5 h-3.5 text-white/70 mt-0.5 flex-shrink-0" strokeWidth={2.5} />
                             ) : (
-                              <X className="w-5 h-5 text-white/15 mt-0.5 flex-shrink-0" strokeWidth={2} />
+                              <X className="w-3.5 h-3.5 text-white/15 mt-0.5 flex-shrink-0" strokeWidth={2} />
                             )
                           ) : (
-                            <Check className="w-5 h-5 text-white/70 mt-0.5 flex-shrink-0" strokeWidth={2.5} />
+                            <Check className="w-3.5 h-3.5 text-white/70 mt-0.5 flex-shrink-0" strokeWidth={2.5} />
                           )}
-                          <span className="text-sm text-white/60 leading-relaxed">
+                          <span className="text-xs text-white/60 leading-relaxed">
                             {typeof value === "boolean" ? (
                               value ? "Included" : "Not included"
                             ) : (
@@ -350,35 +350,35 @@ const PricingPage = () => {
       </section>
 
       {/* Feature Comparison Table */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8 border-y border-white/10 bg-white/[0.01]">
+      <section className="py-16 px-4 sm:px-6 lg:px-8 border-y border-white/10 bg-white/[0.01]">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl sm:text-5xl font-bold mb-4 text-white tracking-tight">
+          <div className="text-center mb-10">
+            <h2 className="text-2xl sm:text-3xl font-medium mb-3 text-white tracking-tight">
               Compare plans
             </h2>
-            <p className="text-lg text-white/40 max-w-2xl mx-auto">
+            <p className="text-sm text-white/40 max-w-2xl mx-auto">
               See exactly what's included in each plan
             </p>
           </div>
           <div className="overflow-x-auto -mx-4 sm:mx-0">
             <div className="min-w-[900px] px-4 sm:px-0">
-              <div className="rounded-xl border border-white/10 overflow-hidden bg-white/[0.02]">
+              <div className="rounded-lg border border-white/10 overflow-hidden bg-white/[0.02]">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-white/10">
-                      <th className="text-left py-5 px-6 font-semibold text-white bg-white/[0.02]">
-                        <span className="text-sm uppercase tracking-wider text-white/50">Feature</span>
+                      <th className="text-left py-3 px-4 font-medium text-white bg-white/[0.02]">
+                        <span className="text-[10px] uppercase tracking-wider text-white/50">Feature</span>
                       </th>
                       {plans.map((plan) => (
                         <th
                           key={plan.id}
-                          className={`text-center py-5 px-6 font-semibold bg-white/[0.02] ${
+                          className={`text-center py-3 px-4 font-medium bg-white/[0.02] ${
                             plan.popular 
                               ? "text-white border-l border-r border-white/10" 
                               : "text-white/70"
                           }`}
                         >
-                          <span className="text-base">{plan.name}</span>
+                          <span className="text-xs">{plan.name}</span>
                         </th>
                       ))}
                     </tr>
@@ -391,7 +391,7 @@ const PricingPage = () => {
                           index % 2 === 0 ? "bg-white/[0.01]" : ""
                         }`}
                       >
-                        <td className="py-5 px-6 text-white/70 font-medium group-hover:text-white/90 transition-colors">
+                        <td className="py-3 px-4 text-white/70 font-medium text-xs group-hover:text-white/90 transition-colors">
                           {row.label}
                         </td>
                         {plans.map((plan) => {
@@ -399,18 +399,18 @@ const PricingPage = () => {
                           return (
                             <td
                               key={plan.id}
-                              className={`py-5 px-6 text-center ${
+                              className={`py-3 px-4 text-center ${
                                 plan.popular ? "border-l border-r border-white/5" : ""
                               }`}
                             >
                               {typeof value === "boolean" ? (
                                 value ? (
-                                  <Check className="w-5 h-5 text-white/70 mx-auto" strokeWidth={2.5} />
+                                  <Check className="w-3.5 h-3.5 text-white/70 mx-auto" strokeWidth={2.5} />
                                 ) : (
-                                  <X className="w-5 h-5 text-white/15 mx-auto" strokeWidth={2} />
+                                  <X className="w-3.5 h-3.5 text-white/15 mx-auto" strokeWidth={2} />
                                 )
                               ) : (
-                                <span className="text-white/60 text-sm">{value}</span>
+                                <span className="text-white/60 text-xs">{value}</span>
                               )}
                             </td>
                           );
@@ -426,28 +426,26 @@ const PricingPage = () => {
       </section>
 
       {/* Enterprise Section */}
-      <section className="py-32 px-4 sm:px-6 lg:px-8">
+      <section className="py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
-          <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-12 lg:p-16 text-center">
-            <h2 className="text-4xl sm:text-5xl font-bold mb-6 text-white tracking-tight">
+          <div className="rounded-xl border border-white/10 bg-white/[0.02] p-8 lg:p-10 text-center">
+            <h2 className="text-2xl sm:text-3xl font-medium mb-4 text-white tracking-tight">
               Enterprise solutions
             </h2>
-            <p className="text-lg text-white/50 mb-10 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-sm text-white/50 mb-8 max-w-2xl mx-auto leading-relaxed">
               Custom plans tailored to your organization's needs. Includes dedicated infrastructure,
               custom AI models, on-premise deployment, and priority support.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Button
-                size="lg"
-                className="bg-white text-black hover:bg-white/90 font-medium text-base px-8 h-12"
+                className="bg-white text-black hover:bg-white/90 font-medium text-xs px-6 h-8"
                 onClick={() => setIsDemoDialogOpen(true)}
               >
                 Contact sales
               </Button>
               <Button
-                size="lg"
                 variant="outline"
-                className="border-white/20 text-white hover:bg-white/5 font-medium text-base px-8 h-12"
+                className="border-white/20 text-white hover:bg-white/5 font-medium text-xs px-6 h-8"
                 asChild
               >
                 <Link to="/products/security">Learn more</Link>
@@ -458,13 +456,13 @@ const PricingPage = () => {
       </section>
 
       {/* FAQ Section */}
-      <section className="py-32 px-4 sm:px-6 lg:px-8 border-y border-white/10">
+      <section className="py-16 px-4 sm:px-6 lg:px-8 border-y border-white/10">
         <div className="max-w-3xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl sm:text-5xl font-bold mb-4 text-white tracking-tight">
+          <div className="text-center mb-10">
+            <h2 className="text-2xl sm:text-3xl font-medium mb-3 text-white tracking-tight">
               Frequently asked questions
             </h2>
-            <p className="text-lg text-white/40">
+            <p className="text-sm text-white/40">
               Everything you need to know about our pricing
             </p>
           </div>
@@ -473,12 +471,12 @@ const PricingPage = () => {
               <AccordionItem 
                 key={index} 
                 value={`item-${index}`} 
-                className="border border-white/10 rounded-lg px-6 bg-white/[0.01] hover:bg-white/5 transition-colors"
+                className="border border-white/10 rounded-lg px-4 bg-white/[0.01] hover:bg-white/5 transition-colors"
               >
-                <AccordionTrigger className="text-left text-white hover:text-white/90 py-6 font-medium">
+                <AccordionTrigger className="text-left text-white hover:text-white/90 py-4 font-medium text-xs">
                   {faq.question}
                 </AccordionTrigger>
-                <AccordionContent className="text-white/60 pb-6 leading-relaxed text-base">
+                <AccordionContent className="text-white/60 pb-4 leading-relaxed text-xs">
                   {faq.answer}
                 </AccordionContent>
               </AccordionItem>
@@ -488,27 +486,25 @@ const PricingPage = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-32 px-4 sm:px-6 lg:px-8">
+      <section className="py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-4xl sm:text-5xl font-bold mb-6 text-white tracking-tight">
+          <h2 className="text-2xl sm:text-3xl font-medium mb-4 text-white tracking-tight">
             Ready to get started?
           </h2>
-          <p className="text-lg text-white/50 mb-12 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-sm text-white/50 mb-8 max-w-2xl mx-auto leading-relaxed">
             Join thousands of teams using DocuMind AI to unlock insights from their documents.
             Start your free trial today—no credit card required.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Button
-              size="lg"
-              className="bg-white text-black hover:bg-white/90 font-medium text-base px-8 h-12"
+              className="bg-white text-black hover:bg-white/90 font-medium text-xs px-6 h-8"
               asChild
             >
               <Link to="/app">Start free trial</Link>
             </Button>
             <Button
-              size="lg"
               variant="outline"
-              className="border-white/20 text-white hover:bg-white/5 font-medium text-base px-8 h-12"
+              className="border-white/20 text-white hover:bg-white/5 font-medium text-xs px-6 h-8"
               onClick={() => setIsDemoDialogOpen(true)}
             >
               Contact sales
@@ -524,12 +520,12 @@ const PricingPage = () => {
       />
 
       {/* Footer */}
-      <footer className="border-t border-white/10 py-16 px-4 sm:px-6 lg:px-8">
+      <footer className="border-t border-white/10 py-10 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-4 gap-12 mb-12">
+          <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div>
-              <div className="flex items-center gap-2.5 mb-4">
-                <div className="relative w-5 h-5">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="relative w-4 h-4">
                   <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
                     <path
                       d="M12 2L2 19.5h20L12 2z"
@@ -538,15 +534,15 @@ const PricingPage = () => {
                     />
                   </svg>
                 </div>
-                <span className="font-semibold text-white">DocuMind AI</span>
+                <span className="font-medium text-white text-xs">DocuMind AI</span>
               </div>
-              <p className="text-sm text-white/60">
+              <p className="text-xs text-white/60">
                 Intelligent document analysis with enterprise-grade security.
               </p>
             </div>
             <div>
-              <h3 className="font-semibold mb-4 text-white">Product</h3>
-              <ul className="space-y-3 text-sm">
+              <h3 className="font-medium mb-3 text-white text-xs">Product</h3>
+              <ul className="space-y-2 text-xs">
                 <li>
                   <Link to="/products" className="text-white/60 hover:text-white transition-colors">
                     Features
@@ -573,8 +569,8 @@ const PricingPage = () => {
               </ul>
             </div>
             <div>
-              <h3 className="font-semibold mb-4 text-white">Resources</h3>
-              <ul className="space-y-3 text-sm">
+              <h3 className="font-medium mb-3 text-white text-xs">Resources</h3>
+              <ul className="space-y-2 text-xs">
                 <li>
                   <Link to="/resources" className="text-white/60 hover:text-white transition-colors">
                     Documentation
@@ -598,8 +594,8 @@ const PricingPage = () => {
               </ul>
             </div>
             <div>
-              <h3 className="font-semibold mb-4 text-white">Company</h3>
-              <ul className="space-y-3 text-sm">
+              <h3 className="font-medium mb-3 text-white text-xs">Company</h3>
+              <ul className="space-y-2 text-xs">
                 <li>
                   <Link to="#about" className="text-white/60 hover:text-white transition-colors">
                     About
@@ -623,9 +619,9 @@ const PricingPage = () => {
               </ul>
             </div>
           </div>
-          <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-sm text-white/60">© 2024 DocuMind AI. All rights reserved.</p>
-            <div className="flex items-center gap-6 text-sm text-white/60">
+          <div className="border-t border-white/10 pt-6 flex flex-col md:flex-row justify-between items-center gap-3">
+            <p className="text-xs text-white/60">© 2024 DocuMind AI. All rights reserved.</p>
+            <div className="flex items-center gap-4 text-xs text-white/60">
               <Link to="#terms" className="hover:text-white transition-colors">
                 Terms
               </Link>
