@@ -160,6 +160,7 @@ export const projectsApi = {
         updatedAt: new Date(p.updated_at),
         createdBy: p.created_by,
         documentCount: p.document_count || 0,
+        isFavorite: p.is_favorite || false,
         children: [],
       }));
 
@@ -402,6 +403,7 @@ export const projectsApi = {
         updatedAt: new Date(p.updated_at),
         createdBy: p.created_by,
         documentCount: p.document_count || 0,
+        isFavorite: p.is_favorite || false,
         children: p.children ? p.children.map(convertProject) : [],
       });
 
@@ -424,6 +426,86 @@ export const projectsApi = {
     } catch (error) {
       console.error("Failed to fetch project hierarchy from backend:", error);
       // Don't silently fall back to mock data - throw the error so the UI can handle it
+      throw error;
+    }
+  },
+
+  async getFavorites(params?: PaginationParams): Promise<ProjectListResponse> {
+    try {
+      const page = params?.page || 1;
+      const limit = params?.limit || 50;
+      const queryParams = new URLSearchParams();
+      queryParams.append("page", page.toString());
+      queryParams.append("limit", limit.toString());
+
+      const response = await fetch(`${API_BASE_URL}/api/v1/projects/favorites?${queryParams.toString()}`, {
+        method: "GET",
+        headers: {
+          ...getAuthHeaders(),
+          "Cache-Control": "no-cache",
+        },
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: "Failed to fetch favorite projects" }));
+        throw new Error(error.detail || `HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      // Convert backend projects to frontend format
+      const projects: Project[] = data.projects.map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        description: p.description,
+        parentId: p.parent_id || null,
+        createdAt: new Date(p.created_at),
+        updatedAt: new Date(p.updated_at),
+        createdBy: p.created_by,
+        documentCount: p.document_count || 0,
+        isFavorite: p.is_favorite || true, // All projects in favorites list are favorites
+        children: [],
+      }));
+
+      return {
+        projects,
+        pagination: data.pagination,
+      };
+    } catch (error) {
+      console.error("Failed to fetch favorite projects:", error);
+      throw error;
+    }
+  },
+
+  async toggleFavorite(projectId: string): Promise<Project> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/projects/${projectId}/favorite`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: "Failed to toggle favorite" }));
+        throw new Error(error.detail || `HTTP ${response.status}`);
+      }
+
+      const p = await response.json();
+      
+      return {
+        id: p.id,
+        name: p.name,
+        description: p.description,
+        parentId: p.parent_id || null,
+        createdAt: new Date(p.created_at),
+        updatedAt: new Date(p.updated_at),
+        createdBy: p.created_by,
+        documentCount: p.document_count || 0,
+        isFavorite: p.is_favorite || false,
+        children: [],
+      };
+    } catch (error) {
+      console.error("Failed to toggle project favorite:", error);
       throw error;
     }
   },

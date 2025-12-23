@@ -36,6 +36,7 @@ class ProjectResponse(BaseModel):
     updated_at: datetime
     created_by: str
     document_count: int = 0
+    is_favorite: bool = False  # Whether the current user has favorited this project
     
     class Config:
         from_attributes = True

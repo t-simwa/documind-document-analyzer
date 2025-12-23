@@ -8,7 +8,7 @@ from typing import Optional, List
 from datetime import datetime
 import structlog
 
-from app.database.models import Project as ProjectModel, Document as DocumentModel
+from app.database.models import Project as ProjectModel, Document as DocumentModel, User as UserModel
 from app.core.dependencies import require_auth
 from app.utils.activity_logger import log_activity
 from .schemas import (
@@ -30,6 +30,17 @@ async def _count_documents_for_project(project_id: str, user_id: str) -> int:
         DocumentModel.uploaded_by == user_id
     ).count()
     return count
+
+
+async def _is_project_favorited(project_id: str, user_id: str) -> bool:
+    """Check if a project is favorited by the user"""
+    try:
+        user = await UserModel.find_one(UserModel.id == user_id)
+        if user and user.favorite_project_ids:
+            return str(project_id) in user.favorite_project_ids
+        return False
+    except Exception:
+        return False
 
 
 @router.post(
@@ -117,6 +128,7 @@ async def create_project(
         )
         
         document_count = await _count_documents_for_project(str(new_project.id), user_id)
+        is_favorite = await _is_project_favorited(str(new_project.id), user_id)
         
         return ProjectResponse(
             id=str(new_project.id),
@@ -126,7 +138,8 @@ async def create_project(
             created_at=new_project.created_at,
             updated_at=new_project.updated_at,
             created_by=new_project.created_by,
-            document_count=document_count
+            document_count=document_count,
+            is_favorite=is_favorite
         )
     
     except HTTPException:
@@ -176,6 +189,7 @@ async def list_projects(
         projects = []
         for project in projects_list:
             document_count = await _count_documents_for_project(str(project.id), user_id)
+            is_favorite = await _is_project_favorited(str(project.id), user_id)
             projects.append(
             ProjectResponse(
                     id=str(project.id),
@@ -185,7 +199,8 @@ async def list_projects(
                     created_at=project.created_at,
                     updated_at=project.updated_at,
                     created_by=project.created_by,
-                    document_count=document_count
+                    document_count=document_count,
+                    is_favorite=is_favorite
                 )
             )
         
@@ -300,12 +315,19 @@ async def get_project_hierarchy(
             if project_data.get("children"):
                 project_data["children"].sort(key=lambda x: x["name"].lower())
         
+        # Get user's favorite projects
+        user = await UserModel.find_one(UserModel.id == user_id)
+        favorite_ids = set(user.favorite_project_ids) if user and user.favorite_project_ids else set()
+        
         # Convert to response format recursively
         def build_hierarchy_response(project_data: dict) -> ProjectHierarchyResponse:
             children = [
                 build_hierarchy_response(child)
                 for child in project_data.get("children", [])
             ]
+            
+            project_id_str = str(project_data["id"])
+            is_favorite = project_id_str in favorite_ids
             
             return ProjectHierarchyResponse(
                 id=project_data["id"],
@@ -316,6 +338,7 @@ async def get_project_hierarchy(
                 updated_at=project_data["updated_at"],
                 created_by=project_data["created_by"],
                 document_count=project_data.get("document_count", 0),
+                is_favorite=is_favorite,
                 children=children
             )
         
@@ -326,6 +349,243 @@ async def get_project_hierarchy(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to get project hierarchy: {str(e)}"
+        )
+
+
+@router.get(
+    "/favorites",
+    response_model=ProjectListResponse,
+    summary="Get favorite projects",
+    description="Get all projects favorited by the current user"
+)
+async def get_favorite_projects(
+    page: int = Query(1, ge=1, description="Page number"),
+    limit: int = Query(50, ge=1, le=100, description="Items per page"),
+    current_user: dict = Depends(require_auth)
+):
+    """
+    Get favorite projects for the current user
+    
+    Args:
+        page: Page number (1-indexed)
+        limit: Items per page
+        
+    Returns:
+        List of favorite projects with pagination info
+    """
+    try:
+        user_id = current_user["id"]
+        
+        # Get user's favorite project IDs
+        # Handle both ObjectId and string formats
+        from bson import ObjectId
+        from beanie.exceptions import DocumentNotFound
+        user = None
+        try:
+            # Try ObjectId first
+            try:
+                user_oid = ObjectId(user_id)
+                user = await UserModel.find_one(UserModel.id == user_oid)
+            except (ValueError, TypeError):
+                # Fallback to string match
+                user = await UserModel.find_one(UserModel.id == user_id)
+        except DocumentNotFound:
+            user = None
+        
+        if not user or not user.favorite_project_ids:
+            return ProjectListResponse(
+                projects=[],
+                pagination={
+                    "page": page,
+                    "limit": limit,
+                    "total": 0,
+                    "totalPages": 0,
+                    "hasNext": False,
+                    "hasPrev": False,
+                }
+            )
+        
+        favorite_ids = [str(pid) for pid in user.favorite_project_ids]
+        
+        # Calculate pagination
+        total = len(favorite_ids)
+        skip = (page - 1) * limit
+        
+        # Get paginated favorite project IDs
+        paginated_ids = favorite_ids[skip:skip + limit]
+        
+        # Fetch projects (only those owned by the user)
+        projects_list = []
+        for project_id in paginated_ids:
+            try:
+                from bson import ObjectId
+                # Try ObjectId first
+                try:
+                    project_oid = ObjectId(project_id)
+                    project = await ProjectModel.find_one(
+                        ProjectModel.id == project_oid,
+                        ProjectModel.created_by == user_id
+                    )
+                except (ValueError, TypeError):
+                    # Fallback to string match
+                    project = await ProjectModel.find_one(
+                        ProjectModel.id == project_id,
+                        ProjectModel.created_by == user_id
+                    )
+                
+                if project:
+                    projects_list.append(project)
+            except Exception as e:
+                logger.warning("failed_to_fetch_favorite_project", project_id=project_id, error=str(e))
+                continue
+        
+        # Convert to response format with document counts
+        projects = []
+        for project in projects_list:
+            document_count = await _count_documents_for_project(str(project.id), user_id)
+            projects.append(
+                ProjectResponse(
+                    id=str(project.id),
+                    name=project.name,
+                    description=project.description,
+                    parent_id=project.parent_id,
+                    created_at=project.created_at,
+                    updated_at=project.updated_at,
+                    created_by=project.created_by,
+                    document_count=document_count,
+                    is_favorite=True  # All projects in this list are favorites
+                )
+            )
+        
+        return ProjectListResponse(
+            projects=projects,
+            pagination={
+                "page": page,
+                "limit": limit,
+                "total": total,
+                "totalPages": (total + limit - 1) // limit,
+                "hasNext": (skip + limit) < total,
+                "hasPrev": page > 1,
+            }
+        )
+    
+    except Exception as e:
+        logger.exception("favorite_projects_list_failed", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to list favorite projects: {str(e)}"
+        )
+
+
+@router.post(
+    "/{project_id}/favorite",
+    response_model=ProjectResponse,
+    summary="Toggle project favorite",
+    description="Add or remove a project from favorites"
+)
+async def toggle_project_favorite(
+    project_id: str,
+    current_user: dict = Depends(require_auth)
+):
+    """
+    Toggle favorite status for a project
+    
+    Args:
+        project_id: Project ID to favorite/unfavorite
+        
+    Returns:
+        Updated project with favorite status
+    """
+    try:
+        user_id = current_user["id"]
+        
+        # Verify project exists and belongs to user
+        from bson import ObjectId
+        project = None
+        try:
+            project_oid = ObjectId(project_id)
+            project = await ProjectModel.find_one(
+                ProjectModel.id == project_oid,
+                ProjectModel.created_by == user_id
+            )
+        except (ValueError, TypeError):
+            project = await ProjectModel.find_one(
+                ProjectModel.id == project_id,
+                ProjectModel.created_by == user_id
+            )
+        
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found or access denied")
+        
+        # Get user and update favorites
+        # Handle both ObjectId and string formats
+        from bson import ObjectId
+        from beanie.exceptions import DocumentNotFound
+        user = None
+        try:
+            # Try ObjectId first
+            try:
+                user_oid = ObjectId(user_id)
+                user = await UserModel.find_one(UserModel.id == user_oid)
+            except (ValueError, TypeError):
+                # Fallback to string match
+                user = await UserModel.find_one(UserModel.id == user_id)
+        except DocumentNotFound:
+            user = None
+        
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        project_id_str = str(project.id)
+        
+        # Initialize favorite_project_ids if it doesn't exist
+        if not user.favorite_project_ids:
+            user.favorite_project_ids = []
+        
+        # Toggle favorite status
+        if project_id_str in user.favorite_project_ids:
+            # Remove from favorites
+            user.favorite_project_ids = [pid for pid in user.favorite_project_ids if str(pid) != project_id_str]
+            is_favorite = False
+            action = "unfavorited"
+        else:
+            # Add to favorites
+            user.favorite_project_ids.append(project_id_str)
+            is_favorite = True
+            action = "favorited"
+        
+        user.updated_at = datetime.utcnow()
+        await user.save()
+        
+        logger.info(
+            "project_favorite_toggled",
+            project_id=project_id_str,
+            user_id=user_id,
+            is_favorite=is_favorite,
+            action=action
+        )
+        
+        document_count = await _count_documents_for_project(project_id_str, user_id)
+        
+        return ProjectResponse(
+            id=project_id_str,
+            name=project.name,
+            description=project.description,
+            parent_id=project.parent_id,
+            created_at=project.created_at,
+            updated_at=project.updated_at,
+            created_by=project.created_by,
+            document_count=document_count,
+            is_favorite=is_favorite
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("project_favorite_toggle_failed", project_id=project_id, user_id=user_id, error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to toggle project favorite: {str(e)}"
         )
 
 
@@ -358,6 +618,7 @@ async def get_project(
         raise HTTPException(status_code=404, detail="Project not found")
     
     document_count = await _count_documents_for_project(project_id, user_id)
+    is_favorite = await _is_project_favorited(project_id, user_id)
     
     return ProjectResponse(
         id=str(project.id),
@@ -367,7 +628,8 @@ async def get_project(
         created_at=project.created_at,
         updated_at=project.updated_at,
         created_by=project.created_by,
-        document_count=document_count
+        document_count=document_count,
+        is_favorite=is_favorite
     )
 
 
@@ -521,6 +783,7 @@ async def update_project(
         logger.info("project_updated", project_id=project_id_str, parent_id=project.parent_id, user_id=user_id)
         
         document_count = await _count_documents_for_project(project_id_str, user_id)
+        is_favorite = await _is_project_favorited(project_id_str, user_id)
         
         return ProjectResponse(
             id=str(project.id),
@@ -530,7 +793,8 @@ async def update_project(
             created_at=project.created_at,
             updated_at=project.updated_at,
             created_by=project.created_by,
-            document_count=document_count
+            document_count=document_count,
+            is_favorite=is_favorite
         )
     
     except HTTPException:

@@ -16,6 +16,7 @@ class User(BeanieDocument):
     is_active: bool = True
     is_superuser: bool = False
     organization_id: Optional[str] = None
+    favorite_project_ids: List[str] = Field(default_factory=list)  # List of favorited project IDs
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     

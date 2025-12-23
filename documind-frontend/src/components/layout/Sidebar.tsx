@@ -16,7 +16,8 @@ import {
   Folder,
   FolderOpen,
   MoreVertical,
-  Edit
+  Edit,
+  Star
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -267,10 +268,31 @@ export const Sidebar = ({
     });
   };
 
+  const handleToggleFavorite = async (projectId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await projectsApi.toggleFavorite(projectId);
+      // Reload projects to get updated favorite status
+      await loadProjects();
+      toast({
+        title: "Success",
+        description: "Project favorite status updated",
+      });
+    } catch (error) {
+      console.error("Failed to toggle favorite:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update favorite status",
+        variant: "destructive",
+      });
+    }
+  };
+
   const renderProject = (project: Project, level = 0): JSX.Element => {
     const isSelected = selectedProjectId === project.id;
     const hasChildren = project.children && project.children.length > 0;
     const isExpanded = expandedProjects.has(project.id);
+    const isFavorite = project.isFavorite || false;
 
     return (
       <div key={project.id} className="space-y-0.5">
@@ -296,6 +318,9 @@ export const Sidebar = ({
           {!collapsed && (
             <>
               <span className="flex-1 truncate">{project.name}</span>
+              {isFavorite && (
+                <Star className="h-[13px] w-[13px] fill-yellow-400 text-yellow-400 flex-shrink-0" />
+              )}
               {project.documentCount !== undefined && project.documentCount > 0 && (
                 <span className="text-xs text-muted-foreground/70 font-medium tabular-nums">
                   {project.documentCount}
@@ -326,6 +351,10 @@ export const Sidebar = ({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-40">
+                  <DropdownMenuItem onClick={(e) => handleToggleFavorite(project.id, e)}>
+                    <Star className={cn("h-4 w-4 mr-2", isFavorite && "fill-yellow-400 text-yellow-400")} />
+                    {isFavorite ? "Remove from favorites" : "Add to favorites"}
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setEditingProject(project)}>
                     <Edit className="h-4 w-4 mr-2" />
                     Edit

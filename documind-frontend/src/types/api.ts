@@ -11,6 +11,7 @@ export interface Project {
   updatedAt: Date;
   createdBy: string;
   documentCount?: number;
+  isFavorite?: boolean;
   children?: Project[];
 }
 
