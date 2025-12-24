@@ -90,9 +90,11 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
             return response
         except DocuMindException as e:
+            from datetime import datetime
             logger.error(
                 "application_error",
                 error_type=type(e).__name__,
+                error_code=e.error_code,
                 message=e.message,
                 status_code=e.status_code,
                 details=e.details,
@@ -102,10 +104,12 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
                 status_code=e.status_code,
                 content={
                     "error": {
+                        "code": e.error_code,
                         "message": e.message,
                         "type": type(e).__name__,
                         "details": e.details,
-                    }
+                    },
+                    "timestamp": datetime.utcnow().isoformat(),
                 },
             )
             # Add CORS headers to error response
@@ -115,20 +119,25 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
                 response.headers["Access-Control-Allow-Credentials"] = "true"
             return response
         except Exception as e:
+            from datetime import datetime
+            from app.schemas.common import ErrorCode
             logger.exception(
                 "unhandled_exception",
                 error_type=type(e).__name__,
                 message=str(e),
                 path=request.url.path,
             )
+            error_details = [{"detail": str(e)}] if settings.DEBUG else []
             response = JSONResponse(
                 status_code=500,
                 content={
                     "error": {
+                        "code": ErrorCode.INTERNAL_SERVER_ERROR.value,
                         "message": "Internal server error",
                         "type": "InternalServerError",
-                        "details": {"detail": str(e)} if settings.DEBUG else {},
-                    }
+                        "details": error_details,
+                    },
+                    "timestamp": datetime.utcnow().isoformat(),
                 },
             )
             # Add CORS headers to error response

@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
     API_V1_PREFIX: str = "/api/v1"
+    API_VERSION: str = "v1"  # Current API version
+    API_MIN_VERSION: str = "v1"  # Minimum supported version
     
     # CORS - can be set as comma-separated string or list
     CORS_ORIGINS: Union[str, List[str]] = "http://localhost:5173,http://localhost:3000,http://localhost:8080,http://localhost:8081,http://127.0.0.1:5173,http://127.0.0.1:8080,http://127.0.0.1:8081"

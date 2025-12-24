@@ -204,16 +204,15 @@ async def list_projects(
                 )
             )
         
+        # Use standardized pagination utility
+        from app.core.api_utils import create_pagination_meta
+        
+        pagination_meta = create_pagination_meta(page, limit, total)
+        
         return ProjectListResponse(
-            projects=projects,
-            pagination={
-                "page": page,
-                "limit": limit,
-                "total": total,
-                "totalPages": (total + limit - 1) // limit,  # Ceiling division
-                "hasNext": (skip + limit) < total,
-                "hasPrev": page > 1,
-            }
+            data=projects,
+            pagination=pagination_meta,
+            meta={}
         )
     
     except Exception as e:

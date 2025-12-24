@@ -5,6 +5,7 @@ Project API schemas
 from typing import Optional, List
 from pydantic import BaseModel, Field
 from datetime import datetime
+from app.schemas.common import PaginatedResponse, PaginationMeta
 
 
 class ProjectBase(BaseModel):
@@ -47,10 +48,9 @@ class ProjectHierarchyResponse(ProjectResponse):
     children: List['ProjectHierarchyResponse'] = []
 
 
-class ProjectListResponse(BaseModel):
-    """Response schema for project list"""
-    projects: List[ProjectResponse]
-    pagination: dict
+class ProjectListResponse(PaginatedResponse[ProjectResponse]):
+    """Response schema for project list following JSON API standard"""
+    pass
 
 
 # Update forward reference

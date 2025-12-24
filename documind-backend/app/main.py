@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
+from datetime import datetime
 import structlog
 
 from app.core.config import settings
@@ -29,14 +30,121 @@ logger = get_logger(__name__)
 # Initialize rate limiter (import from rate_limit module)
 from app.core.rate_limit import limiter
 
-# Create FastAPI application
+# Create FastAPI application with enhanced OpenAPI documentation
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
-    description="Secure Enterprise Document Analysis Platform - Backend API",
+    description="""
+    ## DocuMind AI - Secure Enterprise Document Analysis Platform
+    
+    A comprehensive API for document analysis, querying, and management.
+    
+    ### Features
+    - 📄 Document upload and processing
+    - 🔍 AI-powered document querying
+    - 📊 Analytics and insights
+    - 👥 Multi-user organization support
+    - 🔐 Secure authentication and authorization
+    - ☁️ Cloud storage integration
+    
+    ### API Standards
+    - **JSON API Standard**: All responses follow JSON API specification
+    - **Error Handling**: Standardized error codes and messages
+    - **Pagination**: Consistent pagination format across all list endpoints
+    - **Filtering**: Advanced filtering with multiple operators
+    - **Sorting**: Multi-field sorting support
+    
+    ### Authentication
+    Most endpoints require authentication via Bearer token in the Authorization header.
+    
+    ### Versioning
+    Current API version: **v1**
+    - Base URL: `/api/v1`
+    - Version is specified in the URL path
+    - Backward compatibility maintained within major versions
+    
+    ### Error Codes
+    Standard error codes are used across all endpoints:
+    - `VALIDATION_ERROR` (422): Request validation failed
+    - `AUTHENTICATION_REQUIRED` (401): Authentication required
+    - `INSUFFICIENT_PERMISSIONS` (403): Access denied
+    - `RESOURCE_NOT_FOUND` (404): Resource not found
+    - `RATE_LIMIT_EXCEEDED` (429): Too many requests
+    - `INTERNAL_SERVER_ERROR` (500): Server error
+    
+    For more information, visit our [documentation](https://docs.documind.ai).
+    """,
     docs_url="/docs" if settings.DEBUG else None,
     redoc_url="/redoc" if settings.DEBUG else None,
     openapi_url="/openapi.json" if settings.DEBUG else None,
+    openapi_tags=[
+        {
+            "name": "Health",
+            "description": "Health check and system status endpoints"
+        },
+        {
+            "name": "Authentication",
+            "description": "User authentication and authorization"
+        },
+        {
+            "name": "Documents",
+            "description": "Document management and processing"
+        },
+        {
+            "name": "Query",
+            "description": "AI-powered document querying"
+        },
+        {
+            "name": "Projects",
+            "description": "Project organization and management"
+        },
+        {
+            "name": "Collections",
+            "description": "Vector store collections management"
+        },
+        {
+            "name": "Analyses",
+            "description": "Saved analyses and insights"
+        },
+        {
+            "name": "Activity",
+            "description": "Activity feed and audit logs"
+        },
+        {
+            "name": "Metrics",
+            "description": "Analytics and metrics"
+        },
+        {
+            "name": "Cloud Storage",
+            "description": "Cloud storage integration (Google Drive, OneDrive, Box, SharePoint)"
+        },
+        {
+            "name": "Organizations",
+            "description": "Organization management"
+        },
+        {
+            "name": "Tags",
+            "description": "Tag management"
+        },
+        {
+            "name": "System",
+            "description": "System administration endpoints"
+        },
+        {
+            "name": "Developer",
+            "description": "Developer API key management"
+        },
+        {
+            "name": "Audit",
+            "description": "Audit log endpoints"
+        }
+    ],
+    servers=[
+        {
+            "url": settings.API_V1_PREFIX,
+            "description": "API v1 Base URL"
+        }
+    ] if settings.DEBUG else []
 )
 
 # Add rate limit exception handler
@@ -46,23 +154,31 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # Add custom exception handler
 @app.exception_handler(DocuMindException)
 async def documind_exception_handler(request: Request, exc: DocuMindException):
-    """Handle custom application exceptions"""
+    """Handle custom application exceptions with standardized error format"""
     logger.error(
         "application_error",
         error_type=type(exc).__name__,
+        error_code=exc.error_code,
         message=exc.message,
         status_code=exc.status_code,
         details=exc.details,
         path=request.url.path,
     )
+    
+    # Generate request ID if available
+    request_id = getattr(request.state, "request_id", None)
+    
     return JSONResponse(
         status_code=exc.status_code,
         content={
             "error": {
+                "code": exc.error_code,
                 "message": exc.message,
                 "type": type(exc).__name__,
                 "details": exc.details,
-            }
+            },
+            "timestamp": datetime.utcnow().isoformat(),
+            "request_id": request_id
         },
     )
 
