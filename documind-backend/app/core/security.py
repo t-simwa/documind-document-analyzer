@@ -123,3 +123,27 @@ def verify_api_key(plain_key: str, hashed_key: str) -> bool:
     sha256_hash = hashlib.sha256(plain_key.encode('utf-8')).hexdigest()
     # Then verify against the bcrypt hash
     return verify_password(sha256_hash, hashed_key)
+
+
+def generate_verification_token() -> str:
+    """Generate a secure verification token"""
+    import secrets
+    import base64
+    
+    # Generate 32 random bytes
+    random_bytes = secrets.token_bytes(32)
+    # Encode to base64url (URL-safe base64)
+    token = base64.urlsafe_b64encode(random_bytes).decode('utf-8').rstrip('=')
+    return token
+
+
+def generate_reset_token() -> str:
+    """Generate a secure password reset token"""
+    import secrets
+    import base64
+    
+    # Generate 32 random bytes
+    random_bytes = secrets.token_bytes(32)
+    # Encode to base64url (URL-safe base64)
+    token = base64.urlsafe_b64encode(random_bytes).decode('utf-8').rstrip('=')
+    return token

@@ -52,3 +52,91 @@ class UserMeResponse(BaseModel):
     """Current user response"""
     user: UserResponse
 
+
+# Email Verification Schemas
+class VerifyEmailRequest(BaseModel):
+    """Email verification request"""
+    token: str = Field(..., description="Email verification token")
+
+
+class VerifyEmailResponse(BaseModel):
+    """Email verification response"""
+    message: str
+    email_verified: bool
+
+
+# Password Reset Schemas
+class ForgotPasswordRequest(BaseModel):
+    """Forgot password request"""
+    email: EmailStr
+
+
+class ForgotPasswordResponse(BaseModel):
+    """Forgot password response"""
+    message: str
+
+
+class ResetPasswordRequest(BaseModel):
+    """Reset password request"""
+    token: str = Field(..., description="Password reset token")
+    new_password: str = Field(..., min_length=8, max_length=100)
+
+
+class ResetPasswordResponse(BaseModel):
+    """Reset password response"""
+    message: str
+
+
+# SSO Schemas
+class SSOInitiateRequest(BaseModel):
+    """SSO initiation request"""
+    provider: str = Field(..., description="SSO provider (google, microsoft, okta)")
+    redirect_uri: Optional[str] = None
+
+
+class SSOInitiateResponse(BaseModel):
+    """SSO initiation response"""
+    authorization_url: str
+    state: str
+
+
+class SSOCallbackRequest(BaseModel):
+    """SSO callback request"""
+    provider: str = Field(..., description="SSO provider")
+    code: str = Field(..., description="Authorization code from provider")
+    state: str = Field(..., description="State token for CSRF protection")
+    redirect_uri: Optional[str] = None
+
+
+class SSOCallbackResponse(BaseModel):
+    """SSO callback response"""
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    expires_in: int
+    user: UserResponse
+
+
+# Two-Factor Authentication Schemas
+class TwoFactorSetupResponse(BaseModel):
+    """2FA setup response"""
+    secret: str  # TOTP secret key
+    qr_code_url: str  # QR code URL for authenticator app
+    backup_codes: list[str]  # Backup codes for recovery
+
+
+class TwoFactorVerifyRequest(BaseModel):
+    """2FA verification request"""
+    code: str = Field(..., description="TOTP code from authenticator app")
+    backup_code: Optional[str] = Field(None, description="Backup code (alternative to TOTP code)")
+
+
+class TwoFactorVerifyResponse(BaseModel):
+    """2FA verification response"""
+    verified: bool
+    message: str
+
+
+class TwoFactorDisableRequest(BaseModel):
+    """2FA disable request"""
+    password: str = Field(..., description="User password for verification")

@@ -213,6 +213,26 @@ class Settings(BaseSettings):
     # OAuth Token Encryption (use same SECRET_KEY or separate)
     OAUTH_TOKEN_ENCRYPTION_KEY: Optional[str] = None  # If None, uses SECRET_KEY
     
+    # Email Configuration
+    SMTP_HOST: str = "localhost"
+    SMTP_PORT: int = 587
+    SMTP_USER: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+    SMTP_USE_TLS: bool = True
+    FROM_EMAIL: str = "noreply@documind.ai"
+    FROM_NAME: str = "DocuMind"
+    FRONTEND_URL: str = "http://localhost:5173"
+    
+    # SSO Configuration
+    SSO_GOOGLE_CLIENT_ID: Optional[str] = None
+    SSO_GOOGLE_CLIENT_SECRET: Optional[str] = None
+    SSO_MICROSOFT_CLIENT_ID: Optional[str] = None
+    SSO_MICROSOFT_CLIENT_SECRET: Optional[str] = None
+    SSO_OKTA_DOMAIN: Optional[str] = None
+    SSO_OKTA_CLIENT_ID: Optional[str] = None
+    SSO_OKTA_CLIENT_SECRET: Optional[str] = None
+    SSO_REDIRECT_URI: str = "http://localhost:5173/auth/sso/callback"
+    
     @field_validator("CORS_ORIGINS", "CORS_METHODS", "CORS_HEADERS", "ALLOWED_EXTENSIONS", mode="before")
     @classmethod
     def parse_comma_separated(cls, v: Union[str, List[str]]) -> List[str]:

@@ -17,12 +17,26 @@ class User(BeanieDocument):
     is_superuser: bool = False
     organization_id: Optional[str] = None
     favorite_project_ids: List[str] = Field(default_factory=list)  # List of favorited project IDs
+    # Email verification
+    email_verified: bool = False
+    email_verification_token: Optional[str] = None
+    email_verification_token_expires_at: Optional[datetime] = None
+    # Password reset
+    password_reset_token: Optional[str] = None
+    password_reset_token_expires_at: Optional[datetime] = None
+    # Two-Factor Authentication (2FA)
+    two_factor_enabled: bool = False
+    two_factor_secret: Optional[str] = None  # TOTP secret key (encrypted)
+    two_factor_backup_codes: List[str] = Field(default_factory=list)  # Backup codes (hashed)
+    # SSO
+    sso_provider: Optional[str] = None  # google, microsoft, okta, etc.
+    sso_id: Optional[str] = None  # External SSO user ID
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     
     class Settings:
         name = "users"
-        indexes = ["email"]
+        indexes = ["email", "email_verification_token", "password_reset_token", "sso_id"]
 
 
 class Organization(BeanieDocument):
