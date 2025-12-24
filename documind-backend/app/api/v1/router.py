@@ -18,6 +18,7 @@ from app.api.v1.analyses import routes as analyses_routes
 from app.api.v1.organizations import routes as organizations_routes
 from app.api.v1.activity import routes as activity_routes
 from app.api.v1.metrics import routes as metrics_routes
+from app.api.v1.cloud_storage import routes as cloud_storage_routes
 from app.core.config import settings
 
 # Create main v1 router
@@ -104,5 +105,11 @@ api_router.include_router(
     metrics_routes.router,
     prefix="/metrics",
     tags=["Metrics"]
+)
+
+api_router.include_router(
+    cloud_storage_routes.router,
+    prefix="/cloud-storage",
+    tags=["Cloud Storage"]
 )
 

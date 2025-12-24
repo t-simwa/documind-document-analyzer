@@ -11,7 +11,7 @@ pydantic-settings==2.1.0
 # Security
 passlib[bcrypt]==1.7.4
 python-jose[cryptography]==3.3.0
-cryptography==41.0.7
+cryptography==41.0.7  # Also used for OAuth token encryption
 
 # CORS and Middleware
 starlette==0.37.2

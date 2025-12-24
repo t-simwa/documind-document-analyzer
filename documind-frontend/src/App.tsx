@@ -23,6 +23,7 @@ import Profile from "./pages/Profile";
 import OrganizationSettings from "./pages/OrganizationSettings";
 import UserManagement from "./pages/UserManagement";
 import NotFound from "./pages/NotFound";
+import OAuthCallback from "./pages/OAuthCallback";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +46,8 @@ const App = () => (
           <Route path="/products/analytics" element={<AnalyticsPage />} />
           <Route path="/products/mobile" element={<MobilePage />} />
           <Route path="/resources" element={<ResourcesPage />} />
+          {/* OAuth Callback Routes */}
+          <Route path="/auth/:provider/callback" element={<OAuthCallback />} />
             <Route
               path="/app"
               element={

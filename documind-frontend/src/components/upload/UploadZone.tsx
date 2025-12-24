@@ -1,9 +1,13 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { Upload, FileText, X, ArrowRight, Loader2, File, AlertCircle } from "lucide-react";
+import { Upload, FileText, X, ArrowRight, Loader2, File, AlertCircle, Cloud } from "lucide-react";
 import { ProjectSelector } from "@/components/projects/ProjectSelector";
+import { CloudStorageConnector } from "@/components/cloud-storage/CloudStorageConnector";
+import { CloudFilePicker } from "@/components/cloud-storage/CloudFilePicker";
+import { cloudStorageApi, type CloudStorageConnection } from "@/services/cloudStorageApi";
+import { Separator } from "@/components/ui/separator";
 
 interface UploadZoneProps {
   onUpload: (files: File[], projectId?: string | null) => void;
@@ -39,6 +43,10 @@ export const UploadZone = ({ onUpload, isUploading, uploadProgress }: UploadZone
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [projectId, setProjectId] = useState<string | null>(null);
+  const [showCloudStorage, setShowCloudStorage] = useState(false);
+  const [connections, setConnections] = useState<CloudStorageConnection[]>([]);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
 
   const validateFiles = (files: File[]) => {
     const validTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain', 'text/markdown'];
@@ -98,8 +106,72 @@ export const UploadZone = ({ onUpload, isUploading, uploadProgress }: UploadZone
     }
   };
 
+  useEffect(() => {
+    if (showCloudStorage) {
+      loadConnections();
+    }
+  }, [showCloudStorage]);
+
+  const loadConnections = async () => {
+    try {
+      const conns = await cloudStorageApi.listConnections();
+      setConnections(conns);
+    } catch (error) {
+      console.error("Failed to load connections:", error);
+    }
+  };
+
+  const handleCloudFileSelect = (file: any) => {
+    // File import is handled by CloudFilePicker component
+    // This callback can be used for additional actions if needed
+  };
+
   return (
-    <div className="w-full max-w-md mx-auto animate-in">
+    <div className="w-full max-w-md mx-auto animate-in space-y-3">
+      {/* Cloud Storage Section - Compact and Integrated */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowCloudStorage(!showCloudStorage)}
+            className="h-7 px-2.5 text-[10px] font-medium border-[#e5e5e5] dark:border-[#262626] text-[#171717] dark:text-[#fafafa] hover:bg-[#f5f5f5] dark:hover:bg-[#262626] hover:border-[#d4d4d4] dark:hover:border-[#404040]"
+          >
+            <Cloud className="h-3.5 w-3.5 mr-1.5" />
+            <span>{showCloudStorage ? "Hide" : "Import from"} Cloud Storage</span>
+          </Button>
+          {showCloudStorage && connections.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                const connectedProviders = connections.filter((c) => c.is_active).map((c) => c.provider);
+                if (connectedProviders.length > 0) {
+                  setSelectedProvider(connectedProviders[0]);
+                  setPickerOpen(true);
+                }
+              }}
+              className="h-6 px-2 text-[9px] text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa]"
+            >
+              Browse
+            </Button>
+          )}
+        </div>
+        
+        {showCloudStorage && (
+          <div className="p-2.5 rounded-md border border-[#e5e5e5] dark:border-[#262626] bg-[#fafafa] dark:bg-[#0a0a0a]">
+            <CloudStorageConnector
+              onConnected={(conn) => {
+                setConnections([...connections, conn]);
+              }}
+              onDisconnected={(id) => {
+                setConnections(connections.filter((c) => c.id !== id));
+              }}
+            />
+          </div>
+        )}
+      </div>
+
       {/* Drop Zone */}
       <div
         onDragEnter={handleDrag}
@@ -228,6 +300,22 @@ export const UploadZone = ({ onUpload, isUploading, uploadProgress }: UploadZone
             )}
           </Button>
         </div>
+      )}
+
+      {/* Cloud File Picker Dialog */}
+      {selectedProvider && (
+        <CloudFilePicker
+          provider={selectedProvider}
+          open={pickerOpen}
+          onOpenChange={(open) => {
+            setPickerOpen(open);
+            if (!open) {
+              setSelectedProvider(null);
+            }
+          }}
+          onSelectFile={handleCloudFileSelect}
+          projectId={projectId}
+        />
       )}
     </div>
   );

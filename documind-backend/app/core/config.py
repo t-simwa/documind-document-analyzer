@@ -191,6 +191,26 @@ class Settings(BaseSettings):
     HUGGINGFACE_API_KEY: str = ""  # Get free token from https://huggingface.co/settings/tokens
     HUGGINGFACE_MODEL: str = "mistralai/Mistral-7B-Instruct-v0.2"  # Default model
     
+    # Cloud Storage OAuth Configuration
+    # Google Drive
+    GOOGLE_DRIVE_CLIENT_ID: str = ""
+    GOOGLE_DRIVE_CLIENT_SECRET: str = ""
+    GOOGLE_DRIVE_REDIRECT_URI: str = "http://localhost:8080/auth/google-drive/callback"  # Update port to match your frontend
+    
+    # Microsoft OneDrive/SharePoint
+    ONEDRIVE_CLIENT_ID: str = ""
+    ONEDRIVE_CLIENT_SECRET: str = ""
+    ONEDRIVE_REDIRECT_URI: str = "http://localhost:8080/auth/onedrive/callback"  # Update port to match your frontend
+    SHAREPOINT_TENANT_ID: str = ""  # Optional, for SharePoint-specific auth
+    
+    # Box
+    BOX_CLIENT_ID: str = ""
+    BOX_CLIENT_SECRET: str = ""
+    BOX_REDIRECT_URI: str = "http://localhost:8080/auth/box/callback"  # Update port to match your frontend
+    
+    # OAuth Token Encryption (use same SECRET_KEY or separate)
+    OAUTH_TOKEN_ENCRYPTION_KEY: Optional[str] = None  # If None, uses SECRET_KEY
+    
     @field_validator("CORS_ORIGINS", "CORS_METHODS", "CORS_HEADERS", "ALLOWED_EXTENSIONS", mode="before")
     @classmethod
     def parse_comma_separated(cls, v: Union[str, List[str]]) -> List[str]:

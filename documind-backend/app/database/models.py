@@ -184,3 +184,27 @@ class QueryHistory(BeanieDocument):
             ("user_id", "created_at"),  # Compound index for user query history
             ("user_id", "success"),  # Compound index for success rate queries
         ]
+
+
+class CloudStorageConnection(BeanieDocument):
+    """Cloud storage OAuth connection model"""
+    user_id: str  # User who connected the storage
+    provider: str  # google_drive, onedrive, box, sharepoint
+    access_token: str  # Encrypted OAuth access token
+    refresh_token: Optional[str] = None  # Encrypted OAuth refresh token
+    token_expires_at: Optional[datetime] = None  # Token expiration time
+    account_email: Optional[str] = None  # Account email for display
+    account_name: Optional[str] = None  # Account name for display
+    is_active: bool = True  # Whether the connection is active
+    last_sync_at: Optional[datetime] = None  # Last time files were synced
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    class Settings:
+        name = "cloud_storage_connections"
+        indexes = [
+            ("user_id", "provider"),  # Compound index for unique user-provider pairs
+            "user_id",
+            "provider",
+            "is_active"
+        ]
