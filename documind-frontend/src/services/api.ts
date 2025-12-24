@@ -2157,6 +2157,59 @@ export const queryApi = {
 
     return response.json();
   },
+
+  /**
+   * Get query performance metrics
+   * @param startDate Optional start date for filtering (ISO format)
+   * @param endDate Optional end date for filtering (ISO format)
+   */
+  async getPerformance(startDate?: string, endDate?: string): Promise<{
+    success_rate: number;
+    average_response_time: number;
+    total_queries: number;
+    successful_queries: number;
+    failed_queries: number;
+    top_queries: Array<{
+      query: string;
+      count: number;
+      avg_time: number;
+    }>;
+    recent_errors: Array<{
+      query: string;
+      error: string;
+      timestamp: string;
+    }>;
+  }> {
+    try {
+      const params = new URLSearchParams();
+      if (startDate) params.append("start_date", startDate);
+      if (endDate) params.append("end_date", endDate);
+      
+      const queryString = params.toString();
+      const url = `${API_BASE_URL}/api/v1/query/performance${queryString ? `?${queryString}` : ""}`;
+      
+      const response = await fetch(url, {
+        method: "GET",
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: `HTTP ${response.status}: ${response.statusText}` }));
+        throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      // Handle network errors
+      if (error instanceof TypeError && error.message === "Failed to fetch") {
+        throw new Error(
+          `Failed to connect to backend server at ${API_BASE_URL}. ` +
+          `Please ensure the backend server is running.`
+        );
+      }
+      throw error;
+    }
+  },
 };
 
 // Tasks API - Processing Status Integration

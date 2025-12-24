@@ -925,48 +925,59 @@ async def get_recent_documents(
     Returns:
         List of recent documents
     """
-    user_id = current_user["id"]
-    
-    # Get recent documents sorted by upload date (most recent first)
-    documents = await DocumentModel.find(
-        DocumentModel.uploaded_by == user_id
-    ).sort(-DocumentModel.uploaded_at).limit(limit).to_list()
-    
-    # Update status from task queue
-    from app.workers.tasks import task_queue
-    for doc in documents:
-        task_id = f"doc_process_{str(doc.id)}"
-        task = task_queue.get_task(task_id)
-        if task:
-            task_status = task.get("status")
-            if task_status == "completed" and doc.status != "ready":
-                doc.status = "ready"
-                await doc.save()
-            elif task_status == "failed" and doc.status != "error":
-                doc.status = "error"
-                await doc.save()
-            elif task_status == "processing" and doc.status != "processing":
-                doc.status = "processing"
-                await doc.save()
-    
-    return {
-        "documents": [
-            DocumentResponse(
-                id=str(d.id),
-                name=d.name,
-                status=d.status,
-                uploaded_at=d.uploaded_at,
-                uploaded_by=d.uploaded_by,
-                size=d.size,
-                type=d.type,
-                project_id=d.project_id,
-                tags=d.tags,
-                metadata=d.metadata
-            )
-            for d in documents
-        ],
-        "total": len(documents)
-    }
+    try:
+        user_id = current_user["id"]
+        
+        # Get recent documents sorted by upload date (most recent first)
+        documents = await DocumentModel.find(
+            DocumentModel.uploaded_by == user_id
+        ).sort(-DocumentModel.uploaded_at).limit(limit).to_list()
+        
+        # Update status from task queue (optional, don't fail if task queue is unavailable)
+        try:
+            from app.workers.tasks import task_queue
+            for doc in documents:
+                task_id = f"doc_process_{str(doc.id)}"
+                task = task_queue.get_task(task_id)
+                if task:
+                    task_status = task.get("status")
+                    if task_status == "completed" and doc.status != "ready":
+                        doc.status = "ready"
+                        await doc.save()
+                    elif task_status == "failed" and doc.status != "error":
+                        doc.status = "error"
+                        await doc.save()
+                    elif task_status == "processing" and doc.status != "processing":
+                        doc.status = "processing"
+                        await doc.save()
+        except Exception as e:
+            # Log but don't fail if task queue update fails
+            logger.warning("failed_to_update_document_status_from_task_queue", error=str(e))
+        
+        return {
+            "documents": [
+                DocumentResponse(
+                    id=str(d.id),
+                    name=d.name,
+                    status=d.status,
+                    uploaded_at=d.uploaded_at,
+                    uploaded_by=d.uploaded_by,
+                    size=d.size,
+                    type=d.type,
+                    project_id=d.project_id,
+                    tags=d.tags,
+                    metadata=d.metadata
+                )
+                for d in documents
+            ],
+            "total": len(documents)
+        }
+    except Exception as e:
+        logger.exception("get_recent_documents_failed", error=str(e), user_id=current_user.get("id"))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch recent documents: {str(e)}"
+        )
 
 
 @router.get(
@@ -987,75 +998,86 @@ async def get_document_health(
         - Failed uploads
         - Storage warnings
     """
-    user_id = current_user["id"]
-    from datetime import timedelta
-    
-    now = datetime.utcnow()
-    one_hour_ago = now - timedelta(hours=1)
-    
-    # Get all user documents
-    all_documents = await DocumentModel.find(
-        DocumentModel.uploaded_by == user_id
-    ).to_list()
-    
-    # Update status from task queue
-    from app.workers.tasks import task_queue
-    for doc in all_documents:
-        task_id = f"doc_process_{str(doc.id)}"
-        task = task_queue.get_task(task_id)
-        if task:
-            task_status = task.get("status")
-            if task_status == "completed" and doc.status != "ready":
-                doc.status = "ready"
-                await doc.save()
-            elif task_status == "failed" and doc.status != "error":
-                doc.status = "error"
-                await doc.save()
-            elif task_status == "processing" and doc.status != "processing":
-                doc.status = "processing"
-                await doc.save()
-    
-    # Find processing errors
-    error_documents = [d for d in all_documents if d.status == "error"]
-    
-    # Find stuck documents (processing for >1 hour)
-    stuck_documents = [
-        d for d in all_documents
-        if d.status == "processing" and d.uploaded_at < one_hour_ago
-    ]
-    
-    # Calculate storage usage
-    total_storage_bytes = sum(d.size for d in all_documents)
-    storage_limit_bytes = 10 * 1024 * 1024 * 1024  # 10 GB default
-    storage_percentage = (total_storage_bytes / storage_limit_bytes) * 100 if storage_limit_bytes > 0 else 0
-    storage_warning = storage_percentage > 80
-    
-    return {
-        "total_documents": len(all_documents),
-        "error_count": len(error_documents),
-        "stuck_count": len(stuck_documents),
-        "storage_warning": storage_warning,
-        "storage_percentage": round(storage_percentage, 2),
-        "errors": [
-            {
-                "id": str(d.id),
-                "name": d.name,
-                "status": d.status,
-                "uploaded_at": d.uploaded_at.isoformat(),
-            }
-            for d in error_documents[:10]  # Limit to 10 most recent errors
-        ],
-        "stuck": [
-            {
-                "id": str(d.id),
-                "name": d.name,
-                "status": d.status,
-                "uploaded_at": d.uploaded_at.isoformat(),
-                "hours_stuck": round((now - d.uploaded_at).total_seconds() / 3600, 1),
-            }
-            for d in stuck_documents[:10]  # Limit to 10 most recent stuck documents
-        ],
-    }
+    try:
+        user_id = current_user["id"]
+        from datetime import timedelta
+        
+        now = datetime.utcnow()
+        one_hour_ago = now - timedelta(hours=1)
+        
+        # Get all user documents
+        all_documents = await DocumentModel.find(
+            DocumentModel.uploaded_by == user_id
+        ).to_list()
+        
+        # Update status from task queue (optional, don't fail if task queue is unavailable)
+        try:
+            from app.workers.tasks import task_queue
+            for doc in all_documents:
+                task_id = f"doc_process_{str(doc.id)}"
+                task = task_queue.get_task(task_id)
+                if task:
+                    task_status = task.get("status")
+                    if task_status == "completed" and doc.status != "ready":
+                        doc.status = "ready"
+                        await doc.save()
+                    elif task_status == "failed" and doc.status != "error":
+                        doc.status = "error"
+                        await doc.save()
+                    elif task_status == "processing" and doc.status != "processing":
+                        doc.status = "processing"
+                        await doc.save()
+        except Exception as e:
+            # Log but don't fail if task queue update fails
+            logger.warning("failed_to_update_document_status_from_task_queue", error=str(e))
+        
+        # Find processing errors
+        error_documents = [d for d in all_documents if d.status == "error"]
+        
+        # Find stuck documents (processing for >1 hour)
+        stuck_documents = [
+            d for d in all_documents
+            if d.status == "processing" and d.uploaded_at < one_hour_ago
+        ]
+        
+        # Calculate storage usage
+        total_storage_bytes = sum(d.size for d in all_documents)
+        storage_limit_bytes = 10 * 1024 * 1024 * 1024  # 10 GB default
+        storage_percentage = (total_storage_bytes / storage_limit_bytes) * 100 if storage_limit_bytes > 0 else 0
+        storage_warning = storage_percentage > 80
+        
+        return {
+            "total_documents": len(all_documents),
+            "error_count": len(error_documents),
+            "stuck_count": len(stuck_documents),
+            "storage_warning": storage_warning,
+            "storage_percentage": round(storage_percentage, 2),
+            "errors": [
+                {
+                    "id": str(d.id),
+                    "name": d.name,
+                    "status": d.status,
+                    "uploaded_at": d.uploaded_at.isoformat(),
+                }
+                for d in error_documents[:10]  # Limit to 10 most recent errors
+            ],
+            "stuck": [
+                {
+                    "id": str(d.id),
+                    "name": d.name,
+                    "status": d.status,
+                    "uploaded_at": d.uploaded_at.isoformat(),
+                    "hours_stuck": round((now - d.uploaded_at).total_seconds() / 3600, 1),
+                }
+                for d in stuck_documents[:10]  # Limit to 10 most recent stuck documents
+            ],
+        }
+    except Exception as e:
+        logger.exception("get_document_health_failed", error=str(e), user_id=current_user.get("id"))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch document health: {str(e)}"
+        )
 
 
 @router.post(

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { metricsApi } from "@/services/api";
+import { metricsApi, queryApi } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { documentsApi } from "@/services/api";
 
@@ -23,17 +23,23 @@ export function MetricsRow() {
     try {
       setLoading(true);
       
-      // Fetch document and storage metrics
-      const [docMetrics, storageMetrics, allDocuments] = await Promise.all([
+      // Fetch document, storage, and query performance metrics
+      const [docMetrics, storageMetrics, allDocuments, queryPerformance] = await Promise.all([
         metricsApi.getDocumentMetrics(),
         metricsApi.getStorageMetrics(),
-        documentsApi.list({ limit: 1000 }).catch(() => ({ documents: [], total: 0 }))
+        documentsApi.list({ limit: 1000 }).catch(() => ({ documents: [], total: 0 })),
+        queryApi.getPerformance().catch(() => ({
+          success_rate: 0,
+          total_queries: 0,
+          successful_queries: 0,
+          failed_queries: 0
+        }))
       ]);
       
-      // Calculate query metrics (mock for now - would need query history API)
-      const totalQueries = 0; // TODO: Get from query history API
-      const successfulQueries = 0; // TODO: Get from query history API
-      const successRate = totalQueries > 0 ? (successfulQueries / totalQueries) * 100 : 0;
+      // Get query metrics from performance API
+      const totalQueries = queryPerformance.total_queries || 0;
+      const successfulQueries = queryPerformance.successful_queries || 0;
+      const successRate = queryPerformance.success_rate || 0;
       
       // Calculate queue status
       const processingDocs = allDocuments.documents.filter(d => d.status === "processing");

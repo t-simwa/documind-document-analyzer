@@ -120,3 +120,29 @@ class DocumentContradictionResponse(BaseModel):
     documents: List[ContradictionDocumentResponse]
     severity: str  # "low", "medium", "high"
     confidence: float  # 0-1
+
+
+# Query Performance Schemas
+class TopQueryResponse(BaseModel):
+    """Top query response schema"""
+    query: str
+    count: int
+    avg_time: float = 0.0  # Average response time in seconds
+
+
+class RecentErrorResponse(BaseModel):
+    """Recent error response schema"""
+    query: str
+    error: str
+    timestamp: datetime
+
+
+class QueryPerformanceResponse(BaseModel):
+    """Query performance metrics response schema"""
+    success_rate: float  # Percentage (0-100)
+    average_response_time: float  # In seconds
+    total_queries: int
+    successful_queries: int
+    failed_queries: int
+    top_queries: List[TopQueryResponse] = []
+    recent_errors: List[RecentErrorResponse] = []

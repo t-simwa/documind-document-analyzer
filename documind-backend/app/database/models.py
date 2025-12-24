@@ -161,3 +161,26 @@ class Activity(BeanieDocument):
             ("user_id", "created_at"),  # Compound index for user activity queries
             ("organization_id", "created_at"),  # Compound index for org activity queries
         ]
+
+
+class QueryHistory(BeanieDocument):
+    """Query history model for tracking user queries"""
+    user_id: str  # User who executed the query
+    query: str  # The query text
+    answer: str  # The generated answer
+    collection_name: str  # Collection name used
+    document_ids: List[str] = Field(default_factory=list)  # Document IDs queried
+    response_time: Optional[float] = None  # Response time in seconds
+    success: bool = True  # Whether the query was successful
+    error_message: Optional[str] = None  # Error message if query failed
+    metadata: dict = Field(default_factory=dict)  # Additional metadata (model, provider, usage, etc.)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    class Settings:
+        name = "query_history"
+        indexes = [
+            "user_id",
+            "created_at",
+            ("user_id", "created_at"),  # Compound index for user query history
+            ("user_id", "success"),  # Compound index for success rate queries
+        ]

@@ -98,7 +98,7 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
                 details=e.details,
                 path=request.url.path,
             )
-            return JSONResponse(
+            response = JSONResponse(
                 status_code=e.status_code,
                 content={
                     "error": {
@@ -108,6 +108,12 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
                     }
                 },
             )
+            # Add CORS headers to error response
+            origin = request.headers.get("origin")
+            if origin and origin in settings.CORS_ORIGINS if isinstance(settings.CORS_ORIGINS, list) else origin in str(settings.CORS_ORIGINS):
+                response.headers["Access-Control-Allow-Origin"] = origin
+                response.headers["Access-Control-Allow-Credentials"] = "true"
+            return response
         except Exception as e:
             logger.exception(
                 "unhandled_exception",
@@ -115,7 +121,7 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
                 message=str(e),
                 path=request.url.path,
             )
-            return JSONResponse(
+            response = JSONResponse(
                 status_code=500,
                 content={
                     "error": {
@@ -125,4 +131,15 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
                     }
                 },
             )
+            # Add CORS headers to error response
+            origin = request.headers.get("origin")
+            if origin:
+                # Check if origin is allowed
+                cors_origins = settings.CORS_ORIGINS
+                if isinstance(cors_origins, str):
+                    cors_origins = [o.strip() for o in cors_origins.split(",")]
+                if origin in cors_origins or settings.DEBUG:
+                    response.headers["Access-Control-Allow-Origin"] = origin
+                    response.headers["Access-Control-Allow-Credentials"] = "true"
+            return response
 

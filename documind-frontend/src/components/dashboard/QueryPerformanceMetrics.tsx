@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { ZapIcon, ClockIcon } from "./DashboardIcons";
 import { AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { queryApi } from "@/services/api";
 
 interface QueryPerformance {
   successRate: number;
@@ -33,30 +34,43 @@ export function QueryPerformanceMetrics() {
 
   useEffect(() => {
     fetchPerformance();
+    
+    // Refresh performance metrics every 30 seconds
+    const interval = setInterval(fetchPerformance, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchPerformance = async () => {
     try {
       setLoading(true);
       
-      // TODO: Replace with actual query history API
-      // For now, using mock data
-      const mockPerformance: QueryPerformance = {
-        successRate: 95.5,
-        averageResponseTime: 1.2,
-        totalQueries: 0, // Would come from query history
-        successfulQueries: 0,
-        failedQueries: 0,
-        topQueries: [],
-        recentErrors: []
+      const data = await queryApi.getPerformance();
+      
+      // Map backend response to component format
+      const performance: QueryPerformance = {
+        successRate: data.success_rate,
+        averageResponseTime: data.average_response_time,
+        totalQueries: data.total_queries,
+        successfulQueries: data.successful_queries,
+        failedQueries: data.failed_queries,
+        topQueries: data.top_queries.map(q => ({
+          query: q.query,
+          count: q.count,
+          avgTime: q.avg_time
+        })),
+        recentErrors: data.recent_errors.map(e => ({
+          query: e.query,
+          error: e.error,
+          timestamp: e.timestamp
+        }))
       };
       
-      setPerformance(mockPerformance);
+      setPerformance(performance);
     } catch (error) {
       console.error("Failed to fetch query performance:", error);
       toast({
         title: "Error",
-        description: "Failed to load query performance metrics",
+        description: error instanceof Error ? error.message : "Failed to load query performance metrics",
         variant: "destructive",
       });
       setPerformance(null);
