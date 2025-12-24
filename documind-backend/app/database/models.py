@@ -208,3 +208,28 @@ class CloudStorageConnection(BeanieDocument):
             "provider",
             "is_active"
         ]
+
+
+class DocumentShare(BeanieDocument):
+    """Document sharing model for share links with permissions"""
+    document_id: str  # Document being shared
+    share_token: str = Field(..., unique=True)  # Unique token for share link
+    permission: str = "view"  # view, comment, edit
+    access: str = "anyone"  # anyone, team, specific
+    allowed_users: List[str] = Field(default_factory=list)  # User IDs if access is "specific"
+    expires_at: Optional[datetime] = None  # Optional expiration date
+    created_by: str  # User who created the share link
+    is_active: bool = True  # Whether the share link is active
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    class Settings:
+        name = "document_shares"
+        indexes = [
+            "document_id",
+            "share_token",
+            "created_by",
+            "is_active",
+            ("document_id", "is_active"),  # Compound index for active shares per document
+            ("share_token", "is_active"),  # Compound index for token lookup
+        ]

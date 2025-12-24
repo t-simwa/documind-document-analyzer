@@ -17,7 +17,8 @@ from app.database.models import (
     SavedAnalysis,
     Activity,
     QueryHistory,
-    CloudStorageConnection
+    CloudStorageConnection,
+    DocumentShare
 )
 
 logger = structlog.get_logger(__name__)
@@ -46,7 +47,8 @@ async def connect_to_mongo():
                 SavedAnalysis,
                 Activity,
                 QueryHistory,
-                CloudStorageConnection
+                CloudStorageConnection,
+                DocumentShare
             ]
         )
         

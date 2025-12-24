@@ -117,3 +117,61 @@ class DocumentComparisonResponse(BaseModel):
     differences: List[ComparisonDifferenceResponse] = []
     generatedAt: datetime
 
+
+# Status, Reindex, and Share schemas
+class ProcessingStepStatus(BaseModel):
+    """Processing step status schema"""
+    step: str  # upload, security_scan, extract, ocr, chunk, embed, index
+    status: str  # pending, in_progress, completed, failed
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    error: Optional[str] = None
+
+
+class DocumentStatusResponse(BaseModel):
+    """Document processing status response schema"""
+    document_id: str
+    status: str  # processing, ready, error
+    current_step: Optional[str] = None
+    progress: float = Field(0.0, ge=0.0, le=100.0)  # Progress percentage (0-100)
+    steps: List[ProcessingStepStatus] = []
+    queue_position: Optional[int] = None
+    error_message: Optional[str] = None
+    updated_at: datetime
+
+
+class ReindexRequest(BaseModel):
+    """Request schema for document reindexing"""
+    force: bool = Field(False, description="Force reindex even if document is already indexed")
+
+
+class ReindexResponse(BaseModel):
+    """Response schema for document reindexing"""
+    document_id: str
+    message: str
+    status: str  # queued, processing, completed
+    started_at: datetime
+
+
+class CreateShareLinkRequest(BaseModel):
+    """Request schema for creating a share link"""
+    permission: str = Field("view", description="Permission level: view, comment, edit")
+    access: str = Field("anyone", description="Access level: anyone, team, specific")
+    allowed_users: Optional[List[str]] = Field(None, description="List of user IDs if access is 'specific'")
+    expires_at: Optional[datetime] = Field(None, description="Optional expiration date for the share link")
+
+
+class ShareLinkResponse(BaseModel):
+    """Response schema for share link"""
+    id: str
+    document_id: str
+    share_token: str
+    share_url: str
+    permission: str
+    access: str
+    allowed_users: Optional[List[str]] = None
+    expires_at: Optional[datetime] = None
+    created_at: datetime
+    created_by: str
+    is_active: bool
+

@@ -958,6 +958,70 @@ export const documentsApi = {
     return doc?.securityScan || null;
   },
 
+  async getStatus(id: string): Promise<{
+    document_id: string;
+    status: string;
+    current_step: string | null;
+    progress: number;
+    steps: Array<{
+      step: string;
+      status: string;
+      started_at: string | null;
+      completed_at: string | null;
+      error: string | null;
+    }>;
+    queue_position: number | null;
+    error_message: string | null;
+    updated_at: string;
+  }> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/documents/${id}/status`, {
+        method: "GET",
+        headers: {
+          ...getAuthHeaders(),
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: "Unknown error" }));
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Failed to get document status:", error);
+      throw error;
+    }
+  },
+
+  async reindex(id: string, force: boolean = false): Promise<{
+    document_id: string;
+    message: string;
+    status: string;
+    started_at: string;
+  }> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/documents/${id}/reindex`, {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ force }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: "Unknown error" }));
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Failed to reindex document:", error);
+      throw error;
+    }
+  },
+
   async getProcessingStatus(id: string): Promise<ProcessingStatus | null> {
     await delay(200);
     const doc = mockDocuments.find((d) => d.id === id);
@@ -1697,26 +1761,46 @@ let mockAnalysisShareLinks: AnalysisShareLink[] = [];
 
 export const sharingApi = {
   async createShareLink(request: CreateShareLinkRequest): Promise<ShareLink> {
-    await delay(400);
-    const shareToken = `share_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const shareUrl = `${window.location.origin}/shared/${shareToken}`;
-    
-    const shareLink: ShareLink = {
-      id: Date.now().toString(),
-      documentId: request.documentId,
-      shareToken,
-      shareUrl,
-      permission: request.permission,
-      access: request.access,
-      allowedUsers: request.allowedUsers,
-      expiresAt: request.expiresAt,
-      createdAt: new Date(),
-      createdBy: "user1",
-      isActive: true,
-    };
-    
-    mockShareLinks.push(shareLink);
-    return shareLink;
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/documents/${request.documentId}/share`, {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          permission: request.permission,
+          access: request.access,
+          allowed_users: request.allowedUsers,
+          expires_at: request.expiresAt ? request.expiresAt.toISOString() : null,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: "Unknown error" }));
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      // Map backend response to frontend format
+      return {
+        id: data.id,
+        documentId: data.document_id,
+        shareToken: data.share_token,
+        shareUrl: data.share_url,
+        permission: data.permission,
+        access: data.access,
+        allowedUsers: data.allowed_users,
+        expiresAt: data.expires_at ? new Date(data.expires_at) : undefined,
+        createdAt: new Date(data.created_at),
+        createdBy: data.created_by,
+        isActive: data.is_active,
+      };
+    } catch (error) {
+      console.error("Failed to create share link:", error);
+      throw error;
+    }
   },
 
   async getShareLinks(documentId: string): Promise<ShareLink[]> {

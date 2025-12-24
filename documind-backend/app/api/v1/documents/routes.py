@@ -30,7 +30,13 @@ from .schemas import (
     ComparisonSimilarityResponse,
     ComparisonDifferenceResponse,
     ComparisonExampleResponse,
-    ComparisonDifferenceDocumentResponse
+    ComparisonDifferenceDocumentResponse,
+    DocumentStatusResponse,
+    ProcessingStepStatus,
+    ReindexRequest,
+    ReindexResponse,
+    CreateShareLinkRequest,
+    ShareLinkResponse
 )
 from app.api.v1.tags.schemas import TagAssignRequest
 from app.services.retrieval import RetrievalService
@@ -1483,5 +1489,425 @@ async def remove_tag_from_document(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to remove tag: {str(e)}"
+        )
+
+
+@router.get(
+    "/{document_id}/status",
+    response_model=DocumentStatusResponse,
+    summary="Get document processing status",
+    description="Get detailed processing status for a document including current step and progress"
+)
+async def get_document_status(
+    document_id: str,
+    current_user: dict = Depends(require_auth)
+):
+    """
+    Get detailed processing status for a document (filtered by authenticated user)
+    
+    Args:
+        document_id: Document ID
+        
+    Returns:
+        DocumentStatusResponse with processing status, steps, and progress
+    """
+    user_id = current_user["id"]
+    doc = await _get_user_document(document_id, user_id)
+    
+    try:
+        from app.workers.tasks import task_queue
+        
+        # Get task status
+        task_id = f"doc_process_{document_id}"
+        task = task_queue.get_task(task_id)
+        
+        # Define processing steps in order
+        step_order = ["upload", "security_scan", "extract", "ocr", "chunk", "embed", "index"]
+        steps = []
+        current_step = None
+        progress = 0.0
+        queue_position = None
+        error_message = None
+        
+        # Initialize all steps as pending
+        for step in step_order:
+            steps.append(ProcessingStepStatus(
+                step=step,
+                status="pending"
+            ))
+        
+        if task:
+            task_status = task.get("status", "pending")
+            task_result = task.get("result", {})
+            task_error = task.get("error")
+            
+            # Map task status to document status
+            if task_status == "completed":
+                doc.status = "ready"
+                # Mark all steps as completed
+                for step in steps:
+                    step.status = "completed"
+                    step.completed_at = datetime.utcnow()
+                progress = 100.0
+                current_step = "index"
+            elif task_status == "failed":
+                doc.status = "error"
+                error_message = task_error or "Processing failed"
+                # Find the failed step
+                failed_step = task_result.get("step", "unknown")
+                for step in steps:
+                    if step.step == failed_step:
+                        step.status = "failed"
+                        step.error = error_message
+                    elif step_order.index(step.step) < step_order.index(failed_step) if failed_step in step_order else False:
+                        step.status = "completed"
+                        step.completed_at = datetime.utcnow()
+            elif task_status == "processing":
+                doc.status = "processing"
+                # Get current step from task result
+                current_step_name = task_result.get("step", "upload")
+                current_step = current_step_name
+                
+                # Calculate progress based on step
+                if current_step_name in step_order:
+                    step_index = step_order.index(current_step_name)
+                    # Progress is based on which step we're on (each step is ~14% of total)
+                    progress = min(100.0, (step_index + 1) * (100.0 / len(step_order)))
+                    
+                    # Mark steps before current as completed
+                    for i, step in enumerate(steps):
+                        if i < step_index:
+                            step.status = "completed"
+                            step.completed_at = datetime.utcnow()
+                        elif i == step_index:
+                            step.status = "in_progress"
+                            step.started_at = datetime.utcnow()
+                        else:
+                            step.status = "pending"
+        else:
+            # No task found - check document status
+            if doc.status == "ready":
+                # All steps completed
+                for step in steps:
+                    step.status = "completed"
+                    step.completed_at = datetime.utcnow()
+                progress = 100.0
+                current_step = "index"
+            elif doc.status == "error":
+                error_message = "Document processing failed"
+                # Mark up to extract as completed (since we got to document creation)
+                for step in steps:
+                    if step.step in ["upload", "security_scan"]:
+                        step.status = "completed"
+                    else:
+                        step.status = "failed"
+                        step.error = error_message
+            else:
+                # Still processing or unknown
+                doc.status = "processing"
+                current_step = "upload"
+                progress = 10.0
+        
+        # Save document if status was updated
+        await doc.save()
+        
+        return DocumentStatusResponse(
+            document_id=document_id,
+            status=doc.status,
+            current_step=current_step,
+            progress=progress,
+            steps=steps,
+            queue_position=queue_position,
+            error_message=error_message,
+            updated_at=datetime.utcnow()
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("get_document_status_failed", document_id=document_id, error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get document status: {str(e)}"
+        )
+
+
+@router.post(
+    "/{document_id}/reindex",
+    response_model=ReindexResponse,
+    summary="Reindex document",
+    description="Reindex a document in the vector store. Useful if document content was updated or indexing failed."
+)
+async def reindex_document(
+    document_id: str,
+    request: ReindexRequest,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(require_auth)
+):
+    """
+    Reindex a document in the vector store (filtered by authenticated user)
+    
+    Args:
+        document_id: Document ID to reindex
+        request: Reindex request with optional force flag
+        
+    Returns:
+        ReindexResponse with reindex status
+    """
+    user_id = current_user["id"]
+    doc = await _get_user_document(document_id, user_id)
+    
+    try:
+        # Check if document has a file path
+        if not doc.file_path:
+            raise HTTPException(
+                status_code=400,
+                detail="Document file path not found. Cannot reindex document without file."
+            )
+        
+        # Check if document is already indexed (unless force is True)
+        if not request.force:
+            from app.services.vector_store import VectorStoreService
+            from app.services.embeddings import EmbeddingService
+            
+            embedding_service = EmbeddingService()
+            vector_store = VectorStoreService(dimension=embedding_service.get_embedding_dimension())
+            collection_name = getattr(settings, "VECTOR_STORE_COLLECTION_PREFIX", "documind_documents")
+            tenant_id = doc.metadata.get("tenant_id") if doc.metadata else None
+            
+            # Check if document chunks exist in vector store
+            dummy_embedding = [0.0] * embedding_service.get_embedding_dimension()
+            search_result = await vector_store.search(
+                query_embedding=dummy_embedding,
+                collection_name=collection_name,
+                top_k=1,
+                tenant_id=tenant_id,
+                filter={"document_id": document_id}
+            )
+            
+            if search_result.ids and len(search_result.ids) > 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Document is already indexed. Use force=true to reindex anyway."
+                )
+        
+        # Get storage service
+        storage = get_storage()
+        
+        # Download file for processing
+        file_content = await storage.download_file(doc.file_path)
+        
+        # Create temporary file for processing
+        import tempfile
+        import os
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=f"_{doc.name}")
+        temp_file_path = temp_file.name
+        temp_file.write(file_content)
+        temp_file.close()
+        
+        # Delete existing chunks from vector store before reindexing
+        try:
+            from app.services.vector_store import VectorStoreService
+            from app.services.embeddings import EmbeddingService
+            
+            embedding_service = EmbeddingService()
+            vector_store = VectorStoreService(dimension=embedding_service.get_embedding_dimension())
+            collection_name = getattr(settings, "VECTOR_STORE_COLLECTION_PREFIX", "documind_documents")
+            tenant_id = doc.metadata.get("tenant_id") if doc.metadata else None
+            
+            # Find all chunks for this document
+            dummy_embedding = [0.0] * embedding_service.get_embedding_dimension()
+            search_result = await vector_store.search(
+                query_embedding=dummy_embedding,
+                collection_name=collection_name,
+                top_k=10000,  # Large limit to get all chunks
+                tenant_id=tenant_id,
+                filter={"document_id": document_id}
+            )
+            
+            # Delete existing chunks
+            if search_result.ids and len(search_result.ids) > 0:
+                await vector_store.delete_documents(
+                    document_ids=search_result.ids,
+                    collection_name=collection_name,
+                    tenant_id=tenant_id
+                )
+                logger.info(
+                    "existing_chunks_deleted_for_reindex",
+                    document_id=document_id,
+                    chunk_count=len(search_result.ids)
+                )
+        except Exception as e:
+            logger.warning("failed_to_delete_existing_chunks", document_id=document_id, error=str(e))
+            # Continue with reindexing even if deletion fails
+        
+        # Update document status to processing
+        doc.status = "processing"
+        await doc.save()
+        
+        # Start reindexing in background
+        background_tasks.add_task(
+            process_document_async,
+            document_id=document_id,
+            file_path=temp_file_path,
+            file_type=doc.type,
+            metadata={"project_id": doc.project_id, "filename": doc.name, "storage_path": doc.file_path, "reindex": True}
+        )
+        
+        # Log activity
+        await log_activity(
+            activity_type="reindex",
+            title="Document reindexing started",
+            description=f"{doc.name} is being reindexed",
+            user_id=user_id,
+            organization_id=current_user.get("organization_id"),
+            document_id=document_id,
+            project_id=doc.project_id,
+            status="processing",
+            metadata={"force": request.force}
+        )
+        
+        logger.info(
+            "document_reindex_started",
+            document_id=document_id,
+            force=request.force
+        )
+        
+        return ReindexResponse(
+            document_id=document_id,
+            message="Document reindexing has been queued",
+            status="queued",
+            started_at=datetime.utcnow()
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("reindex_document_failed", document_id=document_id, error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to reindex document: {str(e)}"
+        )
+
+
+@router.post(
+    "/{document_id}/share",
+    response_model=ShareLinkResponse,
+    summary="Share document",
+    description="Create a share link for a document with specified permissions and access control"
+)
+async def share_document(
+    document_id: str,
+    request: CreateShareLinkRequest,
+    current_user: dict = Depends(require_auth)
+):
+    """
+    Create a share link for a document (filtered by authenticated user)
+    
+    Args:
+        document_id: Document ID to share
+        request: Share link creation request with permissions and access settings
+        
+    Returns:
+        ShareLinkResponse with share link details
+    """
+    user_id = current_user["id"]
+    doc = await _get_user_document(document_id, user_id)
+    
+    try:
+        from app.database.models import DocumentShare as DocumentShareModel
+        import secrets
+        
+        # Validate permission
+        valid_permissions = ["view", "comment", "edit"]
+        if request.permission not in valid_permissions:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid permission. Must be one of: {', '.join(valid_permissions)}"
+            )
+        
+        # Validate access
+        valid_access = ["anyone", "team", "specific"]
+        if request.access not in valid_access:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid access. Must be one of: {', '.join(valid_access)}"
+            )
+        
+        # Validate allowed_users if access is specific
+        if request.access == "specific":
+            if not request.allowed_users or len(request.allowed_users) == 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail="allowed_users must be provided when access is 'specific'"
+                )
+        
+        # Generate unique share token
+        share_token = f"share_{secrets.token_urlsafe(32)}"
+        
+        # Generate share URL (frontend will handle the actual route)
+        from app.core.config import settings
+        frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:5173")
+        share_url = f"{frontend_url}/shared/{share_token}"
+        
+        # Create share link
+        share_link = DocumentShareModel(
+            document_id=document_id,
+            share_token=share_token,
+            permission=request.permission,
+            access=request.access,
+            allowed_users=request.allowed_users or [],
+            expires_at=request.expires_at,
+            created_by=user_id,
+            is_active=True
+        )
+        await share_link.insert()
+        
+        # Log activity
+        await log_activity(
+            activity_type="share",
+            title="Document shared",
+            description=f"{doc.name} was shared with {request.access} access",
+            user_id=user_id,
+            organization_id=current_user.get("organization_id"),
+            document_id=document_id,
+            project_id=doc.project_id,
+            status="success",
+            metadata={
+                "permission": request.permission,
+                "access": request.access,
+                "share_token": share_token
+            }
+        )
+        
+        logger.info(
+            "document_share_created",
+            document_id=document_id,
+            share_token=share_token,
+            permission=request.permission,
+            access=request.access
+        )
+        
+        return ShareLinkResponse(
+            id=str(share_link.id),
+            document_id=document_id,
+            share_token=share_token,
+            share_url=share_url,
+            permission=request.permission,
+            access=request.access,
+            allowed_users=request.allowed_users if request.access == "specific" else None,
+            expires_at=request.expires_at,
+            created_at=share_link.created_at,
+            created_by=user_id,
+            is_active=True
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("share_document_failed", document_id=document_id, error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to create share link: {str(e)}"
         )
 
