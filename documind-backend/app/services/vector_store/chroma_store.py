@@ -175,6 +175,60 @@ class ChromaVectorStore(BaseVectorStore):
             logger.error("chroma_list_collections_error", error=str(e))
             return False
     
+    async def list_collections(
+        self,
+        tenant_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """List all collections"""
+        try:
+            collections = self.client.list_collections()
+            result = []
+            
+            for collection in collections:
+                collection_name = collection.name
+                
+                # Filter by tenant_id if provided
+                if tenant_id:
+                    if not collection_name.startswith(f"{tenant_id}_"):
+                        continue
+                    # Remove tenant prefix for display
+                    display_name = collection_name[len(f"{tenant_id}_"):]
+                else:
+                    # Only show collections without tenant prefix (or with documind prefix)
+                    if "_" in collection_name:
+                        prefix = collection_name.split("_")[0]
+                        if prefix not in ["documind"] and prefix.isdigit():
+                            # Skip tenant-prefixed collections when no tenant_id provided
+                            continue
+                    display_name = collection_name
+                
+                # Get collection metadata
+                metadata = collection.metadata or {}
+                
+                # Try to get document count
+                try:
+                    collection_obj = self.client.get_collection(name=collection_name)
+                    count_result = collection_obj.count()
+                    document_count = count_result if count_result is not None else 0
+                except Exception:
+                    document_count = 0
+                
+                result.append({
+                    "name": display_name,
+                    "full_name": collection_name,
+                    "metadata": metadata,
+                    "document_count": document_count
+                })
+            
+            logger.info("chroma_collections_listed", count=len(result))
+            return result
+        except Exception as e:
+            logger.error("chroma_list_collections_error", error=str(e))
+            raise VectorStoreError(
+                f"Failed to list collections: {str(e)}",
+                provider="chroma"
+            ) from e
+    
     async def add_documents(
         self,
         documents: List[VectorDocument],

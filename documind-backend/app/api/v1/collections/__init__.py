@@ -1,0 +1,4 @@
+"""
+Collections API module
+"""
+

@@ -188,6 +188,72 @@ class QdrantVectorStore(BaseVectorStore):
             logger.error("qdrant_list_collections_error", error=str(e))
             return False
     
+    async def list_collections(
+        self,
+        tenant_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """List all collections"""
+        try:
+            collections_response = self.client.get_collections()
+            collections = collections_response.collections
+            result = []
+            
+            for collection_info in collections:
+                collection_name = collection_info.name
+                
+                # Filter by tenant_id if provided
+                if tenant_id:
+                    if not collection_name.startswith(f"{tenant_id}_"):
+                        continue
+                    # Remove tenant prefix for display
+                    display_name = collection_name[len(f"{tenant_id}_"):]
+                else:
+                    # Only show collections without tenant prefix
+                    if "_" in collection_name and collection_name.split("_")[0] not in ["documind"]:
+                        continue
+                    display_name = collection_name
+                
+                # Get collection info
+                try:
+                    collection_info_full = self.client.get_collection(collection_name)
+                    document_count = getattr(collection_info_full, "points_count", 0)
+                    metadata = {
+                        "vectors_count": getattr(collection_info_full, "vectors_count", 0),
+                        "indexed_vectors_count": getattr(collection_info_full, "indexed_vectors_count", 0),
+                        "points_count": document_count
+                    }
+                    # Try to get config info safely
+                    if hasattr(collection_info_full, "config") and hasattr(collection_info_full.config, "params"):
+                        if hasattr(collection_info_full.config.params, "vectors"):
+                            if hasattr(collection_info_full.config.params.vectors, "size"):
+                                metadata["dimension"] = collection_info_full.config.params.vectors.size
+                            else:
+                                metadata["dimension"] = self.dimension
+                        else:
+                            metadata["dimension"] = self.dimension
+                    else:
+                        metadata["dimension"] = self.dimension
+                except Exception as e:
+                    logger.debug("qdrant_collection_info_error", collection=collection_name, error=str(e))
+                    metadata = {"dimension": self.dimension}
+                    document_count = 0
+                
+                result.append({
+                    "name": display_name,
+                    "full_name": collection_name,
+                    "metadata": metadata,
+                    "document_count": document_count
+                })
+            
+            logger.info("qdrant_collections_listed", count=len(result))
+            return result
+        except Exception as e:
+            logger.error("qdrant_list_collections_error", error=str(e))
+            raise VectorStoreError(
+                f"Failed to list collections: {str(e)}",
+                provider="qdrant"
+            ) from e
+    
     async def add_documents(
         self,
         documents: List[VectorDocument],

@@ -183,6 +183,67 @@ class PineconeVectorStore(BaseVectorStore):
             logger.error("pinecone_list_indexes_error", error=str(e))
             return False
     
+    async def list_collections(
+        self,
+        tenant_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """List all indexes"""
+        try:
+            indexes = self.client.list_indexes()
+            result = []
+            
+            for index_info in indexes:
+                # Pinecone returns IndexList objects, extract name
+                index_name = index_info.name if hasattr(index_info, "name") else str(index_info)
+                
+                # Filter by tenant_id if provided
+                if tenant_id:
+                    if not index_name.startswith(f"{tenant_id}_"):
+                        continue
+                    # Remove tenant prefix for display
+                    display_name = index_name[len(f"{tenant_id}_"):]
+                else:
+                    # Only show indexes without tenant prefix (or with documind prefix)
+                    if "_" in index_name:
+                        prefix = index_name.split("_")[0]
+                        if prefix not in ["documind"] and prefix.isdigit():
+                            # Skip tenant-prefixed collections when no tenant_id provided
+                            continue
+                    display_name = index_name
+                
+                # Get index metadata
+                metadata = {
+                    "dimension": self.dimension,
+                    "metric": "cosine"
+                }
+                
+                # Try to get document count and additional info
+                try:
+                    index = self.client.Index(index_name)
+                    stats = index.describe_index_stats()
+                    document_count = stats.get("total_vector_count", 0)
+                    metadata["status"] = "ready"
+                except Exception as e:
+                    logger.debug("pinecone_index_stats_error", index=index_name, error=str(e))
+                    document_count = 0
+                    metadata["status"] = "unknown"
+                
+                result.append({
+                    "name": display_name,
+                    "full_name": index_name,
+                    "metadata": metadata,
+                    "document_count": document_count
+                })
+            
+            logger.info("pinecone_indexes_listed", count=len(result))
+            return result
+        except Exception as e:
+            logger.error("pinecone_list_indexes_error", error=str(e))
+            raise VectorStoreError(
+                f"Failed to list indexes: {str(e)}",
+                provider="pinecone"
+            ) from e
+    
     async def add_documents(
         self,
         documents: List[VectorDocument],

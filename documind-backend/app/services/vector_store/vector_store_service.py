@@ -108,6 +108,13 @@ class VectorStoreService:
             tenant_id=tenant_id
         )
     
+    async def list_collections(
+        self,
+        tenant_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """List all collections/indexes"""
+        return await self.store.list_collections(tenant_id=tenant_id)
+    
     async def add_documents(
         self,
         documents: List[VectorDocument],

@@ -123,6 +123,25 @@ class BaseVectorStore(ABC):
         pass
     
     @abstractmethod
+    async def list_collections(
+        self,
+        tenant_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        List all collections/indexes
+        
+        Args:
+            tenant_id: Optional tenant ID for multi-tenancy (filters collections)
+            
+        Returns:
+            List of collection information dictionaries with:
+            - name: Collection name
+            - metadata: Collection metadata (if available)
+            - document_count: Number of documents (if available)
+        """
+        pass
+    
+    @abstractmethod
     async def add_documents(
         self,
         documents: List[VectorDocument],
