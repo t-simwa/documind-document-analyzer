@@ -20,6 +20,9 @@ from app.api.v1.activity import routes as activity_routes
 from app.api.v1.metrics import routes as metrics_routes
 from app.api.v1.cloud_storage import routes as cloud_storage_routes
 from app.api.v1.collections import routes as collections_routes
+from app.api.v1.system import routes as system_routes
+from app.api.v1.developer import routes as developer_routes
+from app.api.v1.audit import routes as audit_routes
 from app.core.config import settings
 
 # Create main v1 router
@@ -118,5 +121,23 @@ api_router.include_router(
     collections_routes.router,
     prefix="/collections",
     tags=["Collections"]
+)
+
+api_router.include_router(
+    system_routes.router,
+    prefix="/system",
+    tags=["System"]
+)
+
+api_router.include_router(
+    developer_routes.router,
+    prefix="/developer",
+    tags=["Developer"]
+)
+
+api_router.include_router(
+    audit_routes.router,
+    prefix="/audit",
+    tags=["Audit"]
 )
 

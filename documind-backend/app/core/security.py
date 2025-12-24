@@ -87,3 +87,39 @@ def decode_refresh_token(token: str) -> Optional[dict]:
         return payload
     except JWTError:
         return None
+
+
+def generate_api_key(prefix: str = "dm_live_") -> str:
+    """Generate a secure API key"""
+    import secrets
+    import base64
+    
+    # Generate 32 random bytes
+    random_bytes = secrets.token_bytes(32)
+    # Encode to base64url (URL-safe base64)
+    key_suffix = base64.urlsafe_b64encode(random_bytes).decode('utf-8').rstrip('=')
+    # Combine prefix and suffix
+    api_key = f"{prefix}{key_suffix}"
+    return api_key
+
+
+def hash_api_key(api_key: str) -> str:
+    """Hash an API key using bcrypt (similar to password hashing)"""
+    # API keys can be longer than 72 bytes, so we hash them first with SHA256
+    # then use bcrypt on the hash
+    import hashlib
+    
+    # First hash with SHA256 to get a fixed-length string
+    sha256_hash = hashlib.sha256(api_key.encode('utf-8')).hexdigest()
+    # Then use bcrypt on the SHA256 hash
+    return get_password_hash(sha256_hash)
+
+
+def verify_api_key(plain_key: str, hashed_key: str) -> bool:
+    """Verify an API key against its hash"""
+    import hashlib
+    
+    # Hash the plain key with SHA256 first
+    sha256_hash = hashlib.sha256(plain_key.encode('utf-8')).hexdigest()
+    # Then verify against the bcrypt hash
+    return verify_password(sha256_hash, hashed_key)

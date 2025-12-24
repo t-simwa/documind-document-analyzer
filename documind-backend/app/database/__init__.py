@@ -18,7 +18,9 @@ from app.database.models import (
     Activity,
     QueryHistory,
     CloudStorageConnection,
-    DocumentShare
+    DocumentShare,
+    APIKey,
+    AuditLog
 )
 
 logger = structlog.get_logger(__name__)
@@ -48,7 +50,9 @@ async def connect_to_mongo():
                 Activity,
                 QueryHistory,
                 CloudStorageConnection,
-                DocumentShare
+                DocumentShare,
+                APIKey,
+                AuditLog
             ]
         )
         

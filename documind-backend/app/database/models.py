@@ -233,3 +233,57 @@ class DocumentShare(BeanieDocument):
             ("document_id", "is_active"),  # Compound index for active shares per document
             ("share_token", "is_active"),  # Compound index for token lookup
         ]
+
+
+class APIKey(BeanieDocument):
+    """API key model for developer API access"""
+    user_id: str  # User who owns the API key
+    name: str  # User-friendly name for the key
+    key_hash: str  # Hashed API key (never store plain text)
+    key_prefix: str  # First 8 characters of the key for display (e.g., "dm_live_")
+    last_used_at: Optional[datetime] = None  # Last time the key was used
+    expires_at: Optional[datetime] = None  # Optional expiration date
+    is_active: bool = True  # Whether the key is active
+    scopes: List[str] = Field(default_factory=list)  # API scopes/permissions
+    metadata: dict = Field(default_factory=dict)  # Additional metadata
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    class Settings:
+        name = "api_keys"
+        indexes = [
+            "user_id",
+            "key_hash",
+            "is_active",
+            ("user_id", "is_active"),  # Compound index for user's active keys
+            ("key_hash", "is_active"),  # Compound index for key lookup
+        ]
+
+
+class AuditLog(BeanieDocument):
+    """Audit log model for tracking system and user actions"""
+    action: str  # Action type (e.g., "api_key.created", "document.uploaded", "user.login")
+    user_id: Optional[str] = None  # User who performed the action (None for system actions)
+    user_email: Optional[str] = None  # Cached user email for faster queries
+    resource_type: Optional[str] = None  # Type of resource affected (e.g., "document", "api_key", "user")
+    resource_id: Optional[str] = None  # ID of the resource affected
+    ip_address: Optional[str] = None  # IP address of the request
+    user_agent: Optional[str] = None  # User agent string
+    status: str = "success"  # success, error, warning
+    error_message: Optional[str] = None  # Error message if status is error
+    metadata: dict = Field(default_factory=dict)  # Additional context (request body, response, etc.)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    class Settings:
+        name = "audit_logs"
+        indexes = [
+            "action",
+            "user_id",
+            "resource_type",
+            "resource_id",
+            "status",
+            "created_at",
+            ("user_id", "created_at"),  # Compound index for user audit queries
+            ("action", "created_at"),  # Compound index for action-based queries
+            ("resource_type", "resource_id"),  # Compound index for resource queries
+        ]
