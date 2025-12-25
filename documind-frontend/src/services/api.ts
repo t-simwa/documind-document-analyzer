@@ -57,6 +57,7 @@ import { performSecurityScan } from "./securityScanService";
 import { processDocument, retryProcessing } from "./processingQueueService";
 import { API_BASE_URL, DEFAULT_COLLECTION_NAME } from "@/config/api";
 import { tokenStorage } from "./authService";
+import { apiClient } from "./apiClient";
 
 // Helper function to get auth headers
 const getAuthHeaders = (): Record<string, string> => {
@@ -136,21 +137,12 @@ export const projectsApi = {
       queryParams.append("page", page.toString());
       queryParams.append("limit", limit.toString());
 
-      const response = await fetch(`${API_BASE_URL}/api/v1/projects/?${queryParams.toString()}`, {
-        method: "GET",
+      const data = await apiClient.get<any>(`/api/v1/projects/?${queryParams.toString()}`, {
         headers: {
-          ...getAuthHeaders(),
           "Cache-Control": "no-cache",
         },
         cache: "no-store", // Prevent browser caching
       });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: "Failed to fetch projects" }));
-        throw new Error(error.detail || `HTTP ${response.status}`);
-      }
-
-      const data = await response.json();
       
       // Convert backend projects to frontend format
       const projects: Project[] = data.projects.map((p: any) => ({
@@ -198,17 +190,7 @@ export const projectsApi = {
 
   async get(id: string): Promise<Project> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/projects/${id}`, {
-        method: "GET",
-        headers: getAuthHeaders(),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: "Project not found" }));
-        throw new Error(error.detail || `HTTP ${response.status}`);
-      }
-
-      const p = await response.json();
+      const p = await apiClient.get<any>(`/api/v1/projects/${id}`);
       
       return {
         id: p.id,
@@ -233,24 +215,11 @@ export const projectsApi = {
 
   async create(data: { name: string; description?: string; parentId?: string | null }): Promise<Project> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/projects/`, {
-        method: "POST",
-        headers: {
-          ...getAuthHeaders(),
-        },
-        body: JSON.stringify({
-          name: data.name,
-          description: data.description,
-          parent_id: data.parentId || null,
-        }),
+      const p = await apiClient.post<any>("/api/v1/projects/", {
+        name: data.name,
+        description: data.description,
+        parent_id: data.parentId || null,
       });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: "Failed to create project" }));
-        throw new Error(error.detail || `HTTP ${response.status}`);
-      }
-
-      const p = await response.json();
       
       const newProject: Project = {
         id: p.id,
@@ -300,22 +269,12 @@ export const projectsApi = {
         body.parent_id = data.parentId;
       }
       
-      const response = await fetch(`${API_BASE_URL}/api/v1/projects/${id}`, {
-        method: "PUT",
+      const p = await apiClient.put<any>(`/api/v1/projects/${id}`, body, {
         headers: {
-          ...getAuthHeaders(),
           "Cache-Control": "no-cache",
         },
         cache: "no-store",
-        body: JSON.stringify(body),
       });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: "Failed to update project" }));
-        throw new Error(error.detail || `HTTP ${response.status}`);
-      }
-
-      const p = await response.json();
       
       const updatedProject: Project = {
         id: p.id,
@@ -349,15 +308,7 @@ export const projectsApi = {
 
   async delete(id: string): Promise<void> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/projects/${id}`, {
-        method: "DELETE",
-        headers: getAuthHeaders(),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: "Failed to delete project" }));
-        throw new Error(error.detail || `HTTP ${response.status}`);
-      }
+      await apiClient.delete(`/api/v1/projects/${id}`);
 
       // Remove from mock projects for compatibility
       mockProjects = mockProjects.filter((p) => p.id !== id);
@@ -379,21 +330,12 @@ export const projectsApi = {
 
   async getHierarchy(): Promise<Project[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/projects/hierarchy`, {
-        method: "GET",
+      const projects = await apiClient.get<any[]>("/api/v1/projects/hierarchy", {
         headers: {
-          ...getAuthHeaders(),
           "Cache-Control": "no-cache",
         },
         cache: "no-store", // Prevent browser caching
       });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: "Failed to fetch project hierarchy" }));
-        throw new Error(error.detail || `HTTP ${response.status}`);
-      }
-
-      const projects = await response.json();
       
       // Convert backend projects to frontend format recursively
       const convertProject = (p: any): Project => ({
@@ -440,21 +382,12 @@ export const projectsApi = {
       queryParams.append("page", page.toString());
       queryParams.append("limit", limit.toString());
 
-      const response = await fetch(`${API_BASE_URL}/api/v1/projects/favorites?${queryParams.toString()}`, {
-        method: "GET",
+      const data = await apiClient.get<any>(`/api/v1/projects/favorites?${queryParams.toString()}`, {
         headers: {
-          ...getAuthHeaders(),
           "Cache-Control": "no-cache",
         },
         cache: "no-store",
       });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: "Failed to fetch favorite projects" }));
-        throw new Error(error.detail || `HTTP ${response.status}`);
-      }
-
-      const data = await response.json();
       
       // Convert backend projects to frontend format
       const projects: Project[] = data.projects.map((p: any) => ({
@@ -482,17 +415,7 @@ export const projectsApi = {
 
   async toggleFavorite(projectId: string): Promise<Project> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/projects/${projectId}/favorite`, {
-        method: "POST",
-        headers: getAuthHeaders(),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: "Failed to toggle favorite" }));
-        throw new Error(error.detail || `HTTP ${response.status}`);
-      }
-
-      const p = await response.json();
+      const p = await apiClient.post<any>(`/api/v1/projects/${projectId}/favorite`, {});
       
       return {
         id: p.id,
@@ -1345,15 +1268,9 @@ export const documentsApi = {
 export const tagsApi = {
   async list(): Promise<DocumentTag[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/tags/`, {
-        method: "GET",
-        headers: {
-          ...getAuthHeaders(),
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
+      const data = await apiClient.get<any[]>("/api/v1/tags/");
+      
+      if (data) {
         // Convert backend tags to frontend format
         const tags: DocumentTag[] = data.map((tag: any) => ({
           id: tag.id,
@@ -1380,19 +1297,12 @@ export const tagsApi = {
 
   async create(name: string, color?: string): Promise<DocumentTag> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/tags/`, {
-        method: "POST",
-        headers: {
-          ...getAuthHeaders(),
-        },
-        body: JSON.stringify({
-          name,
-          color: color || "#6b7280",
-        }),
+      const tag = await apiClient.post<any>("/api/v1/tags/", {
+        name,
+        color: color || "#6b7280",
       });
-
-      if (response.ok) {
-        const tag = await response.json();
+      
+      if (tag) {
         // Convert backend tag to frontend format
         const newTag: DocumentTag = {
           id: tag.id,
@@ -1432,16 +1342,9 @@ export const tagsApi = {
       if (name !== undefined) updateData.name = name;
       if (color !== undefined) updateData.color = color;
 
-      const response = await fetch(`${API_BASE_URL}/api/v1/tags/${id}`, {
-        method: "PUT",
-        headers: {
-          ...getAuthHeaders(),
-        },
-        body: JSON.stringify(updateData),
-      });
-
-      if (response.ok) {
-        const tag = await response.json();
+      const tag = await apiClient.put<any>(`/api/v1/tags/${id}`, updateData);
+      
+      if (tag) {
         // Convert backend tag to frontend format
         const updatedTag: DocumentTag = {
           id: tag.id,
@@ -1479,25 +1382,15 @@ export const tagsApi = {
 
   async delete(id: string): Promise<void> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/tags/${id}`, {
-        method: "DELETE",
-        headers: {
-          ...getAuthHeaders(),
-        },
+      await apiClient.delete(`/api/v1/tags/${id}`);
+      
+      // Remove tag from mock tags
+      mockTags = mockTags.filter((t) => t.id !== id);
+      // Remove tag from all documents
+      mockDocuments.forEach((d) => {
+        d.tags = d.tags.filter((t) => t !== id);
       });
-
-      if (response.ok) {
-        // Remove tag from mock tags
-        mockTags = mockTags.filter((t) => t.id !== id);
-        // Remove tag from all documents
-        mockDocuments.forEach((d) => {
-          d.tags = d.tags.filter((t) => t !== id);
-        });
-        return;
-      } else {
-        const errorData = await response.json().catch(() => ({ detail: "Failed to delete tag" }));
-        throw new Error(errorData.detail || "Failed to delete tag");
-      }
+      return;
     } catch (error) {
       console.error("Failed to delete tag in backend, using mock data:", error);
       // Fallback to mock implementation
@@ -2136,33 +2029,14 @@ export const queryApi = {
    */
   async query(request: QueryRequest, signal?: AbortSignal): Promise<QueryResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/query/`, {
-        method: "POST",
-        headers: {
-          ...getAuthHeaders(),
-        },
-        body: JSON.stringify(request),
+      return await apiClient.post<QueryResponse>("/api/v1/query/", request, {
         signal, // Support cancellation
+        skipRetry: signal?.aborted, // Don't retry if already aborted
       });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: `HTTP ${response.status}: ${response.statusText}` }));
-        throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      return response.json();
     } catch (error) {
       // Handle cancellation
       if (error instanceof Error && error.name === "AbortError") {
         throw new Error("Query cancelled");
-      }
-      // Handle network errors (CORS, connection refused, etc.)
-      if (error instanceof TypeError && error.message === "Failed to fetch") {
-        throw new Error(
-          `Failed to connect to backend server at ${API_BASE_URL}. ` +
-          `Please ensure the backend server is running. ` +
-          `If using a different port, set VITE_API_BASE_URL in your .env file.`
-        );
       }
       throw error;
     }
@@ -2230,16 +2104,7 @@ export const queryApi = {
    * Get query history
    */
   async getHistory(): Promise<QueryHistoryResponse> {
-    const response = await fetch(`${API_BASE_URL}/api/v1/query/history`, {
-      method: "GET",
-        headers: getAuthHeaders(),
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    return response.json();
+    return apiClient.get<QueryHistoryResponse>("/api/v1/query/history");
   },
 
   /**
@@ -2264,35 +2129,14 @@ export const queryApi = {
       timestamp: string;
     }>;
   }> {
-    try {
-      const params = new URLSearchParams();
-      if (startDate) params.append("start_date", startDate);
-      if (endDate) params.append("end_date", endDate);
-      
-      const queryString = params.toString();
-      const url = `${API_BASE_URL}/api/v1/query/performance${queryString ? `?${queryString}` : ""}`;
-      
-      const response = await fetch(url, {
-        method: "GET",
-        headers: getAuthHeaders(),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: `HTTP ${response.status}: ${response.statusText}` }));
-        throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      return response.json();
-    } catch (error) {
-      // Handle network errors
-      if (error instanceof TypeError && error.message === "Failed to fetch") {
-        throw new Error(
-          `Failed to connect to backend server at ${API_BASE_URL}. ` +
-          `Please ensure the backend server is running.`
-        );
-      }
-      throw error;
-    }
+    const params = new URLSearchParams();
+    if (startDate) params.append("start_date", startDate);
+    if (endDate) params.append("end_date", endDate);
+    
+    const queryString = params.toString();
+    const url = `/api/v1/query/performance${queryString ? `?${queryString}` : ""}`;
+    
+    return apiClient.get(url);
   },
 };
 
@@ -2482,317 +2326,134 @@ export const organizationsApi = {
    * Create a new organization
    */
   async create(request: CreateOrganizationRequest): Promise<Organization> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/organizations`, {
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(request),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: `HTTP ${response.status}: ${response.statusText}` }));
-        throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      return {
-        id: data.id,
-        name: data.name,
-        slug: data.slug,
-        plan: data.plan,
-        createdAt: new Date(data.created_at),
-        updatedAt: new Date(data.updated_at),
-      };
-    } catch (error) {
-      if (error instanceof TypeError && error.message === "Failed to fetch") {
-        throw new Error(
-          `Failed to connect to backend server at ${API_BASE_URL}. ` +
-          `Please ensure the backend server is running.`
-        );
-      }
-      throw error;
-    }
+    const data = await apiClient.post<any>("/api/v1/organizations", request);
+    return {
+      id: data.id,
+      name: data.name,
+      slug: data.slug,
+      plan: data.plan,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
+    };
   },
 
   /**
    * Get organization by ID
    */
   async get(orgId: string): Promise<Organization> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/organizations/${orgId}`, {
-        method: "GET",
-        headers: getAuthHeaders(),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: `HTTP ${response.status}: ${response.statusText}` }));
-        throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      return {
-        id: data.id,
-        name: data.name,
-        slug: data.slug,
-        plan: data.plan,
-        createdAt: new Date(data.created_at),
-        updatedAt: new Date(data.updated_at),
-      };
-    } catch (error) {
-      if (error instanceof TypeError && error.message === "Failed to fetch") {
-        throw new Error(
-          `Failed to connect to backend server at ${API_BASE_URL}. ` +
-          `Please ensure the backend server is running.`
-        );
-      }
-      throw error;
-    }
+    const data = await apiClient.get<any>(`/api/v1/organizations/${orgId}`);
+    return {
+      id: data.id,
+      name: data.name,
+      slug: data.slug,
+      plan: data.plan,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
+    };
   },
 
   /**
    * Update organization
    */
   async update(orgId: string, request: UpdateOrganizationRequest): Promise<Organization> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/organizations/${orgId}`, {
-        method: "PUT",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(request),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: `HTTP ${response.status}: ${response.statusText}` }));
-        throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      return {
-        id: data.id,
-        name: data.name,
-        slug: data.slug,
-        plan: data.plan,
-        createdAt: new Date(data.created_at),
-        updatedAt: new Date(data.updated_at),
-      };
-    } catch (error) {
-      if (error instanceof TypeError && error.message === "Failed to fetch") {
-        throw new Error(
-          `Failed to connect to backend server at ${API_BASE_URL}. ` +
-          `Please ensure the backend server is running.`
-        );
-      }
-      throw error;
-    }
+    const data = await apiClient.put<any>(`/api/v1/organizations/${orgId}`, request);
+    return {
+      id: data.id,
+      name: data.name,
+      slug: data.slug,
+      plan: data.plan,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
+    };
   },
 
   /**
    * List organization members
    */
   async listMembers(orgId: string): Promise<OrganizationMemberList> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/organizations/${orgId}/members`, {
-        method: "GET",
-        headers: getAuthHeaders(),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: `HTTP ${response.status}: ${response.statusText}` }));
-        throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      return {
-        members: data.members.map((m: any) => ({
-          userId: m.user_id,
-          email: m.email,
-          name: m.name,
-          role: m.role,
-          joinedAt: new Date(m.joined_at),
-        })),
-        total: data.total,
-      };
-    } catch (error) {
-      if (error instanceof TypeError && error.message === "Failed to fetch") {
-        throw new Error(
-          `Failed to connect to backend server at ${API_BASE_URL}. ` +
-          `Please ensure the backend server is running.`
-        );
-      }
-      throw error;
-    }
+    const data = await apiClient.get<any>(`/api/v1/organizations/${orgId}/members`);
+    return {
+      members: data.members.map((m: any) => ({
+        userId: m.user_id,
+        email: m.email,
+        name: m.name,
+        role: m.role,
+        joinedAt: new Date(m.joined_at),
+      })),
+      total: data.total,
+    };
   },
 
   /**
    * Invite a member to the organization
    */
   async inviteMember(orgId: string, request: InviteMemberRequest): Promise<OrganizationMember> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/organizations/${orgId}/members`, {
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(request),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: `HTTP ${response.status}: ${response.statusText}` }));
-        throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      return {
-        userId: data.user_id,
-        email: data.email,
-        name: data.name,
-        role: data.role,
-        joinedAt: new Date(data.joined_at),
-      };
-    } catch (error) {
-      if (error instanceof TypeError && error.message === "Failed to fetch") {
-        throw new Error(
-          `Failed to connect to backend server at ${API_BASE_URL}. ` +
-          `Please ensure the backend server is running.`
-        );
-      }
-      throw error;
-    }
+    const data = await apiClient.post<any>(`/api/v1/organizations/${orgId}/members`, request);
+    return {
+      userId: data.user_id,
+      email: data.email,
+      name: data.name,
+      role: data.role,
+      joinedAt: new Date(data.joined_at),
+    };
   },
 
   /**
    * Remove a member from the organization
    */
   async removeMember(orgId: string, userId: string): Promise<void> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/organizations/${orgId}/members/${userId}`, {
-        method: "DELETE",
-        headers: getAuthHeaders(),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: `HTTP ${response.status}: ${response.statusText}` }));
-        throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`);
-      }
-    } catch (error) {
-      if (error instanceof TypeError && error.message === "Failed to fetch") {
-        throw new Error(
-          `Failed to connect to backend server at ${API_BASE_URL}. ` +
-          `Please ensure the backend server is running.`
-        );
-      }
-      throw error;
-    }
+    await apiClient.delete(`/api/v1/organizations/${orgId}/members/${userId}`);
   },
 
   /**
    * Update member role
    */
   async updateMemberRole(orgId: string, userId: string, request: UpdateMemberRoleRequest): Promise<OrganizationMember> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/organizations/${orgId}/members/${userId}/role`, {
-        method: "PUT",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(request),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: `HTTP ${response.status}: ${response.statusText}` }));
-        throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      return {
-        userId: data.user_id,
-        email: data.email,
-        name: data.name,
-        role: data.role,
-        joinedAt: new Date(data.joined_at),
-      };
-    } catch (error) {
-      if (error instanceof TypeError && error.message === "Failed to fetch") {
-        throw new Error(
-          `Failed to connect to backend server at ${API_BASE_URL}. ` +
-          `Please ensure the backend server is running.`
-        );
-      }
-      throw error;
-    }
+    const data = await apiClient.put<any>(`/api/v1/organizations/${orgId}/members/${userId}/role`, request);
+    return {
+      userId: data.user_id,
+      email: data.email,
+      name: data.name,
+      role: data.role,
+      joinedAt: new Date(data.joined_at),
+    };
   },
 
   /**
    * Get organization settings
    */
   async getSettings(orgId: string): Promise<OrganizationSettings> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/organizations/${orgId}/settings`, {
-        method: "GET",
-        headers: getAuthHeaders(),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: `HTTP ${response.status}: ${response.statusText}` }));
-        throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      return {
-        organizationId: data.organization_id,
-        dataRetentionDays: data.data_retention_days,
-        require2fa: data.require_2fa,
-        allowGuestAccess: data.allow_guest_access,
-        maxUsers: data.max_users,
-        createdAt: new Date(data.created_at),
-        updatedAt: new Date(data.updated_at),
-      };
-    } catch (error) {
-      if (error instanceof TypeError && error.message === "Failed to fetch") {
-        throw new Error(
-          `Failed to connect to backend server at ${API_BASE_URL}. ` +
-          `Please ensure the backend server is running.`
-        );
-      }
-      throw error;
-    }
+    const data = await apiClient.get<any>(`/api/v1/organizations/${orgId}/settings`);
+    return {
+      organizationId: data.organization_id,
+      dataRetentionDays: data.data_retention_days,
+      require2fa: data.require_2fa,
+      allowGuestAccess: data.allow_guest_access,
+      maxUsers: data.max_users,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
+    };
   },
 
   /**
    * Update organization settings
    */
   async updateSettings(orgId: string, request: UpdateOrganizationSettingsRequest): Promise<OrganizationSettings> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/organizations/${orgId}/settings`, {
-        method: "PUT",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-          data_retention_days: request.dataRetentionDays,
-          require_2fa: request.require2fa,
-          allow_guest_access: request.allowGuestAccess,
-          max_users: request.maxUsers,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: `HTTP ${response.status}: ${response.statusText}` }));
-        throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      return {
-        organizationId: data.organization_id,
-        dataRetentionDays: data.data_retention_days,
-        require2fa: data.require_2fa,
-        allowGuestAccess: data.allow_guest_access,
-        maxUsers: data.max_users,
-        createdAt: new Date(data.created_at),
-        updatedAt: new Date(data.updated_at),
-      };
-    } catch (error) {
-      if (error instanceof TypeError && error.message === "Failed to fetch") {
-        throw new Error(
-          `Failed to connect to backend server at ${API_BASE_URL}. ` +
-          `Please ensure the backend server is running.`
-        );
-      }
-      throw error;
-    }
+    const data = await apiClient.put<any>(`/api/v1/organizations/${orgId}/settings`, {
+      data_retention_days: request.dataRetentionDays,
+      require_2fa: request.require2fa,
+      allow_guest_access: request.allowGuestAccess,
+      max_users: request.maxUsers,
+    });
+    return {
+      organizationId: data.organization_id,
+      dataRetentionDays: data.data_retention_days,
+      require2fa: data.require_2fa,
+      allowGuestAccess: data.allow_guest_access,
+      maxUsers: data.max_users,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
+    };
   },
 };
 
