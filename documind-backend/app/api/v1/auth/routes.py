@@ -134,7 +134,11 @@ async def login(request: UserLoginRequest) -> TokenResponse:
     
     # Generate tokens
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    refresh_token_expires = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    # Extend refresh token expiration if "remember me" is enabled (30 days instead of 7)
+    if request.remember_me:
+        refresh_token_expires = timedelta(days=30)
+    else:
+        refresh_token_expires = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     
     access_token = create_access_token(
         data={"sub": str(user.id), "email": user.email},

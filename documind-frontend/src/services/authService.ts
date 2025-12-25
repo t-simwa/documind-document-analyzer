@@ -10,6 +10,7 @@ export interface RegisterRequest {
 export interface LoginRequest {
   email: string;
   password: string;
+  remember_me?: boolean;
 }
 
 export interface TokenResponse {
@@ -52,6 +53,23 @@ export interface ResendVerificationRequest {
 }
 
 export interface ResendVerificationResponse {
+  message: string;
+}
+
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ForgotPasswordResponse {
+  message: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  new_password: string;
+}
+
+export interface ResetPasswordResponse {
   message: string;
 }
 
@@ -265,6 +283,46 @@ export const authApi = {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: "Failed to resend verification email" }));
+      throw new Error(error.detail || `HTTP ${response.status}`);
+    }
+
+    return response.json();
+  },
+
+  /**
+   * Request password reset email
+   */
+  async forgotPassword(request: ForgotPasswordRequest): Promise<ForgotPasswordResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/v1/auth/forgot-password`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: "Failed to send password reset email" }));
+      throw new Error(error.detail || `HTTP ${response.status}`);
+    }
+
+    return response.json();
+  },
+
+  /**
+   * Reset password with token
+   */
+  async resetPassword(request: ResetPasswordRequest): Promise<ResetPasswordResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/v1/auth/reset-password`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: "Password reset failed" }));
       throw new Error(error.detail || `HTTP ${response.status}`);
     }
 

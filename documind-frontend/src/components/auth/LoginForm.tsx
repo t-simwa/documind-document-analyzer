@@ -1,22 +1,34 @@
 // Login Form Component - Professional SaaS Design
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Mail, Lock, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const LoginForm = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
   const [name, setName] = useState("");
+  
+  // Password requirements validation
+  const passwordRequirements = {
+    minLength: password.length >= 8,
+    hasUpperCase: /[A-Z]/.test(password),
+    hasLowerCase: /[a-z]/.test(password),
+    hasNumber: /\d/.test(password),
+  };
+  
+  const isPasswordValid = Object.values(passwordRequirements).every(Boolean);
   
   const { login, register } = useAuth();
   const navigate = useNavigate();
@@ -30,7 +42,7 @@ export const LoginForm = () => {
       if (isRegistering) {
         await register(email, name, password);
       } else {
-        await login(email, password);
+        await login(email, password, rememberMe);
       }
       navigate("/app");
     } catch (err) {
@@ -135,13 +147,12 @@ export const LoginForm = () => {
               Password
             </Label>
             {!isRegistering && (
-              <button
-                type="button"
+              <Link
+                to="/auth/forgot-password"
                 className="text-[10px] text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] transition-colors"
-                disabled={isLoading}
               >
                 Forgot password?
-              </button>
+              </Link>
             )}
           </div>
           <div className="space-y-1">
@@ -159,18 +170,130 @@ export const LoginForm = () => {
                 className="h-8 pl-7 text-xs border-[#e5e5e5] dark:border-[#262626]"
               />
             </div>
-            {isRegistering && (
+            {isRegistering && password && (
+              <div className="pt-2 border-t border-[#e5e5e5] dark:border-[#262626]">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className={cn(
+                      "h-3.5 w-3.5 rounded border flex items-center justify-center flex-shrink-0 transition-all",
+                      passwordRequirements.minLength
+                        ? "bg-[#fafafa] dark:bg-[#0a0a0a] border-[#171717] dark:border-[#fafafa]"
+                        : "bg-[#fafafa] dark:bg-[#0a0a0a] border-[#e5e5e5] dark:border-[#262626]"
+                    )}>
+                      {passwordRequirements.minLength && (
+                        <svg className="h-2 w-2 text-[#171717] dark:text-[#fafafa]" fill="none" viewBox="0 0 10 10">
+                          <path d="M8.5 2.5L4 7 1.5 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                    </div>
+                    <p className={cn(
+                      "text-[10px] leading-tight",
+                      passwordRequirements.minLength
+                        ? "text-[#171717] dark:text-[#fafafa] font-medium"
+                        : "text-[#737373] dark:text-[#a3a3a3]"
+                    )}>
+                      8+ characters
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className={cn(
+                      "h-3.5 w-3.5 rounded border flex items-center justify-center flex-shrink-0 transition-all",
+                      passwordRequirements.hasUpperCase
+                        ? "bg-[#fafafa] dark:bg-[#0a0a0a] border-[#171717] dark:border-[#fafafa]"
+                        : "bg-[#fafafa] dark:bg-[#0a0a0a] border-[#e5e5e5] dark:border-[#262626]"
+                    )}>
+                      {passwordRequirements.hasUpperCase && (
+                        <svg className="h-2 w-2 text-[#171717] dark:text-[#fafafa]" fill="none" viewBox="0 0 10 10">
+                          <path d="M8.5 2.5L4 7 1.5 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                    </div>
+                    <p className={cn(
+                      "text-[10px] leading-tight",
+                      passwordRequirements.hasUpperCase
+                        ? "text-[#171717] dark:text-[#fafafa] font-medium"
+                        : "text-[#737373] dark:text-[#a3a3a3]"
+                    )}>
+                      Uppercase
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className={cn(
+                      "h-3.5 w-3.5 rounded border flex items-center justify-center flex-shrink-0 transition-all",
+                      passwordRequirements.hasLowerCase
+                        ? "bg-[#fafafa] dark:bg-[#0a0a0a] border-[#171717] dark:border-[#fafafa]"
+                        : "bg-[#fafafa] dark:bg-[#0a0a0a] border-[#e5e5e5] dark:border-[#262626]"
+                    )}>
+                      {passwordRequirements.hasLowerCase && (
+                        <svg className="h-2 w-2 text-[#171717] dark:text-[#fafafa]" fill="none" viewBox="0 0 10 10">
+                          <path d="M8.5 2.5L4 7 1.5 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                    </div>
+                    <p className={cn(
+                      "text-[10px] leading-tight",
+                      passwordRequirements.hasLowerCase
+                        ? "text-[#171717] dark:text-[#fafafa] font-medium"
+                        : "text-[#737373] dark:text-[#a3a3a3]"
+                    )}>
+                      Lowercase
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className={cn(
+                      "h-3.5 w-3.5 rounded border flex items-center justify-center flex-shrink-0 transition-all",
+                      passwordRequirements.hasNumber
+                        ? "bg-[#fafafa] dark:bg-[#0a0a0a] border-[#171717] dark:border-[#fafafa]"
+                        : "bg-[#fafafa] dark:bg-[#0a0a0a] border-[#e5e5e5] dark:border-[#262626]"
+                    )}>
+                      {passwordRequirements.hasNumber && (
+                        <svg className="h-2 w-2 text-[#171717] dark:text-[#fafafa]" fill="none" viewBox="0 0 10 10">
+                          <path d="M8.5 2.5L4 7 1.5 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                    </div>
+                    <p className={cn(
+                      "text-[10px] leading-tight",
+                      passwordRequirements.hasNumber
+                        ? "text-[#171717] dark:text-[#fafafa] font-medium"
+                        : "text-[#737373] dark:text-[#a3a3a3]"
+                    )}>
+                      Number
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            {isRegistering && !password && (
               <p className="text-[10px] text-[#737373] dark:text-[#a3a3a3] pt-0.5">
-                Must be at least 8 characters
+                Must be at least 8 characters with uppercase, lowercase, and number
               </p>
             )}
           </div>
         </div>
 
+        {!isRegistering && (
+          <div className="flex items-center space-x-2.5">
+            <Checkbox
+              id="remember-me"
+              checked={rememberMe}
+              onCheckedChange={(checked) => setRememberMe(checked === true)}
+              disabled={isLoading}
+              className="h-4 w-4 border-[#e5e5e5] dark:border-[#262626] data-[state=checked]:bg-[#171717] dark:data-[state=checked]:bg-[#fafafa] data-[state=checked]:border-[#171717] dark:data-[state=checked]:border-[#fafafa]"
+            />
+            <Label
+              htmlFor="remember-me"
+              className="text-xs font-normal text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] cursor-pointer leading-none transition-colors peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              Remember me for 30 days
+            </Label>
+          </div>
+        )}
+
         <Button 
           type="submit" 
           className="w-full h-8 text-xs font-medium bg-[#171717] dark:bg-[#fafafa] text-[#fafafa] dark:text-[#171717] hover:bg-[#262626] dark:hover:bg-[#e5e5e5]" 
-          disabled={isLoading}
+          disabled={isLoading || (isRegistering && !isPasswordValid)}
         >
           {isLoading ? (
             <>

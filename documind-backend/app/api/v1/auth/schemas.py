@@ -18,6 +18,7 @@ class UserLoginRequest(BaseModel):
     """User login request"""
     email: EmailStr
     password: str
+    remember_me: bool = Field(default=False, description="Remember user for extended session")
 
 
 class TokenResponse(BaseModel):

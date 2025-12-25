@@ -25,6 +25,8 @@ import UserManagement from "./pages/UserManagement";
 import NotFound from "./pages/NotFound";
 import OAuthCallback from "./pages/OAuthCallback";
 import VerifyEmail from "./pages/VerifyEmail";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +41,8 @@ const App = () => (
           <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
           <Route path="/auth/verify-email" element={<VerifyEmail />} />
+          <Route path="/auth/forgot-password" element={<ForgotPassword />} />
+          <Route path="/auth/reset-password" element={<ResetPassword />} />
           <Route path="/products" element={<ProductsPage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/products/features" element={<FeaturesPage />} />
