@@ -1,6 +1,7 @@
 // Authentication Context
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { authApi, tokenStorage, User, TokenResponse } from "@/services/authService";
+import { useAuthStore } from "@/store/authStore";
 
 interface AuthContextType {
   user: User | null;
@@ -30,6 +31,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Sync local state with Zustand store
+  useEffect(() => {
+    if (user) {
+      useAuthStore.getState().setUser(user);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    useAuthStore.getState().setLoading(isLoading);
+  }, [isLoading]);
+
   // Check if user is authenticated on mount
   useEffect(() => {
     const checkAuth = async () => {
@@ -37,12 +49,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         try {
           const response = await authApi.getMe();
           setUser(response.user);
+          useAuthStore.getState().setUser(response.user);
         } catch (error) {
           console.error("Failed to get user info:", error);
           tokenStorage.clearTokens();
+          useAuthStore.getState().clearAuth();
         }
       }
       setIsLoading(false);
+      useAuthStore.getState().setLoading(false);
     };
 
     checkAuth();
@@ -56,6 +71,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Get user info
       const userResponse = await authApi.getMe();
       setUser(userResponse.user);
+      useAuthStore.getState().setUser(userResponse.user);
     } catch (error) {
       throw error;
     }
@@ -69,6 +85,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Get user info
       const userResponse = await authApi.getMe();
       setUser(userResponse.user);
+      useAuthStore.getState().setUser(userResponse.user);
     } catch (error) {
       throw error;
     }
@@ -82,6 +99,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       setUser(null);
       tokenStorage.clearTokens();
+      useAuthStore.getState().clearAuth();
     }
   };
 
@@ -92,11 +110,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log("AuthContext: organization_id value:", response.user?.organization_id);
       console.log("AuthContext: organization_id type:", typeof response.user?.organization_id);
       setUser(response.user);
+      useAuthStore.getState().setUser(response.user);
       return response.user;
     } catch (error) {
       console.error("Failed to refresh user:", error);
       setUser(null);
       tokenStorage.clearTokens();
+      useAuthStore.getState().clearAuth();
       throw error;
     }
   };

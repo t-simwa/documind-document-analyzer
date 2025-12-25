@@ -21,6 +21,9 @@
     "noImplicitAny": false,
     "noFallthroughCasesInSwitch": false,
 
+    /* Types */
+    "types": [],
+
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]

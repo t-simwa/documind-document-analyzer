@@ -144,8 +144,9 @@ export const projectsApi = {
         cache: "no-store", // Prevent browser caching
       });
       
+      // Backend returns { data: [...], pagination: {...}, meta: {...} }
       // Convert backend projects to frontend format
-      const projects: Project[] = data.projects.map((p: any) => ({
+      const projects: Project[] = (data.data || []).map((p: any) => ({
         id: p.id,
         name: p.name,
         description: p.description,
@@ -389,8 +390,9 @@ export const projectsApi = {
         cache: "no-store",
       });
       
+      // Backend returns { data: [...], pagination: {...}, meta: {...} }
       // Convert backend projects to frontend format
-      const projects: Project[] = data.projects.map((p: any) => ({
+      const projects: Project[] = (data.data || []).map((p: any) => ({
         id: p.id,
         name: p.name,
         description: p.description,

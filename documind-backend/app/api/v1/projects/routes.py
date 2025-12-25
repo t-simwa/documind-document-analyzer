@@ -392,16 +392,11 @@ async def get_favorite_projects(
             user = None
         
         if not user or not user.favorite_project_ids:
+            from app.core.api_utils import create_pagination_meta
+            pagination = create_pagination_meta(page, limit, 0)
             return ProjectListResponse(
-                projects=[],
-                pagination={
-                    "page": page,
-                    "limit": limit,
-                    "total": 0,
-                    "totalPages": 0,
-                    "hasNext": False,
-                    "hasPrev": False,
-                }
+                data=[],
+                pagination=pagination
             )
         
         favorite_ids = [str(pid) for pid in user.favorite_project_ids]
@@ -456,16 +451,13 @@ async def get_favorite_projects(
                 )
             )
         
+        from app.core.api_utils import create_pagination_meta
+        
+        pagination = create_pagination_meta(page, limit, total)
+        
         return ProjectListResponse(
-            projects=projects,
-            pagination={
-                "page": page,
-                "limit": limit,
-                "total": total,
-                "totalPages": (total + limit - 1) // limit,
-                "hasNext": (skip + limit) < total,
-                "hasPrev": page > 1,
-            }
+            data=projects,
+            pagination=pagination
         )
     
     except Exception as e:

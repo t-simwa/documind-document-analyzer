@@ -454,77 +454,6 @@ async def get_document_insights(
         )
 
 
-@router.get(
-    "/{document_id}",
-    response_model=DocumentResponse,
-    summary="Get document",
-    description="Get document metadata by ID"
-)
-async def get_document(
-    document_id: str,
-    current_user: dict = Depends(require_auth)
-):
-    """
-    Get document metadata (filtered by authenticated user)
-    
-    Args:
-        document_id: Document ID
-        
-    Returns:
-        DocumentResponse with document metadata
-    """
-    user_id = current_user["id"]
-    from bson import ObjectId
-    
-    # Try to convert document_id to ObjectId if it's a valid ObjectId string
-    try:
-        doc_object_id = ObjectId(document_id)
-        doc = await DocumentModel.find_one(
-            DocumentModel.id == doc_object_id,
-            DocumentModel.uploaded_by == user_id
-        )
-    except (ValueError, TypeError):
-        # If not a valid ObjectId, try string match
-        doc = await DocumentModel.find_one(
-            DocumentModel.id == document_id,
-            DocumentModel.uploaded_by == user_id
-        )
-    
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
-    
-    # Check task status to get current processing status
-    from app.workers.tasks import task_queue
-    task_id = f"doc_process_{document_id}"
-    task = task_queue.get_task(task_id)
-    
-    # Update status based on task (task is a dict)
-    if task:
-        task_status = task.get("status")
-        if task_status == "completed":
-            doc.status = "ready"
-            await doc.save()
-        elif task_status == "failed":
-            doc.status = "error"
-            await doc.save()
-        elif task_status == "processing":
-            doc.status = "processing"
-            await doc.save()
-    
-    return DocumentResponse(
-        id=str(doc.id),
-        name=doc.name,
-        status=doc.status,
-        uploaded_at=doc.uploaded_at,
-        uploaded_by=doc.uploaded_by,
-        size=doc.size,
-        type=doc.type,
-        project_id=doc.project_id,
-        tags=doc.tags,
-        metadata=doc.metadata
-    )
-
-
 @router.options(
     "/{document_id}/download",
     summary="CORS preflight for document download"
@@ -1084,6 +1013,77 @@ async def get_document_health(
             status_code=500,
             detail=f"Failed to fetch document health: {str(e)}"
         )
+
+
+@router.get(
+    "/{document_id}",
+    response_model=DocumentResponse,
+    summary="Get document",
+    description="Get document metadata by ID"
+)
+async def get_document(
+    document_id: str,
+    current_user: dict = Depends(require_auth)
+):
+    """
+    Get document metadata (filtered by authenticated user)
+    
+    Args:
+        document_id: Document ID
+        
+    Returns:
+        DocumentResponse with document metadata
+    """
+    user_id = current_user["id"]
+    from bson import ObjectId
+    
+    # Try to convert document_id to ObjectId if it's a valid ObjectId string
+    try:
+        doc_object_id = ObjectId(document_id)
+        doc = await DocumentModel.find_one(
+            DocumentModel.id == doc_object_id,
+            DocumentModel.uploaded_by == user_id
+        )
+    except (ValueError, TypeError):
+        # If not a valid ObjectId, try string match
+        doc = await DocumentModel.find_one(
+            DocumentModel.id == document_id,
+            DocumentModel.uploaded_by == user_id
+        )
+    
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    # Check task status to get current processing status
+    from app.workers.tasks import task_queue
+    task_id = f"doc_process_{document_id}"
+    task = task_queue.get_task(task_id)
+    
+    # Update status based on task (task is a dict)
+    if task:
+        task_status = task.get("status")
+        if task_status == "completed":
+            doc.status = "ready"
+            await doc.save()
+        elif task_status == "failed":
+            doc.status = "error"
+            await doc.save()
+        elif task_status == "processing":
+            doc.status = "processing"
+            await doc.save()
+    
+    return DocumentResponse(
+        id=str(doc.id),
+        name=doc.name,
+        status=doc.status,
+        uploaded_at=doc.uploaded_at,
+        uploaded_by=doc.uploaded_by,
+        size=doc.size,
+        type=doc.type,
+        project_id=doc.project_id,
+        tags=doc.tags,
+        metadata=doc.metadata
+    )
 
 
 @router.post(

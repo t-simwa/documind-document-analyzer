@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from fastapi import Query
 from pydantic import BaseModel
 from beanie import Document
-from beanie.operators import In, NotIn, Gt, Gte, Lt, Lte, Eq, Ne, Regex
+from beanie.operators import In, NotIn, RegEx
 
 from app.schemas.common import PaginationMeta, FilterParam, SortParam
 
@@ -171,11 +171,11 @@ def apply_filters_to_query(
                 query = query.find(model_field != value)
         elif operator == "contains":
             # For string fields, use regex for case-insensitive contains
-            query = query.find(Regex(model_field, f".*{value}.*", "i"))
+            query = query.find(RegEx(model_field, f".*{value}.*", "i"))
         elif operator == "starts_with":
-            query = query.find(Regex(model_field, f"^{value}.*", "i"))
+            query = query.find(RegEx(model_field, f"^{value}.*", "i"))
         elif operator == "ends_with":
-            query = query.find(Regex(model_field, f".*{value}$", "i"))
+            query = query.find(RegEx(model_field, f".*{value}$", "i"))
     
     return query
 
