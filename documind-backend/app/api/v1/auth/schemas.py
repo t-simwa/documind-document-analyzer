@@ -65,6 +65,11 @@ class VerifyEmailResponse(BaseModel):
     email_verified: bool
 
 
+class ResendVerificationResponse(BaseModel):
+    """Resend verification email response"""
+    message: str
+
+
 # Password Reset Schemas
 class ForgotPasswordRequest(BaseModel):
     """Forgot password request"""

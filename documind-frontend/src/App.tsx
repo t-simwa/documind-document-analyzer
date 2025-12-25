@@ -24,6 +24,7 @@ import OrganizationSettings from "./pages/OrganizationSettings";
 import UserManagement from "./pages/UserManagement";
 import NotFound from "./pages/NotFound";
 import OAuthCallback from "./pages/OAuthCallback";
+import VerifyEmail from "./pages/VerifyEmail";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +38,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
+          <Route path="/auth/verify-email" element={<VerifyEmail />} />
           <Route path="/products" element={<ProductsPage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/products/features" element={<FeaturesPage />} />

@@ -38,6 +38,23 @@ export interface UserMeResponse {
   user: User;
 }
 
+export interface VerifyEmailRequest {
+  token: string;
+}
+
+export interface VerifyEmailResponse {
+  message: string;
+  email_verified: boolean;
+}
+
+export interface ResendVerificationRequest {
+  email: string;
+}
+
+export interface ResendVerificationResponse {
+  message: string;
+}
+
 // Token storage keys
 const ACCESS_TOKEN_KEY = "documind_access_token";
 const REFRESH_TOKEN_KEY = "documind_refresh_token";
@@ -204,6 +221,54 @@ export const authApi = {
       }
     }
     tokenStorage.clearTokens();
+  },
+
+  /**
+   * Verify email address with token
+   */
+  async verifyEmail(request: VerifyEmailRequest): Promise<VerifyEmailResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/v1/auth/verify-email`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: "Email verification failed" }));
+      throw new Error(error.detail || `HTTP ${response.status}`);
+    }
+
+    return response.json();
+  },
+
+  /**
+   * Resend verification email
+   */
+  async resendVerification(request: ResendVerificationRequest): Promise<ResendVerificationResponse> {
+    const accessToken = tokenStorage.getAccessToken();
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    
+    // Include auth token if available, but don't require it
+    if (accessToken) {
+      headers.Authorization = `Bearer ${accessToken}`;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/api/v1/auth/resend-verification`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: "Failed to resend verification email" }));
+      throw new Error(error.detail || `HTTP ${response.status}`);
+    }
+
+    return response.json();
   },
 };
 

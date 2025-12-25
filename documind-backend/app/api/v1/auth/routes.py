@@ -14,6 +14,7 @@ from app.api.v1.auth.schemas import (
     UserMeResponse,
     VerifyEmailRequest,
     VerifyEmailResponse,
+    ResendVerificationResponse,
     ForgotPasswordRequest,
     ForgotPasswordResponse,
     ResetPasswordRequest,
@@ -315,6 +316,52 @@ async def verify_email(request: VerifyEmailRequest) -> VerifyEmailResponse:
     return VerifyEmailResponse(
         message="Email verified successfully",
         email_verified=True
+    )
+
+
+@router.post(
+    "/resend-verification",
+    response_model=ResendVerificationResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Resend verification email",
+    description="Resend email verification link to user's email address",
+    tags=["Authentication"],
+)
+async def resend_verification(
+    request: ForgotPasswordRequest,  # Reuse ForgotPasswordRequest as it has email field
+) -> ResendVerificationResponse:
+    """Resend verification email"""
+    # Find user by email
+    user = await User.find_one(User.email == request.email)
+    if not user:
+        # Don't reveal if user exists (security best practice)
+        return ResendVerificationResponse(
+            message="If an account with that email exists and is not verified, a verification email has been sent."
+        )
+    
+    # Check if email is already verified
+    if user.email_verified:
+        return ResendVerificationResponse(
+            message="Email is already verified"
+        )
+    
+    # Generate new verification token
+    verification_token = generate_verification_token()
+    user.email_verification_token = verification_token
+    user.email_verification_token_expires_at = datetime.utcnow() + timedelta(days=1)
+    user.updated_at = datetime.utcnow()
+    await user.save()
+    
+    # Send verification email
+    email_service = get_email_service()
+    await email_service.send_verification_email(
+        to_email=user.email,
+        name=user.name,
+        verification_token=verification_token
+    )
+    
+    return ResendVerificationResponse(
+        message="If an account with that email exists and is not verified, a verification email has been sent."
     )
 
 
