@@ -177,28 +177,25 @@ export function UsageStatistics() {
                     type="monotone"
                     dataKey="documents"
                     stroke="#171717"
-                    className="dark:stroke-[#fafafa]"
+                    className="dark:stroke-[#fafafa] dark:[&_circle]:fill-[#fafafa]"
                     strokeWidth={2.5}
                     dot={{ fill: "#171717", r: 4 }}
-                    className="dark:[&_circle]:fill-[#fafafa]"
                   />
                   <Line
                     type="monotone"
                     dataKey="queries"
                     stroke="#737373"
-                    className="dark:stroke-[#a3a3a3]"
+                    className="dark:stroke-[#a3a3a3] dark:[&_circle]:fill-[#a3a3a3]"
                     strokeWidth={2.5}
                     dot={{ fill: "#737373", r: 4 }}
-                    className="dark:[&_circle]:fill-[#a3a3a3]"
                   />
                   <Line
                     type="monotone"
                     dataKey="users"
                     stroke="#525252"
-                    className="dark:stroke-[#737373]"
+                    className="dark:stroke-[#737373] dark:[&_circle]:fill-[#737373]"
                     strokeWidth={2.5}
                     dot={{ fill: "#525252", r: 4 }}
-                    className="dark:[&_circle]:fill-[#737373]"
                   />
                   </LineChart>
                 </ResponsiveContainer>
