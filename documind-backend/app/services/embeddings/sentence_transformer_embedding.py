@@ -2,7 +2,7 @@
 Sentence Transformers embedding service (Free, Local)
 """
 
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any, TYPE_CHECKING
 import structlog
 import threading
 
@@ -11,15 +11,22 @@ from .exceptions import EmbeddingError, EmbeddingProviderError
 
 logger = structlog.get_logger(__name__)
 
+# Import SentenceTransformer for type checking only
+if TYPE_CHECKING:
+    from sentence_transformers import SentenceTransformer
+
+# Runtime import with fallback
 try:
     from sentence_transformers import SentenceTransformer
     SENTENCE_TRANSFORMERS_AVAILABLE = True
 except ImportError:
     SENTENCE_TRANSFORMERS_AVAILABLE = False
+    SentenceTransformer = Any  # type: ignore[misc, assignment]
     logger.warning("sentence-transformers not installed, SentenceTransformerEmbeddingService will not be available")
 
 # Global model cache to prevent multiple loads of the same model
-_model_cache: Dict[str, SentenceTransformer] = {}
+# Use Any for type annotation to avoid NameError when sentence-transformers is not installed
+_model_cache: Dict[str, Any] = {}
 _model_lock = threading.Lock()
 
 
