@@ -1,0 +1,214 @@
+name: Deploy Pipeline
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      rollback:
+        description: 'Rollback to previous version'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  REGISTRY: ghcr.io
+  BACKEND_IMAGE_NAME: ${{ github.repository }}/backend
+  FRONTEND_IMAGE_NAME: ${{ github.repository }}/frontend
+
+jobs:
+  # Determine deployment environment
+  determine-environment:
+    name: Determine Environment
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.set-env.outputs.environment }}
+      should-deploy: ${{ steps.set-env.outputs.should-deploy }}
+    steps:
+      - name: Set environment
+        id: set-env
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+            echo "should-deploy=true" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "environment=production" >> $GITHUB_OUTPUT
+            echo "should-deploy=true" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == refs/heads/main ]]; then
+            echo "environment=staging" >> $GITHUB_OUTPUT
+            echo "should-deploy=true" >> $GITHUB_OUTPUT
+          else
+            echo "environment=staging" >> $GITHUB_OUTPUT
+            echo "should-deploy=false" >> $GITHUB_OUTPUT
+          fi
+
+  # Rollback job
+  rollback:
+    name: Rollback Deployment
+    runs-on: ubuntu-latest
+    if: github.event.inputs.rollback == 'true'
+    needs: determine-environment
+    environment:
+      name: ${{ needs.determine-environment.outputs.environment }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get previous deployment
+        id: previous
+        run: |
+          # Get the previous successful deployment SHA
+          PREVIOUS_SHA=$(git rev-parse HEAD~1)
+          echo "sha=$PREVIOUS_SHA" >> $GITHUB_OUTPUT
+          echo "Rolling back to: $PREVIOUS_SHA"
+
+      - name: Deploy previous version
+        run: |
+          echo "Rolling back to previous version..."
+          # Add your rollback logic here
+          # Example: kubectl rollout undo deployment/backend
+          # Example: docker-compose pull && docker-compose up -d
+
+  # Deploy to staging
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: determine-environment
+    if: needs.determine-environment.outputs.environment == 'staging' && needs.determine-environment.outputs.should-deploy == 'true' && github.event.inputs.rollback != 'true'
+    environment:
+      name: staging
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Deploy backend to staging
+        run: |
+          echo "Deploying backend to staging..."
+          # Add your deployment logic here
+          # Example: kubectl set image deployment/backend backend=${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:latest
+          # Example: docker-compose -f docker-compose.staging.yml up -d backend
+
+      - name: Deploy frontend to staging
+        run: |
+          echo "Deploying frontend to staging..."
+          # Add your deployment logic here
+          # Example: kubectl set image deployment/frontend frontend=${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:latest
+          # Example: docker-compose -f docker-compose.staging.yml up -d frontend
+
+      - name: Run smoke tests
+        run: |
+          echo "Running smoke tests..."
+          # Add smoke test logic here
+          # Example: curl -f http://staging.example.com/api/v1/health || exit 1
+
+      - name: Notify deployment
+        if: always()
+        run: |
+          echo "Staging deployment completed"
+          # Add notification logic (Slack, email, etc.)
+
+  # Deploy to production
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: determine-environment
+    if: needs.determine-environment.outputs.environment == 'production' && needs.determine-environment.outputs.should-deploy == 'true' && github.event.inputs.rollback != 'true'
+    environment:
+      name: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get version tag
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            VERSION=$(git describe --tags --always)
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Deploying version: $VERSION"
+
+      - name: Create deployment backup
+        run: |
+          echo "Creating deployment backup..."
+          # Add backup logic here
+          # Example: kubectl get deployment backend -o yaml > backup-backend-$(date +%Y%m%d-%H%M%S).yaml
+
+      - name: Deploy backend to production
+        run: |
+          echo "Deploying backend to production..."
+          # Add your deployment logic here
+          # Example: kubectl set image deployment/backend backend=${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:${{ steps.version.outputs.version }}
+          # Example: docker-compose -f docker-compose.prod.yml up -d backend
+
+      - name: Deploy frontend to production
+        run: |
+          echo "Deploying frontend to production..."
+          # Add your deployment logic here
+          # Example: kubectl set image deployment/frontend frontend=${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ steps.version.outputs.version }}
+          # Example: docker-compose -f docker-compose.prod.yml up -d frontend
+
+      - name: Wait for deployment
+        run: |
+          echo "Waiting for deployment to be ready..."
+          sleep 30
+          # Add health check logic
+          # Example: kubectl rollout status deployment/backend --timeout=5m
+
+      - name: Run smoke tests
+        run: |
+          echo "Running smoke tests..."
+          # Add smoke test logic here
+          # Example: curl -f https://api.example.com/api/v1/health || exit 1
+
+      - name: Run integration tests
+        run: |
+          echo "Running integration tests..."
+          # Add integration test logic here
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "Deployment failed, rolling back..."
+          # Add rollback logic here
+          # Example: kubectl rollout undo deployment/backend
+          exit 1
+
+      - name: Notify deployment
+        if: always()
+        run: |
+          echo "Production deployment completed"
+          # Add notification logic (Slack, email, etc.)
+
