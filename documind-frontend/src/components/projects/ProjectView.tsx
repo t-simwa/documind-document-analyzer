@@ -221,86 +221,118 @@ export const ProjectView = ({
     });
   };
 
-  const renderProjectItem = (proj: Project, level: number = 0): JSX.Element => {
+  const renderProjectItem = (proj: Project): JSX.Element => {
     const isExpanded = expandedProjects.has(proj.id);
     const hasChildren = proj.children && proj.children.length > 0;
     const projectDocuments = documents.filter((d) => d.projectId === proj.id);
+    
+    // Get all documents for this project and its descendants
+    const getAllProjectDocumentIds = (project: Project): string[] => {
+      const ids = [project.id];
+      if (project.children) {
+        project.children.forEach((child) => {
+          ids.push(...getAllProjectDocumentIds(child));
+        });
+      }
+      return ids;
+    };
+    
+    const allProjectIds = getAllProjectDocumentIds(proj);
+    const allProjectDocuments = documents.filter((d) => allProjectIds.includes(d.projectId || ""));
 
     return (
-      <div key={proj.id} className="space-y-1">
+      <div key={proj.id} className="border-b border-[#e5e5e5] dark:border-[#262626]">
+        {/* Project Header Row - Clickable to expand/collapse */}
         <div
           className={cn(
-            "flex items-center gap-2 px-4 py-2 hover:bg-accent/50 rounded-md cursor-pointer transition-colors",
-            level > 0 && "ml-4"
+            "flex items-center gap-3 px-4 py-3 hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a] transition-colors cursor-pointer",
+            isExpanded && "bg-[#fafafa] dark:bg-[#0a0a0a]"
           )}
-          style={{ paddingLeft: `${level * 16 + 16}px` }}
+          onClick={() => toggleProjectExpanded(proj.id)}
         >
-          {hasChildren && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleProjectExpanded(proj.id);
-              }}
-            >
-              {isExpanded ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <ChevronRight className="h-4 w-4" />
-              )}
-            </Button>
-          )}
-          {!hasChildren && <div className="w-6" />}
-          {isExpanded ? (
-            <FolderOpen className="h-4 w-4 text-primary" />
-          ) : (
-            <Folder className="h-4 w-4 text-muted-foreground" />
-          )}
-          <span className="flex-1 text-sm font-medium">{proj.name}</span>
-          {projectDocuments.length > 0 && (
-            <Badge variant="secondary" className="text-xs">
-              {projectDocuments.length}
-            </Badge>
-          )}
-        </div>
-        {hasChildren && isExpanded && (
-          <div className="space-y-1">
-            {proj.children!.map((child) => renderProjectItem(child, level + 1))}
-            {projectDocuments.length > 0 && (
-              <div className="ml-8 border-l-2 border-border pl-4">
-                <DocumentListTable
-                  documents={projectDocuments}
-                  selectedIds={selectedIds}
-                  onSelect={(id, selected) => {
-                    const newSelected = new Set(selectedIds);
-                    if (selected) {
-                      newSelected.add(id);
-                    } else {
-                      newSelected.delete(id);
-                    }
-                    setSelectedIds(newSelected);
-                  }}
-                  onSelectAll={(selected) => {
-                    if (selected) {
-                      setSelectedIds(new Set(projectDocuments.map((d) => d.id)));
-                    } else {
-                      setSelectedIds(new Set());
-                    }
-                  }}
-                  onDelete={handleDelete}
-                  onTag={handleTag}
-                  onMove={handleMove}
-                  onAnalyze={onDocumentSelect}
-                  tags={tags}
-                  users={users}
-                  sortField={sortField}
-                  sortDirection={sortDirection}
-                  onSort={handleSort}
-                />
-              </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 flex-shrink-0"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleProjectExpanded(proj.id);
+            }}
+          >
+            {isExpanded ? (
+              <ChevronDown className="h-4 w-4 text-[#525252] dark:text-[#d4d4d4]" />
+            ) : (
+              <ChevronRight className="h-4 w-4 text-[#525252] dark:text-[#d4d4d4]" />
             )}
+          </Button>
+          
+          {isExpanded ? (
+            <FolderOpen className="h-4 w-4 text-[#525252] dark:text-[#d4d4d4] flex-shrink-0" />
+          ) : (
+            <Folder className="h-4 w-4 text-[#525252] dark:text-[#d4d4d4] flex-shrink-0" />
+          )}
+          
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3">
+              <h1 className="text-sm font-medium text-[#171717] dark:text-[#fafafa]">{proj.name}</h1>
+              <span className="text-xs text-[#737373] dark:text-[#a3a3a3]">
+                ({allProjectDocuments.length})
+              </span>
+            </div>
+            {proj.description && (
+              <p className="text-xs text-[#737373] dark:text-[#a3a3a3] mt-0.5 truncate">{proj.description}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Expanded Content - Show documents table */}
+        {isExpanded && projectDocuments.length > 0 && (
+          <div className="bg-white dark:bg-[#171717]">
+            <DocumentListTable
+              documents={projectDocuments}
+              selectedIds={selectedIds}
+              onSelect={(id, selected) => {
+                const newSelected = new Set(selectedIds);
+                if (selected) {
+                  newSelected.add(id);
+                } else {
+                  newSelected.delete(id);
+                }
+                setSelectedIds(newSelected);
+              }}
+              onSelectAll={(selected) => {
+                if (selected) {
+                  setSelectedIds(new Set(projectDocuments.map((d) => d.id)));
+                } else {
+                  const newSelected = new Set(selectedIds);
+                  projectDocuments.forEach((d) => newSelected.delete(d.id));
+                  setSelectedIds(newSelected);
+                }
+              }}
+              onDelete={handleDelete}
+              onTag={handleTag}
+              onMove={handleMove}
+              onAnalyze={onDocumentSelect}
+              tags={tags}
+              users={users}
+              sortField={sortField}
+              sortDirection={sortDirection}
+              onSort={handleSort}
+            />
+          </div>
+        )}
+
+        {/* Recursively render child projects */}
+        {hasChildren && isExpanded && (
+          <div className="bg-[#fafafa] dark:bg-[#0a0a0a]">
+            {proj.children!.map((child) => renderProjectItem(child))}
+          </div>
+        )}
+
+        {/* Show empty state if expanded but no documents and no children */}
+        {isExpanded && projectDocuments.length === 0 && !hasChildren && (
+          <div className="px-4 py-8 text-center bg-white dark:bg-[#171717]">
+            <p className="text-xs text-[#737373] dark:text-[#a3a3a3]">No documents in this project</p>
           </div>
         )}
       </div>
@@ -438,16 +470,16 @@ export const ProjectView = ({
       <ProjectBreadcrumb projects={breadcrumbProjects} onProjectClick={onProjectSelect} />
 
       {/* Header */}
-      <div className="flex-shrink-0 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="flex items-center justify-between px-6 py-4">
+      <div className="flex-shrink-0 border-b border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717]">
+        <div className="flex items-center justify-between px-4 py-3">
           <div>
-            <h1 className="text-lg font-semibold tracking-tight">{project?.name || "Project"}</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
+            <h1 className="text-sm font-medium text-[#171717] dark:text-[#fafafa]">{project?.name || "Project"}</h1>
+            <p className="text-xs text-[#737373] dark:text-[#a3a3a3] mt-0.5">
               {hasChildren
                 ? `${project?.children?.length || 0} ${(project?.children?.length || 0) === 1 ? "sub-project" : "sub-projects"}`
                 : `${projectDocuments.length} ${projectDocuments.length === 1 ? "document" : "documents"}`}
               {selectedIds.size > 0 && (
-                <span className="ml-2 text-foreground font-medium">
+                <span className="ml-2 text-[#171717] dark:text-[#fafafa] font-medium">
                   • {selectedIds.size} selected
                 </span>
               )}
@@ -455,35 +487,45 @@ export const ProjectView = ({
           </div>
           <div className="flex items-center gap-2">
             {onCompareDocuments && (
-              <Button onClick={onCompareDocuments} size="sm" className="gap-2">
-                <Layers className="h-4 w-4" />
+              <Button
+                onClick={onCompareDocuments}
+                size="sm"
+                className="gap-1.5 h-7 text-xs border-[#e5e5e5] dark:border-[#262626] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
+              >
+                <Layers className="h-3 w-3" />
                 Compare Documents
               </Button>
             )}
             {onOpenSavedAnalyses && (
-              <Button onClick={onOpenSavedAnalyses} size="sm" className="gap-2">
-                <Clock className="h-4 w-4" />
+              <Button
+                onClick={onOpenSavedAnalyses}
+                size="sm"
+                className="gap-1.5 h-7 text-xs border-[#e5e5e5] dark:border-[#262626] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
+              >
+                <Clock className="h-3 w-3" />
                 Saved Analyses
               </Button>
             )}
             <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
               <SheetTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Filter className="h-4 w-4" />
+                <Button variant="outline" size="sm" className="gap-1.5 h-7 text-xs border-[#e5e5e5] dark:border-[#262626] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]">
+                  <Filter className="h-3 w-3" />
                   Filters
                   {activeFiltersCount > 0 && (
-                    <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5 text-xs">
+                    <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-[#171717] dark:bg-[#fafafa] text-[#fafafa] dark:text-[#171717]">
                       {activeFiltersCount}
                     </Badge>
                   )}
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-[400px] sm:w-[540px]">
-                <SheetHeader className="pb-4 border-b">
-                  <SheetTitle>Filters</SheetTitle>
-                  <SheetDescription>Filter documents by various criteria</SheetDescription>
+              <SheetContent side="right" className="w-[400px] sm:w-[540px] border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717]">
+                <SheetHeader className="pb-3 border-b border-[#e5e5e5] dark:border-[#262626]">
+                  <SheetTitle className="text-sm font-medium text-[#171717] dark:text-[#fafafa]">Filters</SheetTitle>
+                  <SheetDescription className="text-xs text-[#737373] dark:text-[#a3a3a3]">
+                    Filter documents by various criteria
+                  </SheetDescription>
                 </SheetHeader>
-                <div className="mt-6">
+                <div className="mt-4">
                   <DocumentFilters
                     filters={filters}
                     onFiltersChange={(newFilters) => {
@@ -503,35 +545,12 @@ export const ProjectView = ({
                 variant="default"
                 size="sm"
                 onClick={() => setBulkActionsOpen(true)}
-                className="gap-2"
+                className="gap-1.5 h-7 text-xs bg-[#171717] dark:bg-[#fafafa] text-[#fafafa] dark:text-[#171717] hover:bg-[#262626] dark:hover:bg-[#e5e5e5]"
               >
                 Actions
-                <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5 text-xs bg-background/50">
+                <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-[#fafafa] dark:bg-[#171717] text-[#171717] dark:text-[#fafafa]">
                   {selectedIds.size}
                 </Badge>
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {/* Search Bar */}
-        <div className="px-6 pb-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search documents..."
-              value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value)}
-              className="pl-9 h-9"
-            />
-            {searchQuery && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                onClick={() => handleSearch("")}
-              >
-                <X className="h-3.5 w-3.5" />
               </Button>
             )}
           </div>
@@ -543,14 +562,14 @@ export const ProjectView = ({
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center space-y-2">
-              <div className="h-8 w-8 border-2 border-muted border-t-foreground rounded-full animate-spin mx-auto" />
-              <p className="text-sm text-muted-foreground">Loading...</p>
+              <div className="h-8 w-8 border-2 border-[#e5e5e5] dark:border-[#262626] border-t-[#171717] dark:border-t-[#fafafa] rounded-full animate-spin mx-auto" />
+              <p className="text-xs text-[#737373] dark:text-[#a3a3a3]">Loading documents...</p>
             </div>
           </div>
         ) : hasChildren ? (
-          // Show child projects tree
-          <div className="p-4 space-y-1">
-            {project?.children?.map((child) => renderProjectItem(child, 0))}
+          // Show child projects as expandable sections
+          <div className="bg-white dark:bg-[#171717]">
+            {project?.children?.map((child) => renderProjectItem(child))}
           </div>
         ) : (
           // Show documents directly if no children
@@ -574,50 +593,67 @@ export const ProjectView = ({
 
       {/* Pagination */}
       {!hasChildren && totalPages > 1 && (
-        <div className="flex-shrink-0 border-t px-6 py-4">
-          <Pagination>
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  className={cn(page === 1 && "pointer-events-none opacity-50")}
-                />
-              </PaginationItem>
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                let pageNum: number;
-                if (totalPages <= 5) {
-                  pageNum = i + 1;
-                } else if (page <= 3) {
-                  pageNum = i + 1;
-                } else if (page >= totalPages - 2) {
-                  pageNum = totalPages - 4 + i;
-                } else {
-                  pageNum = page - 2 + i;
-                }
-                return (
-                  <PaginationItem key={pageNum}>
-                    <PaginationLink
-                      onClick={() => setPage(pageNum)}
-                      isActive={page === pageNum}
-                    >
-                      {pageNum}
-                    </PaginationLink>
-                  </PaginationItem>
-                );
-              })}
-              {totalPages > 5 && page < totalPages - 2 && (
+        <div className="flex-shrink-0 border-t border-[#e5e5e5] dark:border-[#262626] bg-white dark:bg-[#171717]">
+          <div className="flex items-center justify-between px-4 py-2.5">
+            <p className="text-xs text-[#737373] dark:text-[#a3a3a3]">
+              Showing {((page - 1) * 20) + 1} to {Math.min(page * 20, total)} of {total} documents
+            </p>
+            <Pagination>
+              <PaginationContent>
                 <PaginationItem>
-                  <PaginationEllipsis />
+                  <PaginationPrevious
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setPage((p) => Math.max(1, p - 1));
+                    }}
+                    className={cn(page === 1 && "pointer-events-none opacity-50")}
+                  />
                 </PaginationItem>
-              )}
-              <PaginationItem>
-                <PaginationNext
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  className={cn(page === totalPages && "pointer-events-none opacity-50")}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum: number;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (page <= 3) {
+                    pageNum = i + 1;
+                  } else if (page >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = page - 2 + i;
+                  }
+                  return (
+                    <PaginationItem key={pageNum}>
+                      <PaginationLink
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setPage(pageNum);
+                        }}
+                        isActive={page === pageNum}
+                      >
+                        {pageNum}
+                      </PaginationLink>
+                    </PaginationItem>
+                  );
+                })}
+                {totalPages > 5 && page < totalPages - 2 && (
+                  <PaginationItem>
+                    <PaginationEllipsis />
+                  </PaginationItem>
+                )}
+                <PaginationItem>
+                  <PaginationNext
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setPage((p) => Math.min(totalPages, p + 1));
+                    }}
+                    className={cn(page === totalPages && "pointer-events-none opacity-50")}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
         </div>
       )}
 

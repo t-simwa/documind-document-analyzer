@@ -19,7 +19,9 @@ import {
   Edit,
   Star,
   Files,
-  FolderTree
+  FolderTree,
+  Clock,
+  Tag
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -28,9 +30,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ProjectDialog } from "@/components/projects/ProjectDialog";
-import { projectsApi } from "@/services/api";
+import { projectsApi, documentsApi, tagsApi } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
-import type { Project } from "@/types/api";
+import type { Project, DocumentTag } from "@/types/api";
 
 interface Document {
   id: string;
@@ -53,6 +55,7 @@ interface SidebarProps {
   onToggleCollapse: () => void;
   openProjectDialog?: boolean;
   onProjectDialogChange?: (open: boolean) => void;
+  onTagFilter?: (tagId: string) => void;
 }
 
 const getFileIcon = (type: string) => {
@@ -91,6 +94,7 @@ export const Sidebar = ({
   onToggleCollapse,
   openProjectDialog,
   onProjectDialogChange,
+  onTagFilter,
 }: SidebarProps) => {
   const [hoveredDoc, setHoveredDoc] = useState<string | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -99,6 +103,15 @@ export const Sidebar = ({
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["explorer", "projects"]));
+  
+  // New sections state
+  const [recentDocuments, setRecentDocuments] = useState<Document[]>([]);
+  const [loadingRecent, setLoadingRecent] = useState(false);
+  const [favoriteProjects, setFavoriteProjects] = useState<Project[]>([]);
+  const [loadingFavorites, setLoadingFavorites] = useState(false);
+  const [tags, setTags] = useState<DocumentTag[]>([]);
+  const [loadingTags, setLoadingTags] = useState(false);
+  
   const { toast } = useToast();
 
   // Handle external trigger to open project dialog
@@ -113,9 +126,26 @@ export const Sidebar = ({
   useEffect(() => {
     if (onSelectProject) {
       loadProjects();
+      loadFavoriteProjects();
     }
+    loadRecentDocuments();
+    loadTags();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency array - only run once on mount
+
+  // Load data when sections are expanded
+  useEffect(() => {
+    if (expandedSections.has("recent") && recentDocuments.length === 0 && !loadingRecent) {
+      loadRecentDocuments();
+    }
+    if (expandedSections.has("favorites") && favoriteProjects.length === 0 && !loadingFavorites && onSelectProject) {
+      loadFavoriteProjects();
+    }
+    if (expandedSections.has("tags") && tags.length === 0 && !loadingTags) {
+      loadTags();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expandedSections]);
 
   const loadProjects = useCallback(async () => {
     try {
@@ -283,6 +313,62 @@ export const Sidebar = ({
     });
   };
 
+  const loadRecentDocuments = useCallback(async () => {
+    try {
+      setLoadingRecent(true);
+      const response = await documentsApi.listRecent(10);
+      setRecentDocuments(response.documents.map(doc => ({
+        id: doc.id,
+        name: doc.name,
+        status: doc.status,
+        uploadedAt: doc.uploadedAt,
+        size: doc.size || "0 KB",
+        type: doc.type || "file"
+      })));
+    } catch (error) {
+      console.error("Failed to load recent documents:", error);
+    } finally {
+      setLoadingRecent(false);
+    }
+  }, []);
+
+  const loadFavoriteProjects = useCallback(async () => {
+    if (!onSelectProject) return;
+    try {
+      setLoadingFavorites(true);
+      const response = await projectsApi.getFavorites({ page: 1, limit: 20 });
+      setFavoriteProjects(response.projects);
+    } catch (error) {
+      console.error("Failed to load favorite projects:", error);
+    } finally {
+      setLoadingFavorites(false);
+    }
+  }, [onSelectProject]);
+
+  const loadTags = useCallback(async () => {
+    try {
+      setLoadingTags(true);
+      const response = await tagsApi.list();
+      setTags(response);
+    } catch (error) {
+      console.error("Failed to load tags:", error);
+    } finally {
+      setLoadingTags(false);
+    }
+  }, []);
+
+  const handleTagClick = (tagId: string) => {
+    if (onTagFilter) {
+      onTagFilter(tagId);
+    } else {
+      // Fallback: navigate to documents with tag filter
+      const url = new URL(window.location.href);
+      url.searchParams.set('tag', tagId);
+      window.location.href = url.toString();
+    }
+  };
+
+
   const handleToggleFavorite = async (projectId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
@@ -407,6 +493,9 @@ export const Sidebar = ({
 
   const isExplorerExpanded = expandedSections.has("explorer");
   const isProjectsExpanded = expandedSections.has("projects");
+  const isRecentExpanded = expandedSections.has("recent");
+  const isFavoritesExpanded = expandedSections.has("favorites");
+  const isTagsExpanded = expandedSections.has("tags");
 
   return (
     <aside
@@ -599,6 +688,169 @@ export const Sidebar = ({
                 )}
               </div>
             )}
+
+            {/* RECENT Section */}
+            <div className="mt-1 border-t border-[#e5e5e5] dark:border-[#262626] pt-1">
+              <button
+                onClick={() => toggleSection("recent")}
+                className="w-full flex items-center gap-1.5 px-3 py-1.5 hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a] transition-colors group"
+              >
+                <ChevronDown
+                  className={cn(
+                    "h-3.5 w-3.5 text-[#525252] dark:text-[#d4d4d4] transition-transform flex-shrink-0",
+                    !isRecentExpanded && "-rotate-90"
+                  )}
+                />
+                <Clock className="h-3.5 w-3.5 text-[#525252] dark:text-[#d4d4d4] flex-shrink-0" />
+                <span className="text-[10px] font-medium text-[#525252] dark:text-[#d4d4d4] uppercase tracking-wide">
+                  Recent
+                </span>
+              </button>
+
+              {isRecentExpanded && (
+                <div className="pb-2">
+                  {loadingRecent ? (
+                    <div className="px-2.5 py-3 text-center">
+                      <Loader2 className="h-4 w-4 text-[#525252] dark:text-[#d4d4d4] animate-spin mx-auto" />
+                    </div>
+                  ) : recentDocuments.length > 0 ? (
+                    <div className="px-1.5 space-y-0.5">
+                      {recentDocuments.map((doc) => (
+                        <div
+                          key={doc.id}
+                          onClick={() => onSelectDocument(doc.id)}
+                          className={cn(
+                            "group flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-xs transition-colors cursor-pointer",
+                            selectedDocId === doc.id
+                              ? "bg-[#fafafa] dark:bg-[#0a0a0a] text-[#171717] dark:text-[#fafafa] font-medium" 
+                              : "text-[#525252] dark:text-[#d4d4d4] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
+                          )}
+                        >
+                          <div className="flex-shrink-0">
+                            {getFileIcon(doc.type)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="truncate text-xs">{doc.name}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="px-3 py-4 text-center">
+                      <p className="text-xs text-[#525252] dark:text-[#a3a3a3]">No recent documents</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* FAVORITES Section */}
+            {onSelectProject && (
+              <div className="mt-1 border-t border-[#e5e5e5] dark:border-[#262626] pt-1">
+                <button
+                  onClick={() => toggleSection("favorites")}
+                  className="w-full flex items-center gap-1.5 px-3 py-1.5 hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a] transition-colors group"
+                >
+                  <ChevronDown
+                    className={cn(
+                      "h-3.5 w-3.5 text-[#525252] dark:text-[#d4d4d4] transition-transform flex-shrink-0",
+                      !isFavoritesExpanded && "-rotate-90"
+                    )}
+                  />
+                  <Star className="h-3.5 w-3.5 text-[#525252] dark:text-[#d4d4d4] flex-shrink-0 fill-yellow-500 text-yellow-500" />
+                  <span className="text-[10px] font-medium text-[#525252] dark:text-[#d4d4d4] uppercase tracking-wide">
+                    Favorites
+                  </span>
+                </button>
+
+                {isFavoritesExpanded && (
+                  <div className="pb-2">
+                    {loadingFavorites ? (
+                      <div className="px-2.5 py-3 text-center">
+                        <Loader2 className="h-4 w-4 text-[#525252] dark:text-[#d4d4d4] animate-spin mx-auto" />
+                      </div>
+                    ) : favoriteProjects.length > 0 ? (
+                      <div className="px-1.5 space-y-0.5">
+                        {favoriteProjects.map((project) => (
+                          <div
+                            key={project.id}
+                            onClick={() => onSelectProject?.(project.id)}
+                            className={cn(
+                              "group flex items-center gap-1.5 w-full px-2 py-1.5 rounded-md text-xs transition-colors cursor-pointer",
+                              selectedProjectId === project.id
+                                ? "bg-[#fafafa] dark:bg-[#0a0a0a] text-[#171717] dark:text-[#fafafa] font-medium" 
+                                : "text-[#525252] dark:text-[#d4d4d4] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
+                            )}
+                          >
+                            <Star className="h-3 w-3 fill-yellow-500 text-yellow-500 flex-shrink-0" />
+                            <span className="flex-1 truncate">{project.name}</span>
+                            {project.documentCount !== undefined && project.documentCount > 0 && (
+                              <span className="text-[10px] text-[#525252] dark:text-[#a3a3a3] font-medium tabular-nums">
+                                {project.documentCount}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="px-3 py-4 text-center">
+                        <p className="text-xs text-[#525252] dark:text-[#a3a3a3]">No favorites</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAGS Section */}
+            <div className="mt-1 border-t border-[#e5e5e5] dark:border-[#262626] pt-1">
+              <button
+                onClick={() => toggleSection("tags")}
+                className="w-full flex items-center gap-1.5 px-3 py-1.5 hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a] transition-colors group"
+              >
+                <ChevronDown
+                  className={cn(
+                    "h-3.5 w-3.5 text-[#525252] dark:text-[#d4d4d4] transition-transform flex-shrink-0",
+                    !isTagsExpanded && "-rotate-90"
+                  )}
+                />
+                <Tag className="h-3.5 w-3.5 text-[#525252] dark:text-[#d4d4d4] flex-shrink-0" />
+                <span className="text-[10px] font-medium text-[#525252] dark:text-[#d4d4d4] uppercase tracking-wide">
+                  Tags
+                </span>
+              </button>
+
+              {isTagsExpanded && (
+                <div className="pb-2">
+                  {loadingTags ? (
+                    <div className="px-2.5 py-3 text-center">
+                      <Loader2 className="h-4 w-4 text-[#525252] dark:text-[#d4d4d4] animate-spin mx-auto" />
+                    </div>
+                  ) : tags.length > 0 ? (
+                    <div className="px-1.5 space-y-0.5">
+                      {tags.map((tag) => (
+                        <button
+                          key={tag.id}
+                          onClick={() => handleTagClick(tag.id)}
+                          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-colors text-left hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a] text-[#525252] dark:text-[#d4d4d4]"
+                        >
+                          <div
+                            className="h-2.5 w-2.5 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: tag.color || "#6b7280" }}
+                          />
+                          <span className="flex-1 truncate">{tag.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="px-3 py-4 text-center">
+                      <p className="text-xs text-[#525252] dark:text-[#a3a3a3]">No tags</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
           </>
         )}
 

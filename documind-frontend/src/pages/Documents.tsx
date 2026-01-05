@@ -1390,6 +1390,22 @@ const Documents = () => {
     });
   };
 
+  const handleTagFilter = (tagId: string) => {
+    // Set tag filter in URL params and refresh document list
+    setSearchParams((prev) => {
+      const newParams = new URLSearchParams(prev);
+      newParams.set('tag', tagId);
+      return newParams;
+    });
+    setDocumentListRefreshTrigger((prev) => prev + 1);
+    setViewState("list");
+    toast({
+      title: "Filter applied",
+      description: "Documents filtered by tag",
+    });
+  };
+
+
   return (
     <div className="flex h-screen bg-[#fafafa] dark:bg-[#0a0a0a] overflow-hidden">
       <Sidebar
@@ -1404,6 +1420,7 @@ const Documents = () => {
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
         openProjectDialog={openProjectDialog}
         onProjectDialogChange={setOpenProjectDialog}
+        onTagFilter={handleTagFilter}
       />
 
       <div className="flex-1 flex flex-col overflow-hidden">
