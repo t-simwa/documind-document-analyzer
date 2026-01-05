@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Logo } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -17,7 +17,9 @@ import {
   FolderOpen,
   MoreVertical,
   Edit,
-  Star
+  Star,
+  Files,
+  FolderTree
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -60,7 +62,7 @@ const getFileIcon = (type: string) => {
     case 'docx':
       return <FileText className="h-3.5 w-3.5 text-blue-500" />;
     default:
-      return <File className="h-3.5 w-3.5 text-[#737373] dark:text-[#a3a3a3]" />;
+      return <File className="h-3.5 w-3.5 text-[#525252] dark:text-[#d4d4d4]" />;
   }
 };
 
@@ -96,6 +98,7 @@ export const Sidebar = ({
   const [projectDialogOpen, setProjectDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["explorer", "projects"]));
   const { toast } = useToast();
 
   // Handle external trigger to open project dialog
@@ -268,6 +271,18 @@ export const Sidebar = ({
     });
   };
 
+  const toggleSection = (sectionId: string) => {
+    setExpandedSections((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(sectionId)) {
+        newSet.delete(sectionId);
+      } else {
+        newSet.add(sectionId);
+      }
+      return newSet;
+    });
+  };
+
   const handleToggleFavorite = async (projectId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
@@ -298,58 +313,53 @@ export const Sidebar = ({
       <div key={project.id} className="space-y-0.5">
         <div
           className={cn(
-            "group flex items-center gap-2 w-full px-2 rounded-md text-xs transition-colors text-left relative",
+            "group flex items-center gap-1.5 w-full px-1.5 py-0.5 text-xs transition-colors cursor-pointer",
             isSelected 
-              ? "bg-[#fafafa] dark:bg-[#0a0a0a] text-[#171717] dark:text-[#fafafa] font-medium py-1.5" 
-              : "text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a] py-1.5"
+              ? "bg-[#fafafa] dark:bg-[#0a0a0a] text-[#171717] dark:text-[#fafafa] font-medium" 
+              : "text-[#525252] dark:text-[#d4d4d4] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
           )}
-          style={{ paddingLeft: `${level * 12 + 10}px` }}
+          style={{ paddingLeft: `${level * 12 + 4}px` }}
           onClick={() => onSelectProject?.(project.id)}
         >
           {!collapsed && (
             <>
-          {hasChildren ? (
-            isExpanded ? (
-                <FolderOpen className="h-3.5 w-3.5 flex-shrink-0 text-[#737373] dark:text-[#a3a3a3]" />
-            ) : (
-                  <Folder className="h-3.5 w-3.5 flex-shrink-0 text-[#737373] dark:text-[#a3a3a3]" />
-            )
-          ) : (
-                <Folder className="h-3.5 w-3.5 flex-shrink-0 text-[#737373] dark:text-[#a3a3a3]" />
-              )}
-            </>
-          )}
-          {!collapsed && (
-            <>
-              <span className="flex-1 truncate">{project.name}</span>
-              {isFavorite && (
-                <Star className="h-3 w-3 fill-yellow-500 text-yellow-500 flex-shrink-0" />
-              )}
-              {project.documentCount !== undefined && project.documentCount > 0 && (
-                <span className="text-[10px] text-[#737373] dark:text-[#a3a3a3] font-medium tabular-nums">
-                  {project.documentCount}
-                </span>
-              )}
               {hasChildren && (
-                <Button
-                  variant="ghost"
-                  size="icon"
+                <button
                   onClick={(e) => toggleProjectExpanded(project.id, e)}
-                  className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
+                  className="h-4 w-4 flex items-center justify-center flex-shrink-0 hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a] rounded"
                 >
                   {isExpanded ? (
-                    <ChevronDown className="h-3 w-3" />
+                    <ChevronDown className="h-3 w-3 text-[#525252] dark:text-[#d4d4d4]" />
                   ) : (
-                    <ChevronRight className="h-3 w-3" />
+                    <ChevronRight className="h-3 w-3 text-[#525252] dark:text-[#d4d4d4]" />
                   )}
-                </Button>
+                </button>
               )}
+              {!hasChildren && <div className="w-4" />}
+              {hasChildren ? (
+                isExpanded ? (
+                  <FolderOpen className="h-3.5 w-3.5 flex-shrink-0 text-[#525252] dark:text-[#d4d4d4]" />
+                ) : (
+                  <Folder className="h-3.5 w-3.5 flex-shrink-0 text-[#525252] dark:text-[#d4d4d4]" />
+                )
+              ) : (
+                <Folder className="h-3.5 w-3.5 flex-shrink-0 text-[#525252] dark:text-[#d4d4d4]" />
+              )}
+              <span className="flex-1 truncate">{project.name}</span>
+              {isFavorite && (
+                <Star className="h-3 w-3 fill-yellow-500 text-yellow-500 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+              )}
+                {project.documentCount !== undefined && project.documentCount > 0 && (
+                  <span className="text-[10px] text-[#525252] dark:text-[#a3a3a3] font-medium tabular-nums mr-1">
+                    {project.documentCount}
+                  </span>
+                )}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
+                    className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity text-[#525252] dark:text-[#d4d4d4] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
                   >
                     <MoreVertical className="h-3 w-3" />
                   </Button>
@@ -395,10 +405,13 @@ export const Sidebar = ({
     return result;
   };
 
+  const isExplorerExpanded = expandedSections.has("explorer");
+  const isProjectsExpanded = expandedSections.has("projects");
+
   return (
     <aside
       className={cn(
-        "h-screen bg-white dark:bg-[#171717] border-r border-[#e5e5e5] dark:border-[#262626] flex flex-col transition-all duration-150 ease-out",
+        "h-screen bg-white dark:bg-[#171717] border-r border-[#e5e5e5] dark:border-[#262626] flex flex-col transition-all duration-150 ease-out select-none",
         collapsed ? "w-[56px]" : "w-[240px]"
       )}
     >
@@ -407,14 +420,17 @@ export const Sidebar = ({
         "h-12 border-b border-[#e5e5e5] dark:border-[#262626] flex items-center",
         collapsed ? "justify-center px-2" : "justify-between px-3"
       )}>
-        <Logo showText={!collapsed} />
+        {!collapsed && (
+          <Logo showText={true} />
+        )}
+        {collapsed && <Logo showText={false} />}
         
         {!collapsed && (
           <Button
             variant="ghost"
             size="icon-sm"
             onClick={onToggleCollapse}
-            className="h-7 w-7 text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
+            className="h-7 w-7 text-[#525252] dark:text-[#d4d4d4] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
           >
             <ChevronLeft className="h-3.5 w-3.5" />
           </Button>
@@ -428,153 +444,186 @@ export const Sidebar = ({
             variant="ghost"
             size="icon-sm"
             onClick={onToggleCollapse}
-            className="w-full h-7 text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
+            className="w-full h-7 text-[#525252] dark:text-[#d4d4d4] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
           >
             <ChevronRight className="h-3.5 w-3.5" />
           </Button>
         </div>
       )}
 
-      {/* New Document Button */}
-      <div className="p-2">
-        <Button
-          onClick={onNewUpload}
-          variant="outline"
-          size={collapsed ? "icon-sm" : "sm"}
-          className="w-full h-8 text-xs border-[#e5e5e5] dark:border-[#262626] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          {!collapsed && <span>New</span>}
-        </Button>
-      </div>
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden">
+        {!collapsed && (
+          <>
+            {/* EXPLORER Section */}
+            <div className="mt-1">
+              <button
+                onClick={() => toggleSection("explorer")}
+                className="w-full flex items-center gap-1.5 px-3 py-1.5 hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a] transition-colors group"
+              >
+                <ChevronDown
+                  className={cn(
+                    "h-3.5 w-3.5 text-[#525252] dark:text-[#d4d4d4] transition-transform flex-shrink-0",
+                    !isExplorerExpanded && "-rotate-90"
+                  )}
+                />
+                <Files className="h-3.5 w-3.5 text-[#525252] dark:text-[#d4d4d4] flex-shrink-0" />
+                <span className="text-[10px] font-medium text-[#525252] dark:text-[#d4d4d4] uppercase tracking-wide">
+                  Explorer
+                </span>
+              </button>
 
-      {/* Documents List */}
-      <div className="flex-1 overflow-y-auto">
-        {!collapsed && documents.length > 0 && (
-          <div className="px-3 py-2">
-            <p className="text-[10px] font-medium text-[#737373] dark:text-[#a3a3a3] uppercase tracking-wide">
-              Recent Documents
-          </p>
-          </div>
-        )}
-        
-        <div className="px-1.5 pb-2 space-y-0.5">
-          {documents.map((doc) => (
-            <div
-              key={doc.id}
-              onClick={() => onSelectDocument(doc.id)}
-              onMouseEnter={() => setHoveredDoc(doc.id)}
-              onMouseLeave={() => setHoveredDoc(null)}
-              className={cn(
-                "group w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-colors text-left cursor-pointer",
-                selectedDocId === doc.id
-                  ? "bg-[#fafafa] dark:bg-[#0a0a0a] text-[#171717] dark:text-[#fafafa] font-medium"
-                  : "text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
-              )}
-            >
-              {/* File Icon */}
-              {!collapsed && (
-              <div className="flex-shrink-0">
-                {getFileIcon(doc.type)}
-              </div>
-              )}
-
-              {!collapsed && (
-                <>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs truncate">{doc.name}</p>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      {getStatusIcon(doc.status)}
-                      <span className="text-[10px] text-[#737373] dark:text-[#a3a3a3]">{doc.size}</span>
-                    </div>
+              {isExplorerExpanded && (
+                <div className="pb-2">
+                  {/* New Document Button */}
+                  <div className="px-2 py-1">
+                    <Button
+                      onClick={onNewUpload}
+                      variant="outline"
+                      size="sm"
+                      className="w-full h-8 text-xs border-[#e5e5e5] dark:border-[#262626] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a] justify-start gap-2"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      <span>New Document</span>
+                    </Button>
                   </div>
 
-                  {/* Delete */}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDeleteDocument(doc.id);
-                      }}
-                    className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity text-[#737373] dark:text-[#a3a3a3] hover:text-red-600 dark:hover:text-red-400 flex-shrink-0 flex items-center justify-center rounded hover:bg-red-50 dark:hover:bg-red-950/20"
-                    >
-                    <Trash2 className="h-3 w-3" />
-                    </button>
-                </>
+                  {/* Documents List */}
+                  {documents.length > 0 && (
+                    <div className="px-1.5 space-y-0.5">
+                      {documents.map((doc) => (
+                        <div
+                          key={doc.id}
+                          onClick={() => onSelectDocument(doc.id)}
+                          onMouseEnter={() => setHoveredDoc(doc.id)}
+                          onMouseLeave={() => setHoveredDoc(null)}
+                          className={cn(
+                            "group flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-xs transition-colors cursor-pointer",
+                            selectedDocId === doc.id
+                              ? "bg-[#fafafa] dark:bg-[#0a0a0a] text-[#171717] dark:text-[#fafafa] font-medium" 
+                              : "text-[#525252] dark:text-[#d4d4d4] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
+                          )}
+                        >
+                          <div className="flex-shrink-0">
+                            {getFileIcon(doc.type)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="truncate text-xs">{doc.name}</p>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              {getStatusIcon(doc.status)}
+                              <span className="text-[10px] text-[#525252] dark:text-[#a3a3a3]">{doc.size}</span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDeleteDocument(doc.id);
+                            }}
+                            className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity text-[#525252] dark:text-[#d4d4d4] hover:text-red-600 dark:hover:text-red-400 flex-shrink-0 flex items-center justify-center rounded hover:bg-red-50 dark:hover:bg-red-950/20"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {documents.length === 0 && (
+                      <div className="px-3 py-8 text-center">
+                        <p className="text-xs text-[#525252] dark:text-[#a3a3a3]">No documents</p>
+                      </div>
+                  )}
+                </div>
               )}
             </div>
-          ))}
-        </div>
 
-        {documents.length === 0 && !collapsed && (
-          <div className="px-3 py-8 text-center">
-            <p className="text-xs text-[#737373] dark:text-[#a3a3a3]">No documents</p>
+            {/* PROJECTS Section */}
+            {onSelectProject && (
+              <div className="mt-1 border-t border-[#e5e5e5] dark:border-[#262626] pt-1">
+                <div className="flex items-center justify-between px-3 py-1.5 group">
+                  <button
+                    onClick={() => toggleSection("projects")}
+                    className="flex items-center gap-1.5 flex-1 hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a] transition-colors rounded px-1 py-0.5 -ml-1"
+                  >
+                      <ChevronDown
+                        className={cn(
+                          "h-3.5 w-3.5 text-[#525252] dark:text-[#d4d4d4] transition-transform flex-shrink-0",
+                          !isProjectsExpanded && "-rotate-90"
+                        )}
+                      />
+                      <FolderTree className="h-3.5 w-3.5 text-[#525252] dark:text-[#d4d4d4] flex-shrink-0" />
+                      <span className="text-[10px] font-medium text-[#525252] dark:text-[#d4d4d4] uppercase tracking-wide">
+                        Projects
+                      </span>
+                  </button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setProjectDialogOpen(true)}
+                    className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity text-[#525252] dark:text-[#d4d4d4] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
+                  >
+                    <Plus className="h-3 w-3" />
+                  </Button>
+                </div>
+
+                {isProjectsExpanded && (
+                  <div className="pb-2">
+                    {/* All Documents */}
+                    <div className="px-1.5 pt-1">
+                      <button
+                        className={cn(
+                          "flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-xs transition-colors text-left",
+                          selectedProjectId === null 
+                            ? "bg-[#fafafa] dark:bg-[#0a0a0a] text-[#171717] dark:text-[#fafafa] font-medium" 
+                            : "text-[#525252] dark:text-[#d4d4d4] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
+                        )}
+                        onClick={() => onSelectProject(null)}
+                      >
+                        <Folder className="h-3.5 w-3.5 flex-shrink-0" />
+                        <span className="truncate">All Documents</span>
+                      </button>
+                    </div>
+
+                    {/* Projects Tree */}
+                    <div className="px-1.5 space-y-0.5">
+                      {loadingProjects ? (
+                        <div className="px-2.5 py-3 text-center">
+                          <div className="h-3.5 w-3.5 border-2 border-[#e5e5e5] dark:border-[#262626] border-t-[#171717] dark:border-t-[#fafafa] rounded-full animate-spin mx-auto" />
+                        </div>
+                      ) : (
+                        projects.map((project) => renderProject(project))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Collapsed Icons */}
+        {collapsed && (
+          <div className="py-1 space-y-1">
+            <button
+              onClick={onNewUpload}
+              className="w-full flex items-center justify-center h-8 text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a] transition-colors"
+              title="New Document"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+            {onSelectProject && (
+              <button
+                onClick={() => setProjectDialogOpen(true)}
+                className="w-full flex items-center justify-center h-8 text-[#525252] dark:text-[#d4d4d4] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a] transition-colors"
+                title="New Project"
+              >
+                <Folder className="h-4 w-4" />
+              </button>
+            )}
           </div>
         )}
       </div>
-
-      {/* Projects Section */}
-      {onSelectProject && (
-        <div className={cn("flex-1 overflow-y-auto", !collapsed && "border-t border-[#e5e5e5] dark:border-[#262626]")}>
-          {!collapsed && (
-            <>
-              <div className="px-1.5 pt-2 pb-1">
-                <button
-                  className={cn(
-                    "flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-xs transition-colors text-left",
-                    selectedProjectId === null 
-                      ? "bg-[#fafafa] dark:bg-[#0a0a0a] text-[#171717] dark:text-[#fafafa] font-medium" 
-                      : "text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
-                  )}
-                  onClick={() => onSelectProject(null)}
-                >
-                  <Folder className="h-3.5 w-3.5 flex-shrink-0" />
-                  <span className="truncate">All Documents</span>
-                </button>
-              </div>
-              <div className="flex items-center justify-between px-3 py-2">
-                <p className="text-[10px] font-medium text-[#737373] dark:text-[#a3a3a3] uppercase tracking-wide">
-                  Projects
-                </p>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setProjectDialogOpen(true)}
-                  className="h-5 w-5 text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
-                >
-                  <Plus className="h-3 w-3" />
-                </Button>
-              </div>
-            </>
-          )}
-          
-          {collapsed && (
-            <div className="p-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setProjectDialogOpen(true)}
-                className="w-full h-7 text-[#737373] dark:text-[#a3a3a3] hover:text-[#171717] dark:hover:text-[#fafafa] hover:bg-[#fafafa] dark:hover:bg-[#0a0a0a]"
-                title="New Project"
-              >
-                <Folder className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          )}
-
-          {!collapsed && (
-            <div className="px-1.5 pb-2 space-y-0.5">
-              {loadingProjects ? (
-                <div className="px-2.5 py-3 text-center">
-                  <div className="h-3.5 w-3.5 border-2 border-[#e5e5e5] dark:border-[#262626] border-t-[#171717] dark:border-t-[#fafafa] rounded-full animate-spin mx-auto" />
-                </div>
-              ) : (
-                projects.map((project) => renderProject(project))
-              )}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Footer */}
       {!collapsed && (
@@ -590,7 +639,7 @@ export const Sidebar = ({
                     <div className="absolute inset-0 w-1 h-1 rounded-full bg-green-500 animate-ping opacity-75" />
                   </div>
                 </div>
-                <p className="text-[10px] text-[#737373] dark:text-[#a3a3a3] font-normal leading-tight tracking-wide uppercase">Encrypted</p>
+                <p className="text-[10px] text-[#525252] dark:text-[#a3a3a3] font-normal leading-tight tracking-wide uppercase">Encrypted</p>
               </div>
             </div>
           </div>
