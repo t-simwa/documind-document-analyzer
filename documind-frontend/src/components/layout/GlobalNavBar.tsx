@@ -213,7 +213,7 @@ export const GlobalNavBar = ({ onSearch }: GlobalNavBarProps) => {
                 onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
                 className={cn(
                   "w-full pl-9 pr-16 h-8 bg-muted/30 border border-border/50 rounded-lg",
-                  "text-xs placeholder:text-muted-foreground/50",
+                  "text-xs placeholder:text-[10px] placeholder:text-muted-foreground/50",
                   "transition-all duration-200",
                   "hover:bg-muted/40 hover:border-border/70",
                   isSearchFocused && "bg-muted/50 border-foreground/20 ring-1 ring-foreground/10 shadow-sm"
@@ -517,7 +517,7 @@ export const GlobalNavBar = ({ onSearch }: GlobalNavBarProps) => {
             placeholder="Search documents, projects..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 pr-4 h-8 bg-background/50 border-border/50 rounded-lg text-xs placeholder:text-muted-foreground/50"
+            className="pl-9 pr-4 h-8 bg-background/50 border-border/50 rounded-lg text-xs placeholder:text-[10px] placeholder:text-muted-foreground/50"
           />
         </form>
       </div>
