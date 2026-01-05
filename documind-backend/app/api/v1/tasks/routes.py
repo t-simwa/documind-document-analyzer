@@ -12,7 +12,7 @@ from app.core.dependencies import require_auth
 router = APIRouter(tags=["Tasks"])
 
 
-@router.get("/tasks/{task_id}")
+@router.get("/{task_id}")
 async def get_task_status(task_id: str, current_user: dict = Depends(require_auth)):
     """
     Get the status of a background task (must belong to authenticated user)
@@ -78,7 +78,7 @@ async def get_task_status(task_id: str, current_user: dict = Depends(require_aut
     return task
 
 
-@router.get("/tasks")
+@router.get("/")
 async def list_tasks(
     task_type: Optional[str] = None,
     task_status: Optional[str] = None,

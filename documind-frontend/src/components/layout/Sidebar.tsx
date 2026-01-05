@@ -56,6 +56,7 @@ interface SidebarProps {
   openProjectDialog?: boolean;
   onProjectDialogChange?: (open: boolean) => void;
   onTagFilter?: (tagId: string) => void;
+  refreshTrigger?: number;
 }
 
 const getFileIcon = (type: string) => {
@@ -95,6 +96,7 @@ export const Sidebar = ({
   openProjectDialog,
   onProjectDialogChange,
   onTagFilter,
+  refreshTrigger,
 }: SidebarProps) => {
   const [hoveredDoc, setHoveredDoc] = useState<string | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -132,6 +134,19 @@ export const Sidebar = ({
     loadTags();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency array - only run once on mount
+
+  // Refresh projects when refreshTrigger changes
+  useEffect(() => {
+    if (refreshTrigger !== undefined && refreshTrigger > 0 && onSelectProject) {
+      // Add a small delay to ensure backend has updated
+      const timer = setTimeout(() => {
+        loadProjects();
+        loadFavoriteProjects();
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshTrigger]);
 
   // Load data when sections are expanded
   useEffect(() => {

@@ -24,6 +24,7 @@ interface ProjectViewProps {
   refreshTrigger?: number;
   onDocumentDeleted?: (id: string) => void;
   onProjectSelect?: (projectId: string | null) => void;
+  onRefreshSidebar?: () => void;
 }
 
 export const ProjectView = ({
@@ -34,6 +35,7 @@ export const ProjectView = ({
   refreshTrigger,
   onDocumentDeleted,
   onProjectSelect,
+  onRefreshSidebar,
 }: ProjectViewProps) => {
   const [project, setProject] = useState<Project | null>(null);
   const [projectHierarchy, setProjectHierarchy] = useState<Project[]>([]);
@@ -385,7 +387,41 @@ export const ProjectView = ({
         onDocumentDeleted(id);
       }
 
+      // Wait a bit for backend to update
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // First reload project hierarchy to get updated structure and counts
+      try {
+        const hierarchy = await projectsApi.getHierarchy();
+        setProjectHierarchy(hierarchy);
+        // Find and update the current project in the hierarchy
+        const findProject = (projects: Project[], id: string): Project | null => {
+          for (const p of projects) {
+            if (p.id === id) return p;
+            if (p.children) {
+              const found = findProject(p.children, id);
+              if (found) return found;
+            }
+          }
+          return null;
+        };
+        const foundProject = findProject(hierarchy, projectId);
+        if (foundProject) {
+          setProject(foundProject);
+          // Wait for state to update, then reload documents
+          await new Promise(resolve => setTimeout(resolve, 50));
+        }
+      } catch (error) {
+        console.error("Failed to reload project hierarchy:", error);
+      }
+      
+      // Now reload documents with updated project structure
       await loadData();
+
+      // Trigger sidebar refresh to update project counts
+      if (onRefreshSidebar) {
+        onRefreshSidebar();
+      }
 
       toast({
         title: "Success",
@@ -438,9 +474,88 @@ export const ProjectView = ({
   };
 
   const handleMoveUpdate = async () => {
-    await loadData();
     setMoveDialogOpen(false);
     setMoveDialogDocumentId(null);
+    // Wait a bit for backend to update
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    // First reload project hierarchy to get updated structure and counts
+    let updatedProject: Project | null = null;
+    try {
+      const hierarchy = await projectsApi.getHierarchy();
+      setProjectHierarchy(hierarchy);
+      // Find and update the current project in the hierarchy
+      const findProject = (projects: Project[], id: string): Project | null => {
+        for (const p of projects) {
+          if (p.id === id) return p;
+          if (p.children) {
+            const found = findProject(p.children, id);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+      updatedProject = findProject(hierarchy, projectId);
+      if (updatedProject) {
+        setProject(updatedProject);
+      }
+    } catch (error) {
+      console.error("Failed to reload project hierarchy:", error);
+    }
+    
+    // Wait for React state to update
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Now reload documents - use updatedProject if available, otherwise project state
+    const projectToUse = updatedProject || project;
+    if (projectToUse) {
+      // Collect all project IDs including current and all descendants
+      const allProjectIds = getAllProjectIds(projectToUse);
+      
+      // Load documents for all relevant projects
+      const allDocs: Document[] = [];
+      for (const pid of allProjectIds) {
+        try {
+          const response = await documentsApi.list({
+            projectId: pid,
+            field: sortField,
+            direction: sortDirection,
+            page: 1,
+            limit: 1000,
+          });
+          allDocs.push(...response.documents);
+        } catch (error) {
+          console.error(`Failed to load documents for project ${pid}:`, error);
+        }
+      }
+      
+      // Remove duplicates
+      const uniqueDocs = Array.from(
+        new Map(allDocs.map((doc) => [doc.id, doc])).values()
+      );
+      
+      // Sort documents
+      const sorted = uniqueDocs.sort((a, b) => {
+        const aVal = a[sortField as keyof Document];
+        const bVal = b[sortField as keyof Document];
+        if (sortDirection === "asc") {
+          return aVal > bVal ? 1 : -1;
+        }
+        return aVal < bVal ? 1 : -1;
+      });
+      
+      setDocuments(sorted);
+      setTotal(sorted.length);
+      setTotalPages(Math.ceil(sorted.length / 20));
+    } else {
+      // Fallback to regular loadData
+      await loadData();
+    }
+    
+    // Trigger sidebar refresh to update project counts
+    if (onRefreshSidebar) {
+      onRefreshSidebar();
+    }
   };
 
   const handleSearch = (query: string) => {

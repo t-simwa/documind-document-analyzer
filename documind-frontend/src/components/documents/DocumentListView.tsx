@@ -22,9 +22,10 @@ interface DocumentListViewProps {
   onOpenSavedAnalyses?: () => void;
   refreshTrigger?: number; // Add refresh trigger to force reload when documents are deleted elsewhere
   onDocumentDeleted?: (id: string) => void; // Callback to notify parent when document is deleted
+  onRefreshSidebar?: () => void; // Callback to refresh sidebar project counts
 }
 
-export const DocumentListView = ({ projectId, onDocumentSelect, onCompareDocuments, onOpenSavedAnalyses, refreshTrigger, onDocumentDeleted }: DocumentListViewProps) => {
+export const DocumentListView = ({ projectId, onDocumentSelect, onCompareDocuments, onOpenSavedAnalyses, refreshTrigger, onDocumentDeleted, onRefreshSidebar }: DocumentListViewProps) => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [tags, setTags] = useState<DocumentTag[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -135,8 +136,15 @@ export const DocumentListView = ({ projectId, onDocumentSelect, onCompareDocumen
         onDocumentDeleted(id);
       }
       
+      // Wait a bit for backend to update, then reload
+      await new Promise(resolve => setTimeout(resolve, 100));
       // Reload data to ensure consistency with server
       await loadData();
+      
+      // Trigger sidebar refresh to update project counts
+      if (onRefreshSidebar) {
+        onRefreshSidebar();
+      }
       
       toast({
         title: "Success",
@@ -190,9 +198,15 @@ export const DocumentListView = ({ projectId, onDocumentSelect, onCompareDocumen
   };
 
   const handleMoveUpdate = async () => {
-    await loadData();
     setMoveDialogOpen(false);
     setMoveDialogDocumentId(null);
+    // Wait a bit for backend to update, then reload
+    await new Promise(resolve => setTimeout(resolve, 100));
+    await loadData();
+    // Trigger sidebar refresh to update project counts
+    if (onRefreshSidebar) {
+      onRefreshSidebar();
+    }
   };
 
   const handleSearch = (query: string) => {

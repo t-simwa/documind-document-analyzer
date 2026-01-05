@@ -1276,8 +1276,14 @@ const Documents = () => {
                   newSet.delete(id);
                   return newSet;
                 });
+                // Refresh sidebar and document list
+                setDocumentListRefreshTrigger((prev) => prev + 1);
               }}
               onProjectSelect={handleProjectSelect}
+              onRefreshSidebar={() => {
+                // Increment refresh trigger to update sidebar and document list
+                setDocumentListRefreshTrigger((prev) => prev + 1);
+              }}
             />
           );
         }
@@ -1314,6 +1320,12 @@ const Documents = () => {
                 newSet.delete(id);
                 return newSet;
               });
+              // Refresh sidebar and document list
+              setDocumentListRefreshTrigger((prev) => prev + 1);
+            }}
+            onRefreshSidebar={() => {
+              // Increment refresh trigger to update sidebar and document list
+              setDocumentListRefreshTrigger((prev) => prev + 1);
             }}
           />
         );
@@ -1421,6 +1433,7 @@ const Documents = () => {
         openProjectDialog={openProjectDialog}
         onProjectDialogChange={setOpenProjectDialog}
         onTagFilter={handleTagFilter}
+        refreshTrigger={documentListRefreshTrigger}
       />
 
       <div className="flex-1 flex flex-col overflow-hidden">
